@@ -44,7 +44,21 @@ colores, fuentes) se conserva idéntico al modelo original.
 
 ## Cómo usarlo
 
-Desde una terminal, en esta carpeta:
+### Opción A — App web (recomendada) 🌐
+
+Es un formulario en el navegador donde llenas los datos, agregas o quitas
+postores, y descargas el Excel ya completo.
+
+- **Windows:** doble clic en **`iniciar_app.bat`**
+- **Mac / Linux:** ejecuta `bash iniciar_app.sh`
+- **O manualmente:** `python app.py`
+
+Se abre solo en tu navegador en `http://localhost:5000`. Llenas el formulario,
+presionas **"Generar y descargar Excel"** y listo.
+
+Para cerrar la app, cierra la ventana negra (o `Ctrl + C`).
+
+### Opción B — Por consola (preguntas en la terminal)
 
 ```bash
 python generador_validaciones.py
@@ -84,7 +98,12 @@ generar(datos, "MI_CUADRO.xlsx")
 
 ```
 .
-├── generador_validaciones.py   # Motor + preguntas interactivas
+├── app.py                      # App web (servidor Flask)
+├── templates/
+│   └── index.html              # Formulario de la app web
+├── iniciar_app.bat             # Iniciar la app en Windows (doble clic)
+├── iniciar_app.sh              # Iniciar la app en Mac / Linux
+├── generador_validaciones.py   # Motor + preguntas por consola
 ├── plantilla/
 │   └── FORMATO_VALIDACIONES_DE_BIENES.xlsx   # Modelo base (NO borrar)
 ├── ejemplos/

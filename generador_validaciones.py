@@ -239,8 +239,13 @@ def generar(datos, salida, plantilla=PLANTILLA):
     ws.page_setup.scale = None
     ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
 
-    salida = Path(salida)
-    wb.save(salida)
+    # ``salida`` puede ser una ruta (str/Path) o un buffer en memoria
+    # (BytesIO), util para la app web.
+    if isinstance(salida, (str, Path)):
+        salida = Path(salida)
+        wb.save(salida)
+    else:
+        wb.save(salida)
     return salida
 
 
