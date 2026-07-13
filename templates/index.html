@@ -5,264 +5,165 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Generador de Cuadros de Validación</title>
 <style>
-  :root {
-    --azul: #0b3d91;
-    --azul-claro: #1e5fd0;
-    --gris: #f4f6fb;
-    --borde: #d6dbe7;
-    --texto: #1c2333;
-    --rojo: #c0392b;
-    --verde: #1e8449;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: "Segoe UI", system-ui, Arial, sans-serif;
-    background: var(--gris);
-    color: var(--texto);
-    line-height: 1.5;
-  }
-  header {
-    background: var(--azul);
-    color: #fff;
-    padding: 22px 20px;
-    text-align: center;
-  }
-  header h1 { margin: 0; font-size: 1.35rem; }
-  header p  { margin: 6px 0 0; opacity: .9; font-size: .9rem; }
-  main {
-    max-width: 900px;
-    margin: 24px auto;
-    padding: 0 16px 60px;
-  }
-  .card {
-    background: #fff;
-    border: 1px solid var(--borde);
-    border-radius: 12px;
-    padding: 22px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.05);
-  }
-  .card h2 {
-    margin: 0 0 16px;
-    font-size: 1.05rem;
-    color: var(--azul);
-    border-bottom: 2px solid var(--gris);
-    padding-bottom: 8px;
-  }
-  label { display: block; font-weight: 600; font-size: .88rem; margin-bottom: 5px; }
-  .hint { font-weight: 400; color: #6b7280; font-size: .8rem; }
-  input[type=text], input[type=number] {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--borde);
-    border-radius: 8px;
-    font-size: .95rem;
-  }
-  input:focus { outline: 2px solid var(--azul-claro); border-color: var(--azul-claro); }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .field { margin-bottom: 16px; }
-  .field:last-child { margin-bottom: 0; }
-
-  .postor {
-    display: grid;
-    grid-template-columns: 30px 1fr 220px 40px;
-    gap: 10px;
-    align-items: end;
-    padding: 12px;
-    border: 1px dashed var(--borde);
-    border-radius: 10px;
-    margin-bottom: 12px;
-    background: #fafbfe;
-  }
-  .postor .num {
-    font-weight: 700;
-    color: var(--azul);
-    text-align: center;
-    padding-bottom: 10px;
-  }
-  .btn {
-    border: none;
-    border-radius: 8px;
-    padding: 11px 18px;
-    font-size: .95rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: filter .15s;
-  }
-  .btn:hover { filter: brightness(1.08); }
-  .btn-azul { background: var(--azul); color: #fff; }
-  .btn-sec  { background: #eef1f8; color: var(--azul); border: 1px solid var(--borde); }
-  .btn-quitar {
-    background: #fde8e6; color: var(--rojo);
-    border: 1px solid #f5c6c1; border-radius: 8px;
-    width: 40px; height: 42px; font-size: 1.1rem; cursor: pointer;
-  }
-  .btn-quitar:hover { background: #fbd5d1; }
-  .barra-final { text-align: center; margin-top: 8px; }
-  .btn-generar { font-size: 1.05rem; padding: 14px 40px; }
-  .nota-sino {
-    background: #fff8e1; border: 1px solid #ffe08a;
-    border-radius: 8px; padding: 10px 14px; font-size: .85rem; margin-top: 4px;
-  }
-  #msg { text-align: center; margin-top: 16px; font-weight: 600; min-height: 22px; }
-  .msg-error { color: var(--rojo); }
-  .msg-ok { color: var(--verde); }
-  @media (max-width: 640px) {
-    .grid { grid-template-columns: 1fr; }
-    .postor { grid-template-columns: 26px 1fr 40px; }
-    .postor .marca-wrap { grid-column: 2 / 4; }
-  }
+  :root{--azul:#0b3d91;--azul-claro:#1e5fd0;--gris:#f4f6fb;--borde:#d6dbe7;--texto:#1c2333;--rojo:#c0392b;--verde:#1e8449;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--gris);color:var(--texto);line-height:1.5;}
+  header{background:var(--azul);color:#fff;padding:22px 20px;text-align:center;}
+  header h1{margin:0;font-size:1.35rem;} header p{margin:6px 0 0;opacity:.9;font-size:.9rem;}
+  main{max-width:960px;margin:24px auto;padding:0 16px 60px;}
+  .card{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:22px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+  .card h2{margin:0 0 16px;font-size:1.05rem;color:var(--azul);border-bottom:2px solid var(--gris);padding-bottom:8px;}
+  label{display:block;font-weight:600;font-size:.88rem;margin-bottom:5px;}
+  .hint{font-weight:400;color:#6b7280;font-size:.8rem;}
+  input[type=text],input[type=number]{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:.95rem;}
+  input:focus{outline:2px solid var(--azul-claro);border-color:var(--azul-claro);}
+  .grid3{display:grid;grid-template-columns:1.2fr .8fr .8fr;gap:14px;}
+  .field{margin-bottom:16px;} .field:last-child{margin-bottom:0;}
+  .tipo{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
+  .tipo label{display:flex;align-items:center;gap:8px;border:1px solid var(--borde);border-radius:10px;padding:12px 16px;cursor:pointer;flex:1;font-weight:600;background:#fafbfe;}
+  .tipo input{accent-color:var(--azul);width:18px;height:18px;} .tipo label.sel{border-color:var(--azul);background:#eef3fd;color:var(--azul);}
+  .postor{display:grid;grid-template-columns:30px 1fr 40px;gap:10px;align-items:end;padding:12px;border:1px dashed var(--borde);border-radius:10px;margin-bottom:12px;background:#fafbfe;}
+  .postor .num{font-weight:700;color:var(--azul);text-align:center;padding-bottom:10px;}
+  .item-card{border:1px solid var(--borde);border-radius:10px;padding:16px;margin-bottom:14px;background:#fafbfe;}
+  .item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .item-head .t{font-weight:700;color:var(--azul);}
+  .marcas-title{font-size:.82rem;font-weight:700;color:#555;margin:6px 0 8px;}
+  .marcas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+  .lbl-postor{font-size:.8rem;color:#334;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .btn{border:none;border-radius:8px;padding:11px 18px;font-size:.95rem;font-weight:600;cursor:pointer;transition:filter .15s;}
+  .btn:hover{filter:brightness(1.08);} .btn-azul{background:var(--azul);color:#fff;}
+  .btn-sec{background:#eef1f8;color:var(--azul);border:1px solid var(--borde);}
+  .btn-quitar{background:#fde8e6;color:var(--rojo);border:1px solid #f5c6c1;border-radius:8px;width:40px;height:42px;font-size:1.1rem;cursor:pointer;}
+  .btn-quitar:hover{background:#fbd5d1;}
+  .barra-final{text-align:center;margin-top:8px;} .btn-generar{font-size:1.05rem;padding:14px 40px;}
+  .nota-sino{background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:10px 14px;font-size:.85rem;margin-top:12px;}
+  #msg{text-align:center;margin-top:16px;font-weight:600;min-height:22px;} .msg-error{color:var(--rojo);} .msg-ok{color:var(--verde);}
+  @media (max-width:640px){.grid3{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Generador de Cuadros de Validación de Bienes</h1>
+  <h1>Generador de Cuadros de Validación de Bienes y Servicios</h1>
   <p>Llena los datos y descarga el formato Excel ya completo — con el mismo formato y logo.</p>
 </header>
-
 <main>
   <form id="form">
     <div class="card">
-      <h2>1. Datos de la adquisición</h2>
+      <h2>1. Tipo y datos generales</h2>
       <div class="field">
-        <label>Adquisición
-          <span class="hint">— se coloca después de "…PARA LA ADQUISICIÓN DE"</span>
-        </label>
+        <label>¿Qué vas a validar?</label>
+        <div class="tipo" id="tipo">
+          <label class="sel"><input type="radio" name="tipo" value="bien" checked> Bien (adquisición)</label>
+          <label><input type="radio" name="tipo" value="servicio"> Servicio (término de referencia)</label>
+        </div>
+      </div>
+      <div class="field">
+        <label id="lbl-adq">Adquisición <span class="hint" id="hint-adq">— se coloca después de "…PARA LA ADQUISICIÓN DE"</span></label>
         <input type="text" id="adquisicion" placeholder="Ej: TOKEN DE SEGURIDAD CON CONECTOR USB" required>
       </div>
-      <div class="grid">
-        <div class="field">
-          <label>Código SIGA</label>
-          <input type="text" id="codigo_siga" placeholder="Ej: 805200110001">
-        </div>
-        <div class="field">
-          <label>Unidad de medida</label>
-          <input type="text" id="unidad" value="UND">
-        </div>
-      </div>
-      <div class="field">
-        <label>Denominación del bien</label>
-        <input type="text" id="denominacion" placeholder="Ej: TOKEN DE SEGURIDAD CON CONECTOR USB">
-      </div>
-      <div class="field">
-        <label>Cantidad</label>
-        <input type="number" id="cantidad" placeholder="Ej: 150" min="0">
-      </div>
     </div>
-
     <div class="card">
       <h2>2. Postores que presentaron cotización</h2>
       <div id="postores"></div>
-      <button type="button" class="btn btn-sec" id="agregar">＋ Agregar postor</button>
-      <div class="nota-sino">
-        💡 La columna <b>SI / NO (cumple)</b> se deja en blanco a propósito: la llena el
-        <b>área usuario</b> después de revisar. Aquí solo se ingresan nombre y marca.
-      </div>
+      <button type="button" class="btn btn-sec" id="agregar-postor">＋ Agregar postor</button>
     </div>
-
+    <div class="card">
+      <h2>3. Bienes / servicios a validar (filas del cuadro)</h2>
+      <div id="items"></div>
+      <button type="button" class="btn btn-sec" id="agregar-item">＋ Agregar otro bien/servicio</button>
+      <div class="nota-sino">💡 La columna <b>SI / NO (cumple)</b> se deja en blanco: la llena el <b>área usuario</b>. Aquí solo se ingresan los datos y la marca de cada postor.</div>
+    </div>
     <div class="barra-final">
       <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Excel</button>
       <div id="msg"></div>
     </div>
   </form>
 </main>
-
 <script>
-  const cont = document.getElementById("postores");
-  let contador = 0;
+let tipo='bien';
+let postores=[{nombre:''},{nombre:''}];
+let items=[nuevoItem()];
+function nuevoItem(){return{codigo:'',denom:'',unidad:'UND',cantidad:'',marcas:postores.map(()=> '')};}
+function etiquetaPostor(i){const nom=(postores[i]&&postores[i].nombre||'').trim();return 'POSTOR '+(i+1)+(nom?' — '+nom:'');}
 
-  function agregarPostor(nombre = "", marca = "") {
-    contador++;
-    const div = document.createElement("div");
-    div.className = "postor";
-    div.innerHTML = `
-      <div class="num" data-num></div>
-      <div class="field" style="margin:0">
-        <label>Razón social / nombre del postor</label>
-        <input type="text" class="p-nombre" value="${nombre}" placeholder="Ej: EMPRESA EJEMPLO S.A.C.">
-      </div>
-      <div class="field marca-wrap" style="margin:0">
-        <label>Marca ofertada</label>
-        <input type="text" class="p-marca" value="${marca}" placeholder="Ej: LONGMAI">
-      </div>
-      <button type="button" class="btn-quitar" title="Quitar postor">✕</button>
-    `;
-    div.querySelector(".btn-quitar").addEventListener("click", () => {
-      div.remove();
-      renumerar();
+document.querySelectorAll('input[name=tipo]').forEach(r=>{
+  r.addEventListener('change',()=>{
+    tipo=r.value;
+    document.querySelectorAll('#tipo label').forEach(l=>l.classList.toggle('sel',l.querySelector('input').checked));
+    document.getElementById('hint-adq').textContent=(tipo==='servicio')?'— se coloca después de "…PARA EL SERVICIO DE"':'— se coloca después de "…PARA LA ADQUISICIÓN DE"';
+    document.getElementById('adquisicion').placeholder=(tipo==='servicio')?'Ej: MANTENIMIENTO DE EQUIPOS BIOMEDICOS':'Ej: TOKEN DE SEGURIDAD CON CONECTOR USB';
+  });
+});
+
+function renderPostores(){
+  const cont=document.getElementById('postores'); cont.innerHTML='';
+  postores.forEach((p,i)=>{
+    const div=document.createElement('div'); div.className='postor';
+    div.innerHTML=`<div class="num">${i+1}</div>
+      <div class="field" style="margin:0"><label>Razón social / nombre del postor</label>
+      <input type="text" class="p-nombre" placeholder="Ej: EMPRESA EJEMPLO S.A.C."></div>
+      <button type="button" class="btn-quitar" title="Quitar postor">✕</button>`;
+    const inp=div.querySelector('.p-nombre'); inp.value=p.nombre;
+    inp.addEventListener('input',()=>{p.nombre=inp.value;actualizarLabelsPostor();});
+    div.querySelector('.btn-quitar').addEventListener('click',()=>{
+      if(postores.length<=1)return;
+      postores.splice(i,1); items.forEach(it=>it.marcas.splice(i,1)); renderPostores(); renderItems();
     });
     cont.appendChild(div);
-    renumerar();
-  }
-
-  function renumerar() {
-    document.querySelectorAll("#postores .postor").forEach((d, i) => {
-      d.querySelector("[data-num]").textContent = (i + 1);
-    });
-  }
-
-  document.getElementById("agregar").addEventListener("click", () => agregarPostor());
-
-  // Empezar con 2 postores por defecto (como el modelo base)
-  agregarPostor();
-  agregarPostor();
-
-  document.getElementById("form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const msg = document.getElementById("msg");
-    msg.className = "";
-    msg.textContent = "Generando…";
-
-    const postores = [...document.querySelectorAll("#postores .postor")].map(d => ({
-      nombre: d.querySelector(".p-nombre").value,
-      marca: d.querySelector(".p-marca").value,
-    })).filter(p => p.nombre.trim() !== "");
-
-    const datos = {
-      adquisicion: document.getElementById("adquisicion").value,
-      codigo_siga: document.getElementById("codigo_siga").value,
-      denominacion: document.getElementById("denominacion").value,
-      unidad: document.getElementById("unidad").value,
-      cantidad: document.getElementById("cantidad").value,
-      postores: postores,
-    };
-
-    if (!datos.adquisicion.trim()) { mostrarError("Escribe la adquisición."); return; }
-    if (postores.length === 0)    { mostrarError("Agrega al menos un postor con nombre."); return; }
-
-    try {
-      const resp = await fetch("/generar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(datos),
-      });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        mostrarError(err.error || "Ocurrió un error al generar.");
-        return;
-      }
-      const blob = await resp.blob();
-      const disp = resp.headers.get("Content-Disposition") || "";
-      const m = disp.match(/filename="?([^"]+)"?/);
-      const nombre = m ? m[1] : "VALIDACION.xlsx";
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = nombre;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-      msg.className = "msg-ok";
-      msg.textContent = "✅ ¡Listo! Se descargó: " + nombre;
-    } catch (err) {
-      mostrarError("No se pudo conectar con el servidor.");
-    }
   });
+}
+function actualizarLabelsPostor(){document.querySelectorAll('.lbl-postor').forEach(l=>{l.textContent=etiquetaPostor(parseInt(l.dataset.i,10));});}
+document.getElementById('agregar-postor').addEventListener('click',()=>{postores.push({nombre:''});items.forEach(it=>it.marcas.push(''));renderPostores();renderItems();});
 
-  function mostrarError(t) {
-    const msg = document.getElementById("msg");
-    msg.className = "msg-error";
-    msg.textContent = "⚠ " + t;
-  }
+function renderItems(){
+  const cont=document.getElementById('items'); cont.innerHTML='';
+  items.forEach((it,k)=>{
+    const card=document.createElement('div'); card.className='item-card';
+    const marcas=postores.map((p,i)=>`<div class="field" style="margin:0"><label class="lbl-postor" data-i="${i}">${etiquetaPostor(i)}</label><input type="text" class="i-marca" data-i="${i}" placeholder="Marca"></div>`).join('');
+    card.innerHTML=`<div class="item-head"><div class="t">Bien / servicio ${k+1}</div><button type="button" class="btn-quitar btn-quitar-item" title="Quitar">✕</button></div>
+      <div class="grid3">
+        <div class="field" style="margin:0"><label>Código SIGA</label><input type="text" class="i-codigo" placeholder="Ej: 805200110001"></div>
+        <div class="field" style="margin:0"><label>Unidad</label><input type="text" class="i-unidad" value="UND"></div>
+        <div class="field" style="margin:0"><label>Cantidad</label><input type="number" class="i-cantidad" min="0" placeholder="Ej: 150"></div>
+      </div>
+      <div class="field" style="margin:12px 0 0"><label>Denominación</label><input type="text" class="i-denom" placeholder="Ej: TOKEN DE SEGURIDAD CON CONECTOR USB"></div>
+      <div class="marcas-title">Marca ofertada por cada postor:</div><div class="marcas-grid">${marcas}</div>`;
+    const q=s=>card.querySelector(s);
+    q('.i-codigo').value=it.codigo; q('.i-codigo').addEventListener('input',e=>it.codigo=e.target.value);
+    q('.i-unidad').value=it.unidad; q('.i-unidad').addEventListener('input',e=>it.unidad=e.target.value);
+    q('.i-cantidad').value=it.cantidad; q('.i-cantidad').addEventListener('input',e=>it.cantidad=e.target.value);
+    q('.i-denom').value=it.denom; q('.i-denom').addEventListener('input',e=>it.denom=e.target.value);
+    card.querySelectorAll('.i-marca').forEach(inp=>{const i=parseInt(inp.dataset.i,10);inp.value=it.marcas[i]||'';inp.addEventListener('input',()=>it.marcas[i]=inp.value);});
+    card.querySelector('.btn-quitar-item').addEventListener('click',()=>{if(items.length<=1)return;items.splice(k,1);renderItems();});
+    cont.appendChild(card);
+  });
+}
+document.getElementById('agregar-item').addEventListener('click',()=>{items.push(nuevoItem());renderItems();});
+renderPostores(); renderItems();
+
+function mostrarError(t){const m=document.getElementById('msg');m.className='msg-error';m.textContent='⚠ '+t;}
+document.getElementById('form').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const msg=document.getElementById('msg'); msg.className=''; msg.textContent='Generando…';
+  const adquisicion=document.getElementById('adquisicion').value;
+  const postValid=postores.filter(p=>p.nombre.trim()!=='');
+  const itemsValid=items.filter(it=>it.denom.trim()!==''||it.codigo.trim()!==''||String(it.cantidad).trim()!=='');
+  if(!adquisicion.trim()){mostrarError('Escribe qué se valida.');return;}
+  if(postValid.length===0){mostrarError('Agrega al menos un postor con nombre.');return;}
+  if(itemsValid.length===0){mostrarError('Agrega al menos un bien/servicio con datos.');return;}
+  const datos={tipo,adquisicion,postores:postores.map(p=>({nombre:p.nombre})),
+    items:items.map(it=>({codigo_siga:it.codigo,denominacion:it.denom,unidad:it.unidad,cantidad:it.cantidad,marcas:it.marcas.slice()}))};
+  try{
+    const resp=await fetch('/generar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(datos)});
+    if(!resp.ok){const err=await resp.json().catch(()=>({}));mostrarError(err.error||'Error al generar.');return;}
+    const blob=await resp.blob();
+    const disp=resp.headers.get('Content-Disposition')||''; const mm=disp.match(/filename="?([^"]+)"?/);
+    const nombre=mm?mm[1]:'VALIDACION.xlsx';
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    msg.className='msg-ok'; msg.textContent='✅ ¡Listo! Se descargó: '+nombre;
+  }catch(err){mostrarError('No se pudo conectar con el servidor.');}
+});
 </script>
 </body>
 </html>

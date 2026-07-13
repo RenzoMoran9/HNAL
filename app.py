@@ -40,31 +40,39 @@ def generar_endpoint():
     data = request.get_json(force=True, silent=True) or {}
 
     adquisicion = (data.get("adquisicion") or "").strip()
-    postores_in = data.get("postores") or []
+    tipo = "servicio" if data.get("tipo") == "servicio" else "bien"
+
     postores = [
-        {
-            "nombre": (p.get("nombre") or "").strip(),
-            "marca": (p.get("marca") or "").strip(),
-            "cumple": "",  # lo llena el area usuario
-        }
-        for p in postores_in
+        {"nombre": (p.get("nombre") or "").strip()}
+        for p in (data.get("postores") or [])
         if (p.get("nombre") or "").strip()
     ]
 
+    items = [
+        {
+            "codigo_siga": (it.get("codigo_siga") or "").strip(),
+            "denominacion": (it.get("denominacion") or "").strip(),
+            "unidad": (it.get("unidad") or "UND").strip() or "UND",
+            "cantidad": it.get("cantidad", ""),
+            "marcas": [str(m or "").strip() for m in (it.get("marcas") or [])],
+        }
+        for it in (data.get("items") or [])
+        if (it.get("denominacion") or "").strip() or (it.get("codigo_siga") or "").strip()
+        or str(it.get("cantidad") or "").strip()
+    ]
+
     if not adquisicion:
-        return jsonify(error="Falta la adquisicion."), 400
+        return jsonify(error="Falta la adquisicion / servicio."), 400
     if not postores:
         return jsonify(error="Agrega al menos un postor con nombre."), 400
+    if not items:
+        return jsonify(error="Agrega al menos un bien/servicio."), 400
 
     datos = {
+        "tipo": tipo,
         "adquisicion": adquisicion,
-        "codigo_siga": (data.get("codigo_siga") or "").strip(),
-        "denominacion": (data.get("denominacion") or "").strip(),
-        "unidad": (data.get("unidad") or "UND").strip() or "UND",
-        "cantidad": (data.get("cantidad") or "").strip()
-        if isinstance(data.get("cantidad"), str)
-        else data.get("cantidad", ""),
         "postores": postores,
+        "items": items,
     }
 
     # Generar en memoria y devolver como descarga
