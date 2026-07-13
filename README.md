@@ -21,7 +21,9 @@ según cuántos hayan presentado su cotización.
 6. **Cuántos postores** presentaron cotización, y por cada uno:
    - Razón social / nombre
    - Marca ofertada
-   - Si cumple (`SI` / `NO`), opcional
+
+> **La columna `SI / NO` (cumple) se deja en blanco a propósito**: la llena el
+> **área usuario** después de revisar. El sistema no la pregunta.
 
 Lo que **no** cambia (encabezado institucional, logo, textos legales, bordes,
 colores, fuentes) se conserva idéntico al modelo original.

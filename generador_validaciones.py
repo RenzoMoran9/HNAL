@@ -106,7 +106,9 @@ def generar(datos, salida, plantilla=PLANTILLA):
         postores      (list de dicts) cada uno con:
                           nombre (str)  -> razon social
                           marca  (str)
-                          cumple (str)  -> "SI" / "NO" / "" (opcional)
+                          cumple (str)  -> normalmente "" (lo llena el AREA
+                                           USUARIO a mano). Se admite "SI"/"NO"
+                                           solo para usos avanzados.
 
     Devuelve la ruta del archivo generado.
     """
@@ -291,9 +293,9 @@ def main():
         print("\n--- POSTOR %d ---" % i)
         nombre = _pedir("  Razon social / nombre del postor")
         marca = _pedir("  Marca ofertada", obligatorio=False, defecto="")
-        cumple = _pedir("  Cumple? (SI/NO, Enter = dejar en blanco)",
-                        obligatorio=False, defecto="")
-        postores.append({"nombre": nombre, "marca": marca, "cumple": cumple})
+        # El "SI / NO" (cumple) lo llena el AREA USUARIO despues, no aqui:
+        # esas casillas se dejan en blanco a proposito.
+        postores.append({"nombre": nombre, "marca": marca, "cumple": ""})
 
     datos = {
         "adquisicion": adquisicion,
