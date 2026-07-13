@@ -1,12 +1,19 @@
-# Generador de Cuadros de Validación de Bienes
+# Generador de Cuadros de Validación de Bienes y Servicios
 
 Sistema para **rellenar automáticamente** el formato de *Validación de
-Especificaciones Técnicas para la Adquisición de Bienes*. En lugar de llenar el
-Excel a mano, el programa te hace las preguntas necesarias y te devuelve el
-**mismo modelo, con el mismo formato y logo**, pero ya con los datos completos.
+Especificaciones Técnicas*. En lugar de llenar el Excel a mano, llenas un
+formulario y te devuelve el **mismo modelo, con el mismo formato y logo**, pero
+ya con los datos completos.
 
-El sistema también **agrega o quita las columnas de postores** automáticamente,
-según cuántos hayan presentado su cotización.
+Características:
+
+- **Bienes y servicios:** elige el tipo y el título del cuadro se arma solo
+  (*"…ESPECIFICACIONES TÉCNICAS PARA LA ADQUISICIÓN DE…"* para bienes, o
+  *"…TÉRMINO DE REFERENCIA PARA EL SERVICIO DE…"* para servicios).
+- **Varios postores:** agrega o quita columnas de postores automáticamente.
+- **Varias filas (items):** valida varios bienes/servicios en un mismo cuadro,
+  cada uno con la marca de cada postor.
+- La columna **SI / NO** se deja en blanco para el área usuario.
 
 ---
 

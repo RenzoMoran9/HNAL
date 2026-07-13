@@ -14,7 +14,7 @@
   header{background:var(--azul);color:#fff;padding:22px 20px;text-align:center;}
   header h1{margin:0;font-size:1.35rem;}
   header p{margin:6px 0 0;opacity:.9;font-size:.9rem;}
-  main{max-width:900px;margin:24px auto;padding:0 16px 60px;}
+  main{max-width:960px;margin:24px auto;padding:0 16px 60px;}
   .card{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:22px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
   .card h2{margin:0 0 16px;font-size:1.05rem;color:var(--azul);border-bottom:2px solid var(--gris);padding-bottom:8px;}
   label{display:block;font-weight:600;font-size:.88rem;margin-bottom:5px;}
@@ -22,10 +22,28 @@
   input[type=text],input[type=number]{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:.95rem;}
   input:focus{outline:2px solid var(--azul-claro);border-color:var(--azul-claro);}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid3{display:grid;grid-template-columns:1.2fr .8fr .8fr;gap:14px;}
   .field{margin-bottom:16px;}
   .field:last-child{margin-bottom:0;}
-  .postor{display:grid;grid-template-columns:30px 1fr 220px 40px;gap:10px;align-items:end;padding:12px;border:1px dashed var(--borde);border-radius:10px;margin-bottom:12px;background:#fafbfe;}
+
+  /* Tipo */
+  .tipo{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
+  .tipo label{display:flex;align-items:center;gap:8px;border:1px solid var(--borde);border-radius:10px;padding:12px 16px;cursor:pointer;flex:1;font-weight:600;background:#fafbfe;}
+  .tipo input{accent-color:var(--azul);width:18px;height:18px;}
+  .tipo label.sel{border-color:var(--azul);background:#eef3fd;color:var(--azul);}
+
+  /* Postores */
+  .postor{display:grid;grid-template-columns:30px 1fr 40px;gap:10px;align-items:end;padding:12px;border:1px dashed var(--borde);border-radius:10px;margin-bottom:12px;background:#fafbfe;}
   .postor .num{font-weight:700;color:var(--azul);text-align:center;padding-bottom:10px;}
+
+  /* Items */
+  .item-card{border:1px solid var(--borde);border-radius:10px;padding:16px;margin-bottom:14px;background:#fafbfe;}
+  .item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .item-head .t{font-weight:700;color:var(--azul);}
+  .marcas-title{font-size:.82rem;font-weight:700;color:#555;margin:6px 0 8px;}
+  .marcas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+  .lbl-postor{font-size:.8rem;color:#334;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
   .btn{border:none;border-radius:8px;padding:11px 18px;font-size:.95rem;font-weight:600;cursor:pointer;transition:filter .15s;}
   .btn:hover{filter:brightness(1.08);}
   .btn-azul{background:var(--azul);color:#fff;}
@@ -34,43 +52,48 @@
   .btn-quitar:hover{background:#fbd5d1;}
   .barra-final{text-align:center;margin-top:8px;}
   .btn-generar{font-size:1.05rem;padding:14px 40px;}
-  .nota-sino{background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:10px 14px;font-size:.85rem;margin-top:4px;}
+  .nota-sino{background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:10px 14px;font-size:.85rem;margin-top:12px;}
   #msg{text-align:center;margin-top:16px;font-weight:600;min-height:22px;}
   .msg-error{color:var(--rojo);} .msg-ok{color:var(--verde);}
   @media (max-width:640px){
-    .grid{grid-template-columns:1fr;}
-    .postor{grid-template-columns:26px 1fr 40px;}
-    .postor .marca-wrap{grid-column:2 / 4;}
+    .grid,.grid3{grid-template-columns:1fr;}
   }
 </style>
 </head>
 <body>
 <header>
-  <h1>Generador de Cuadros de Validación de Bienes</h1>
+  <h1>Generador de Cuadros de Validación de Bienes y Servicios</h1>
   <p>Llena los datos y descarga el formato Excel ya completo — con el mismo formato y logo. Todo funciona en tu navegador.</p>
 </header>
 
 <main>
   <form id="form">
     <div class="card">
-      <h2>1. Datos de la adquisición</h2>
+      <h2>1. Tipo y datos generales</h2>
       <div class="field">
-        <label>Adquisición <span class="hint">— se coloca después de "…PARA LA ADQUISICIÓN DE"</span></label>
+        <label>¿Qué vas a validar?</label>
+        <div class="tipo" id="tipo">
+          <label class="sel"><input type="radio" name="tipo" value="bien" checked> Bien (adquisición)</label>
+          <label><input type="radio" name="tipo" value="servicio"> Servicio (término de referencia)</label>
+        </div>
+      </div>
+      <div class="field">
+        <label id="lbl-adq">Adquisición <span class="hint" id="hint-adq">— se coloca después de "…PARA LA ADQUISICIÓN DE"</span></label>
         <input type="text" id="adquisicion" placeholder="Ej: TOKEN DE SEGURIDAD CON CONECTOR USB" required>
       </div>
-      <div class="grid">
-        <div class="field"><label>Código SIGA</label><input type="text" id="codigo_siga" placeholder="Ej: 805200110001"></div>
-        <div class="field"><label>Unidad de medida</label><input type="text" id="unidad" value="UND"></div>
-      </div>
-      <div class="field"><label>Denominación del bien</label><input type="text" id="denominacion" placeholder="Ej: TOKEN DE SEGURIDAD CON CONECTOR USB"></div>
-      <div class="field"><label>Cantidad</label><input type="number" id="cantidad" placeholder="Ej: 150" min="0"></div>
     </div>
 
     <div class="card">
       <h2>2. Postores que presentaron cotización</h2>
       <div id="postores"></div>
-      <button type="button" class="btn btn-sec" id="agregar">＋ Agregar postor</button>
-      <div class="nota-sino">💡 La columna <b>SI / NO (cumple)</b> se deja en blanco a propósito: la llena el <b>área usuario</b> después de revisar. Aquí solo se ingresan nombre y marca.</div>
+      <button type="button" class="btn btn-sec" id="agregar-postor">＋ Agregar postor</button>
+    </div>
+
+    <div class="card">
+      <h2>3. Bienes / servicios a validar (filas del cuadro)</h2>
+      <div id="items"></div>
+      <button type="button" class="btn btn-sec" id="agregar-item">＋ Agregar otro bien/servicio</button>
+      <div class="nota-sino">💡 La columna <b>SI / NO (cumple)</b> se deja en blanco a propósito: la llena el <b>área usuario</b> después de revisar. Aquí solo se ingresan los datos y la marca de cada postor.</div>
     </div>
 
     <div class="barra-final">
@@ -86,7 +109,6 @@
 <script>
 // ====================== PLANTILLA (Excel base en base64) ======================
 const TEMPLATE_B64 = "__TEMPLATE_B64__";
-
 function b64ToArrayBuffer(b64){
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
@@ -94,32 +116,46 @@ function b64ToArrayBuffer(b64){
   return bytes.buffer;
 }
 
+const TITULOS = {
+  bien: 'VALIDACION DE ESPECIFICACIONES TECNICAS PARA LA ADQUISICION DE ',
+  servicio: 'VALIDACION DEL TERMINO DE REFERENCIA PARA EL SERVICIO DE ',
+};
+
+function colLetter(n){
+  let s=''; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26);} return s;
+}
+
 // ====================== MOTOR DE GENERACIÓN (ExcelJS) ======================
+// NO usa duplicateRow (corrompe el modelo de combinaciones en algunos builds).
+// En su lugar reubica el pie manualmente: deterministico en cualquier build.
+const FOOT_TOP = 16, FOOT_BOT = 46;
+
 async function generarValidacion(datos){
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(b64ToArrayBuffer(TEMPLATE_B64));
   const ws = wb.worksheets[0];
 
   const postores = (datos.postores||[]).filter(p => (p.nombre||'').trim() !== '');
-  const n = postores.length;
-  if (n < 1) throw new Error('Agrega al menos un postor con nombre.');
+  const nP = postores.length;
+  if (nP < 1) throw new Error('Agrega al menos un postor con nombre.');
+
+  const items = (datos.items||[]).filter(it =>
+    (it.denominacion||'').trim() !== '' || (it.codigo_siga||'').trim() !== '' ||
+    String(it.cantidad==null?'':it.cantidad).trim() !== '');
+  if (items.length < 1) throw new Error('Agrega al menos un bien/servicio.');
+  const nI = items.length;
 
   const FIRST = 7;
-  const ultima = 6 + 2*n;
+  const ultima = 6 + 2*nP;
+  const OFF = nI - 1;
+  const lastItem = 14 + nI;
+  const WMAX = Math.max(ultima + 2, 12);
 
   const setv = (r,c,v) => { ws.getRow(r).getCell(c).value = v; };
   const clone = (r,c) => JSON.parse(JSON.stringify(ws.getRow(r).getCell(c).style || {}));
   const applyStyle = (r,c,s) => { ws.getRow(r).getCell(c).style = JSON.parse(JSON.stringify(s)); };
-
-  setv(5,2,'VALIDACION DE ESPECIFICACIONES TECNICAS PARA LA ADQUISICION DE '
-    + String(datos.adquisicion||'').trim().toUpperCase());
-
-  setv(15,3, String(datos.codigo_siga||'').trim());
-  setv(15,4, String(datos.denominacion||'').trim());
-  setv(15,5, (String(datos.unidad||'UND').trim().toUpperCase())||'UND');
-  const cantTxt = String(datos.cantidad==null?'':datos.cantidad).trim();
-  const cantNum = parseInt(cantTxt,10);
-  setv(15,6, (cantTxt!=='' && !isNaN(cantNum) && String(cantNum)===cantTxt) ? cantNum : (cantTxt||null));
+  const merge = (r1,c1,r2,c2) => ws.mergeCells(r1,c1,r2,c2);
+  const F = r => r + OFF;
 
   const st = {
     cumple: clone(11,7),
@@ -127,74 +163,220 @@ async function generarValidacion(datos){
     empIzq: clone(13,9), empDer: clone(13,10),
     marcaHdr: clone(14,9), sinoHdr: clone(14,10),
     marcaDato: clone(15,9), sinoDato: clone(15,10),
+    num: clone(15,2), codigo: clone(15,3), denom: clone(15,4),
+    unidad: clone(15,5), cant: clone(15,6),
   };
+  const alturaItem = ws.getRow(15).height;
 
-  const unmerge = r => { try{ ws.unMergeCells(r);}catch(e){} };
-  ['G11:J11','G12:H12','I12:J12','G13:H13','I13:J13',
-   'B4:J4','B5:J5','B8:H8','B10:J10','B18:J18','B19:H19','B20:H20',
-   'B21:K21','B22:J22','B23:J23','B24:J24','B29:H29'].forEach(unmerge);
+  // Capturar el PIE (filas 16..46): estilos, valores y alturas
+  const foot = [];
+  for (let r=FOOT_TOP; r<=FOOT_BOT; r++){
+    const row = ws.getRow(r); const cells = [];
+    for (let c=1; c<=WMAX; c++){
+      const cell = row.getCell(c);
+      cells.push({c, value: cell.value, style: JSON.parse(JSON.stringify(cell.style||{}))});
+    }
+    foot.push({r, h: row.height, cells});
+  }
 
-  for (let f=11; f<=15; f++){
+  // Limpiar TODAS las combinaciones (plantilla limpia => funciona bien)
+  ((ws.model && ws.model.merges)||[]).slice().forEach(rng => { try{ ws.unMergeCells(rng);}catch(e){} });
+
+  // Limpiar valores de la zona dinamica (item + pie desplazado)
+  for (let r=15; r<=FOOT_BOT+OFF; r++)
+    for (let c=1; c<=WMAX; c++) ws.getRow(r).getCell(c).value = null;
+
+  // Reubicar el PIE desplazado +OFF filas
+  foot.forEach(fr => {
+    const nr = fr.r + OFF; const row = ws.getRow(nr);
+    if (fr.h) row.height = fr.h;
+    fr.cells.forEach(cc => {
+      const cell = row.getCell(cc.c);
+      cell.style = JSON.parse(JSON.stringify(cc.style));
+      cell.value = cc.value;
+    });
+  });
+
+  const prefijo = TITULOS[datos.tipo === 'servicio' ? 'servicio' : 'bien'];
+  setv(5,2, prefijo + String(datos.adquisicion||'').trim().toUpperCase());
+
+  // Limpiar zona de postores (encabezado + filas de items)
+  for (let f=11; f<=lastItem; f++)
     for (let c=7; c<=40; c++){
       const cell = ws.getRow(f).getCell(c);
       cell.value = null;
       if (c > ultima) cell.style = {};
     }
-  }
 
+  // Filas de items (columnas B..F)
+  items.forEach((it,k)=>{
+    const r = 15+k;
+    if (alturaItem) ws.getRow(r).height = alturaItem;
+    applyStyle(r,2, st.num); setv(r,2, k+1);
+    applyStyle(r,3, st.codigo); setv(r,3, String(it.codigo_siga||'').trim());
+    applyStyle(r,4, st.denom); setv(r,4, String(it.denominacion||'').trim());
+    applyStyle(r,5, st.unidad); setv(r,5, (String(it.unidad||'UND').trim().toUpperCase())||'UND');
+    applyStyle(r,6, st.cant);
+    const ct = String(it.cantidad==null?'':it.cantidad).trim();
+    const cn = parseInt(ct,10);
+    setv(r,6, (ct!=='' && !isNaN(cn) && String(cn)===ct) ? cn : (ct||null));
+  });
+
+  // Encabezado CUMPLE
   for (let c=FIRST; c<=ultima; c++) applyStyle(11,c, st.cumple);
   setv(11,FIRST,'CUMPLE CON LAS ESPECIFICACIONES TECNICAS');
-  ws.mergeCells(11,FIRST,11,ultima);
+  merge(11,FIRST,11,ultima);
 
+  // Postores (encabezado) + marca/sino por item
   postores.forEach((p,i)=>{
     const cm = FIRST + 2*i, cs = cm+1;
     applyStyle(12,cm, st.postorIzq); applyStyle(12,cs, st.postorDer);
-    setv(12,cm,'POSTOR '+(i+1)); ws.mergeCells(12,cm,12,cs);
+    setv(12,cm,'POSTOR '+(i+1)); merge(12,cm,12,cs);
     applyStyle(13,cm, st.empIzq); applyStyle(13,cs, st.empDer);
-    setv(13,cm, String(p.nombre||'').trim()); ws.mergeCells(13,cm,13,cs);
+    setv(13,cm, String(p.nombre||'').trim()); merge(13,cm,13,cs);
     applyStyle(14,cm, st.marcaHdr); setv(14,cm,'MARCA');
     applyStyle(14,cs, st.sinoHdr); setv(14,cs,'(colocar SI o NO)');
-    applyStyle(15,cm, st.marcaDato); setv(15,cm, String(p.marca||'').trim());
-    applyStyle(15,cs, st.sinoDato);
     ws.getColumn(cm).width = 50;
     ws.getColumn(cs).width = 63;
+    items.forEach((it,k)=>{
+      const r = 15 + k;
+      applyStyle(r,cm, st.marcaDato);
+      setv(r,cm, String((it.marcas && it.marcas[i])||'').trim());
+      applyStyle(r,cs, st.sinoDato);
+    });
   });
 
-  [4,5,8,10,18,19,20,22,23,24,29].forEach(f => ws.mergeCells(f,2,f,ultima));
-  ws.mergeCells(21,2,21,ultima+1);
+  // Combinaciones del encabezado
+  merge(6,2,6,6); merge(7,2,7,6);
+  merge(11,2,14,2); merge(11,3,14,3); merge(11,4,14,4);
+  merge(11,5,14,5); merge(11,6,14,6);
+  [4,5,8,10].forEach(f => merge(f,2,f,ultima));
+
+  // Combinaciones del pie (posiciones desplazadas)
+  merge(F(16),2,F(17),3);   // "Observaciones Usuario" (B..C, 2 filas)
+  merge(F(16),4,F(17),8);   // recuadro de respuesta (D..H, 2 filas)
+  [18,19,20,22,23,24,29].forEach(f => merge(F(f),2,F(f),ultima));
+  merge(F(21),2,F(21),ultima+1);
+  merge(F(25),2,F(25),6);   // recuadro centrado (B..F)
 
   ws.pageSetup = Object.assign({}, ws.pageSetup, {fitToPage:true, fitToWidth:1, fitToHeight:0});
-
   return await wb.xlsx.writeBuffer();
 }
 
-// ====================== FORMULARIO ======================
-const cont = document.getElementById('postores');
+// ====================== FORMULARIO (estado reactivo) ======================
+let tipo = 'bien';
+let postores = [{nombre:''},{nombre:''}];
+let items = [ nuevoItem() ];
 
-function agregarPostor(nombre='', marca=''){
-  const div = document.createElement('div');
-  div.className = 'postor';
-  div.innerHTML = `
-    <div class="num" data-num></div>
-    <div class="field" style="margin:0">
-      <label>Razón social / nombre del postor</label>
-      <input type="text" class="p-nombre" value="${nombre}" placeholder="Ej: EMPRESA EJEMPLO S.A.C.">
-    </div>
-    <div class="field marca-wrap" style="margin:0">
-      <label>Marca ofertada</label>
-      <input type="text" class="p-marca" value="${marca}" placeholder="Ej: LONGMAI">
-    </div>
-    <button type="button" class="btn-quitar" title="Quitar postor">✕</button>`;
-  div.querySelector('.btn-quitar').addEventListener('click', ()=>{ div.remove(); renumerar(); });
-  cont.appendChild(div);
-  renumerar();
+function nuevoItem(){ return {codigo:'',denom:'',unidad:'UND',cantidad:'',marcas: postores.map(()=> '')}; }
+function etiquetaPostor(i){
+  const nom = (postores[i] && postores[i].nombre || '').trim();
+  return 'POSTOR '+(i+1) + (nom ? ' — '+nom : '');
 }
-function renumerar(){
-  document.querySelectorAll('#postores .postor').forEach((d,i)=>{ d.querySelector('[data-num]').textContent = (i+1); });
-}
-document.getElementById('agregar').addEventListener('click', ()=>agregarPostor());
-agregarPostor(); agregarPostor();
 
+// --- Tipo ---
+document.querySelectorAll('input[name=tipo]').forEach(r=>{
+  r.addEventListener('change', ()=>{
+    tipo = r.value;
+    document.querySelectorAll('#tipo label').forEach(l=> l.classList.toggle('sel', l.querySelector('input').checked));
+    document.getElementById('hint-adq').textContent = (tipo==='servicio')
+      ? '— se coloca después de "…PARA EL SERVICIO DE"'
+      : '— se coloca después de "…PARA LA ADQUISICIÓN DE"';
+    document.getElementById('adquisicion').placeholder = (tipo==='servicio')
+      ? 'Ej: MANTENIMIENTO DE EQUIPOS BIOMEDICOS' : 'Ej: TOKEN DE SEGURIDAD CON CONECTOR USB';
+  });
+});
+
+// --- Postores ---
+function renderPostores(){
+  const cont = document.getElementById('postores');
+  cont.innerHTML='';
+  postores.forEach((p,i)=>{
+    const div = document.createElement('div');
+    div.className='postor';
+    div.innerHTML = `<div class="num">${i+1}</div>
+      <div class="field" style="margin:0">
+        <label>Razón social / nombre del postor</label>
+        <input type="text" class="p-nombre" placeholder="Ej: EMPRESA EJEMPLO S.A.C.">
+      </div>
+      <button type="button" class="btn-quitar" title="Quitar postor">✕</button>`;
+    const inp = div.querySelector('.p-nombre');
+    inp.value = p.nombre;
+    inp.addEventListener('input', ()=>{ p.nombre = inp.value; actualizarLabelsPostor(); });
+    div.querySelector('.btn-quitar').addEventListener('click', ()=>{
+      if (postores.length<=1){ return; }
+      postores.splice(i,1);
+      items.forEach(it=> it.marcas.splice(i,1));
+      renderPostores(); renderItems();
+    });
+    cont.appendChild(div);
+  });
+}
+function actualizarLabelsPostor(){
+  document.querySelectorAll('.lbl-postor').forEach(l=>{
+    const i = parseInt(l.dataset.i,10);
+    l.textContent = etiquetaPostor(i);
+  });
+}
+document.getElementById('agregar-postor').addEventListener('click', ()=>{
+  postores.push({nombre:''});
+  items.forEach(it=> it.marcas.push(''));
+  renderPostores(); renderItems();
+});
+
+// --- Items ---
+function renderItems(){
+  const cont = document.getElementById('items');
+  cont.innerHTML='';
+  items.forEach((it,k)=>{
+    const card = document.createElement('div');
+    card.className='item-card';
+    const marcas = postores.map((p,i)=>`
+      <div class="field" style="margin:0">
+        <label class="lbl-postor" data-i="${i}">${etiquetaPostor(i)}</label>
+        <input type="text" class="i-marca" data-i="${i}" placeholder="Marca">
+      </div>`).join('');
+    card.innerHTML = `
+      <div class="item-head">
+        <div class="t">Bien / servicio ${k+1}</div>
+        <button type="button" class="btn-quitar btn-quitar-item" title="Quitar">✕</button>
+      </div>
+      <div class="grid3">
+        <div class="field" style="margin:0"><label>Código SIGA</label><input type="text" class="i-codigo" placeholder="Ej: 805200110001"></div>
+        <div class="field" style="margin:0"><label>Unidad</label><input type="text" class="i-unidad" value="UND"></div>
+        <div class="field" style="margin:0"><label>Cantidad</label><input type="number" class="i-cantidad" min="0" placeholder="Ej: 150"></div>
+      </div>
+      <div class="field" style="margin:12px 0 0"><label>Denominación</label><input type="text" class="i-denom" placeholder="Ej: TOKEN DE SEGURIDAD CON CONECTOR USB"></div>
+      <div class="marcas-title">Marca ofertada por cada postor:</div>
+      <div class="marcas-grid">${marcas}</div>`;
+
+    const q = s => card.querySelector(s);
+    q('.i-codigo').value = it.codigo;   q('.i-codigo').addEventListener('input', e=> it.codigo = e.target.value);
+    q('.i-unidad').value = it.unidad;   q('.i-unidad').addEventListener('input', e=> it.unidad = e.target.value);
+    q('.i-cantidad').value = it.cantidad; q('.i-cantidad').addEventListener('input', e=> it.cantidad = e.target.value);
+    q('.i-denom').value = it.denom;     q('.i-denom').addEventListener('input', e=> it.denom = e.target.value);
+    card.querySelectorAll('.i-marca').forEach(inp=>{
+      const i = parseInt(inp.dataset.i,10);
+      inp.value = it.marcas[i] || '';
+      inp.addEventListener('input', ()=> it.marcas[i] = inp.value);
+    });
+    card.querySelector('.btn-quitar-item').addEventListener('click', ()=>{
+      if (items.length<=1){ return; }
+      items.splice(k,1);
+      renderItems();
+    });
+    cont.appendChild(card);
+  });
+}
+document.getElementById('agregar-item').addEventListener('click', ()=>{
+  items.push(nuevoItem());
+  renderItems();
+});
+
+renderPostores();
+renderItems();
+
+// --- Generar ---
 function nombreArchivo(adq){
   let base = String(adq).toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
   base = base.substring(0,50) || 'CUADRO';
@@ -207,27 +389,28 @@ document.getElementById('form').addEventListener('submit', async (e)=>{
   const msg = document.getElementById('msg');
   msg.className=''; msg.textContent='Generando…';
 
-  const postores = [...document.querySelectorAll('#postores .postor')].map(d=>({
-    nombre: d.querySelector('.p-nombre').value,
-    marca: d.querySelector('.p-marca').value,
-  })).filter(p => p.nombre.trim()!=='');
+  const adquisicion = document.getElementById('adquisicion').value;
+  const postValid = postores.filter(p=> p.nombre.trim()!=='');
+  const itemsValid = items.filter(it=> it.denom.trim()!=='' || it.codigo.trim()!=='' || String(it.cantidad).trim()!=='');
+
+  if (!adquisicion.trim()){ mostrarError('Escribe qué se valida (adquisición / servicio).'); return; }
+  if (postValid.length===0){ mostrarError('Agrega al menos un postor con nombre.'); return; }
+  if (itemsValid.length===0){ mostrarError('Agrega al menos un bien/servicio con datos.'); return; }
 
   const datos = {
-    adquisicion: document.getElementById('adquisicion').value,
-    codigo_siga: document.getElementById('codigo_siga').value,
-    denominacion: document.getElementById('denominacion').value,
-    unidad: document.getElementById('unidad').value,
-    cantidad: document.getElementById('cantidad').value,
-    postores: postores,
+    tipo,
+    adquisicion,
+    postores: postores.map(p=>({nombre:p.nombre})),
+    items: items.map(it=>({
+      codigo_siga: it.codigo, denominacion: it.denom, unidad: it.unidad,
+      cantidad: it.cantidad, marcas: it.marcas.slice(),
+    })),
   };
-
-  if (!datos.adquisicion.trim()){ mostrarError('Escribe la adquisición.'); return; }
-  if (postores.length===0){ mostrarError('Agrega al menos un postor con nombre.'); return; }
 
   try{
     const buffer = await generarValidacion(datos);
     const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const nombre = nombreArchivo(datos.adquisicion);
+    const nombre = nombreArchivo(adquisicion);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href=url; a.download=nombre;
