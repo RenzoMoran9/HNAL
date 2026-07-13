@@ -157,7 +157,7 @@ async function generarValidacion(datos){
     applyStyle(15,cm, st.marcaDato); setv(15,cm, String(p.marca||'').trim());
     applyStyle(15,cs, st.sinoDato);
     ws.getColumn(cm).width = 50;
-    ws.getColumn(cs).width = 20;
+    ws.getColumn(cs).width = 63;
   });
 
   [4,5,8,10,18,19,20,22,23,24,29].forEach(f => ws.mergeCells(f,2,f,ultima));

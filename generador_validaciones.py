@@ -48,7 +48,7 @@ COL_PRIMER_POSTOR = 7   # G  -> primera columna de postores
 
 # Anchos uniformes para las columnas de cada postor
 ANCHO_MARCA = 50.0
-ANCHO_SINO = 20.0
+ANCHO_SINO = 63.0
 
 TITULO_BASE = "VALIDACION DE ESPECIFICACIONES TECNICAS PARA LA ADQUISICION DE "
 
