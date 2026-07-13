@@ -58,6 +58,10 @@ presionas **"Generar y descargar Excel"** y listo.
 
 Para cerrar la app, cierra la ventana negra (o `Ctrl + C`).
 
+> 💡 **¿Quieres usarla desde un link, sin instalar nada (incluso desde el
+> celular)?** Mira **[DESPLIEGUE.md](DESPLIEGUE.md)** para publicarla gratis en
+> internet.
+
 ### Opción B — Por consola (preguntas en la terminal)
 
 ```bash

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: cuadros-validacion
+    runtime: python
+    plan: free
+    branch: claude/excel-validation-model-ogwy3i
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    autoDeploy: true

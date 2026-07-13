@@ -13,6 +13,7 @@ Luego abrir en el navegador:
 """
 
 import io
+import os
 import re
 import webbrowser
 import threading
@@ -83,10 +84,15 @@ def _abrir_navegador():
 
 
 if __name__ == "__main__":
-    print("=" * 55)
-    print("  APP DE CUADROS DE VALIDACION")
-    print("  Abre tu navegador en:  http://localhost:5000")
-    print("  (para cerrar la app, presiona Ctrl + C aqui)")
-    print("=" * 55)
-    threading.Timer(1.2, _abrir_navegador).start()
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    # En un hosting (Render, etc.) la variable PORT viene definida.
+    # En tu computadora no existe, y ahi abrimos el navegador solo.
+    puerto = int(os.environ.get("PORT", "5000"))
+    es_local = "PORT" not in os.environ
+    if es_local:
+        print("=" * 55)
+        print("  APP DE CUADROS DE VALIDACION")
+        print("  Abre tu navegador en:  http://localhost:5000")
+        print("  (para cerrar la app, presiona Ctrl + C aqui)")
+        print("=" * 55)
+        threading.Timer(1.2, _abrir_navegador).start()
+    app.run(host="0.0.0.0", port=puerto, debug=False)
