@@ -44,25 +44,33 @@ colores, fuentes) se conserva idéntico al modelo original.
 
 ## Cómo usarlo
 
-### Opción A — App web (recomendada) 🌐
+### Opción A — Un solo archivo HTML (la más fácil) ⭐
 
-Es un formulario en el navegador donde llenas los datos, agregas o quitas
-postores, y descargas el Excel ya completo.
+El archivo **[`docs/index.html`](docs/index.html)** es la app completa en un
+solo archivo, **sin instalar nada** (ni Python, ni servidor). Todo funciona
+dentro del navegador.
+
+- **Doble clic** en `docs/index.html` → se abre, llenas el formulario y descargas
+  el Excel.
+- **¿Quieres un link público** (para usarlo desde el celular o compartirlo)? Sigue
+  **[docs/COMO_PUBLICAR_LINK.md](docs/COMO_PUBLICAR_LINK.md)** para activarlo gratis
+  con GitHub Pages.
+
+> El HTML se genera con `python web/build_html.py` (incrusta la librería ExcelJS y
+> la plantilla). Solo hace falta regenerarlo si cambias el formulario o la
+> plantilla base.
+
+### Opción B — App web con Python (Flask) 🌐
+
+Un servidor local con el mismo formulario:
 
 - **Windows:** doble clic en **`iniciar_app.bat`**
 - **Mac / Linux:** ejecuta `bash iniciar_app.sh`
-- **O manualmente:** `python app.py`
+- **O manualmente:** `python app.py` → se abre en `http://localhost:5000`
 
-Se abre solo en tu navegador en `http://localhost:5000`. Llenas el formulario,
-presionas **"Generar y descargar Excel"** y listo.
+Para publicarla en internet con un servidor, mira **[DESPLIEGUE.md](DESPLIEGUE.md)**.
 
-Para cerrar la app, cierra la ventana negra (o `Ctrl + C`).
-
-> 💡 **¿Quieres usarla desde un link, sin instalar nada (incluso desde el
-> celular)?** Mira **[DESPLIEGUE.md](DESPLIEGUE.md)** para publicarla gratis en
-> internet.
-
-### Opción B — Por consola (preguntas en la terminal)
+### Opción C — Por consola (preguntas en la terminal)
 
 ```bash
 python generador_validaciones.py
@@ -102,11 +110,17 @@ generar(datos, "MI_CUADRO.xlsx")
 
 ```
 .
-├── app.py                      # App web (servidor Flask)
-├── templates/
-│   └── index.html              # Formulario de la app web
-├── iniciar_app.bat             # Iniciar la app en Windows (doble clic)
-├── iniciar_app.sh              # Iniciar la app en Mac / Linux
+├── docs/
+│   ├── index.html              # ⭐ App en UN SOLO archivo (abrir con doble clic)
+│   └── COMO_PUBLICAR_LINK.md   # Guía para el link público (GitHub Pages)
+├── web/
+│   ├── shell.html              # Plantilla del HTML (formulario + lógica)
+│   ├── build_html.py           # Genera docs/index.html
+│   └── vendor/exceljs.min.js   # Librería para generar Excel en el navegador
+├── app.py                      # App web con Python (servidor Flask)
+├── templates/index.html        # Formulario de la app Flask
+├── iniciar_app.bat             # Iniciar la app Flask en Windows (doble clic)
+├── iniciar_app.sh              # Iniciar la app Flask en Mac / Linux
 ├── generador_validaciones.py   # Motor + preguntas por consola
 ├── plantilla/
 │   └── FORMATO_VALIDACIONES_DE_BIENES.xlsx   # Modelo base (NO borrar)
