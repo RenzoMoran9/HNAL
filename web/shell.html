@@ -557,7 +557,10 @@ async function generarCuadroComparativo(datos){
       setv(30,b,ccFecha(p.fecha_solicitud));
       setv(31,b,ccNum(p.veces_reiterado));
       setv(32,b,ccFecha(p.fecha_recepcion));
-      for(let r=33;r<=36;r++) setv(r,b,null);
+      setv(33,b,'SI');   // PROVEEDOR SE DEDICA AL OBJETO
+      setv(34,b,'SI');   // LA DEPENDENCIA USUARIA PARTICIPÓ
+      setv(35,b,null);   // CUMPLE CON LOS RTM  -> en blanco
+      setv(36,b,null);   // SE TOMO EN CUENTA   -> en blanco
       cols.forEach(c=>{ ws.getColumn(c).hidden=false; });
     }else{
       for(let r=12;r<=36;r++) for(const c of cols) setv(r,c,null);
