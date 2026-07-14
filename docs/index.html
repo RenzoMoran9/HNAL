@@ -636,13 +636,31 @@ async function generarCuadroComparativo(datos){
   const p3=(datos.punto3&&datos.punto3.trim())?datos.punto3.trim():'';
   setv(37,1,[p1,p2,p3].filter(Boolean).join('\n'));
 
-  setv(39,5,ccFecha(datos.fecha));
-  if((datos.especialista||'').trim()){
-    const cell=ws.getRow(43).getCell(2);
-    cell.value=String(datos.especialista).trim().toUpperCase();
-    cell.alignment={horizontal:'center',vertical:'center'};
-    cell.font={bold:true,size:11,name:'Calibri'};
+  // ---- Quitar el sombreado melon (naranja / accent6) de los encabezados;
+  //      solo debe quedar el gris del ganador ----
+  const quitarRelleno=(cell)=>{ cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.fill={type:'pattern',pattern:'none'}; };
+  for(let r=1;r<=45;r++) for(let c=1;c<=40;c++){
+    const cell=ws.getRow(r).getCell(c);
+    const fg=cell.fill && cell.fill.fgColor;
+    if(fg && fg.theme===9) quitarRelleno(cell);
   }
+  for(let c=1;c<=5;c++) quitarRelleno(ws.getRow(20).getCell(c)); // gris sobrante fila item
+
+  // ---- FECHA + firma del especialista (columnas A-B, a la izquierda) ----
+  setv(39,5,ccFecha(datos.fecha));
+  ws.mergeCells(31,1,31,2); ws.mergeCells(32,1,32,2);
+  const cFN=ws.getRow(31).getCell(1);
+  cFN.value=String(datos.especialista||'').trim().toUpperCase()||null;
+  cFN.alignment={horizontal:'center',vertical:'center'};
+  cFN.font={bold:true,size:11,name:'Calibri'};
+  cFN.border={top:{style:'thin'}};
+  ws.getRow(31).getCell(2).style=JSON.parse(JSON.stringify(ws.getRow(31).getCell(2).style||{}));
+  ws.getRow(31).getCell(2).border={top:{style:'thin'}};
+  const cFC=ws.getRow(32).getCell(1);
+  cFC.value='Especialista en Contrataciones del Estado';
+  cFC.alignment={horizontal:'center',vertical:'center'};
+  cFC.font={size:10,name:'Calibri'};
+
   // Impresion profesional: horizontal, ajustado al ancho (las columnas
   // ocultas no se imprimen -> el PDF sale limpio)
   ws.pageSetup = Object.assign({}, ws.pageSetup, {
