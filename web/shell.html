@@ -14,13 +14,26 @@
   header{background:var(--azul);color:#fff;padding:22px 20px;text-align:center;}
   header h1{margin:0;font-size:1.35rem;}
   header p{margin:6px 0 0;opacity:.9;font-size:.9rem;}
-  main{max-width:960px;margin:24px auto;padding:0 16px 60px;}
+  .tabs{display:flex;gap:4px;max-width:960px;margin:0 auto;padding:14px 16px 0;flex-wrap:wrap;}
+  .tab-btn{border:1px solid var(--borde);border-bottom:none;background:#e9edf6;color:var(--azul);
+    font-weight:700;font-size:.95rem;padding:12px 20px;border-radius:10px 10px 0 0;cursor:pointer;}
+  .tab-btn.active{background:#fff;color:var(--azul);box-shadow:0 -2px 0 var(--azul) inset;}
+  .panel.oculto{display:none;}
+  main{max-width:960px;margin:8px auto 0;padding:0 16px 60px;}
   .card{background:#fff;border:1px solid var(--borde);border-radius:12px;padding:22px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
   .card h2{margin:0 0 16px;font-size:1.05rem;color:var(--azul);border-bottom:2px solid var(--gris);padding-bottom:8px;}
   label{display:block;font-weight:600;font-size:.88rem;margin-bottom:5px;}
   .hint{font-weight:400;color:#6b7280;font-size:.8rem;}
-  input[type=text],input[type=number]{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:.95rem;}
-  input:focus{outline:2px solid var(--azul-claro);border-color:var(--azul-claro);}
+  input[type=text],input[type=number],textarea{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:.95rem;font-family:inherit;}
+  textarea{resize:vertical;}
+  input:focus,textarea:focus{outline:2px solid var(--azul-claro);border-color:var(--azul-claro);}
+  .cc-postor{border:1px solid var(--borde);border-radius:10px;padding:16px;margin-bottom:14px;background:#fafbfe;}
+  .cc-postor .cc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
+  .cc-postor .cc-head .t{font-weight:700;color:var(--azul);}
+  .cc-gan{display:flex;align-items:center;gap:6px;font-size:.85rem;font-weight:600;background:#eef3fd;border:1px solid var(--borde);border-radius:8px;padding:6px 10px;cursor:pointer;}
+  .cc-gan input{width:16px;height:16px;accent-color:var(--azul);}
+  .cc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  @media (max-width:640px){.cc-grid{grid-template-columns:1fr;}}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .grid3{display:grid;grid-template-columns:1.2fr .8fr .8fr;gap:14px;}
   .field{margin-bottom:16px;}
@@ -62,11 +75,17 @@
 </head>
 <body>
 <header>
-  <h1>Generador de Cuadros de Validación de Bienes y Servicios</h1>
-  <p>Llena los datos y descarga el formato Excel ya completo — con el mismo formato y logo. Todo funciona en tu navegador.</p>
+  <h1>Generador de Formatos — HNAL</h1>
+  <p>Llena los datos y descarga el Excel ya completo — con el mismo formato y logo. Todo funciona en tu navegador.</p>
 </header>
 
+<nav class="tabs">
+  <button type="button" class="tab-btn active" data-tab="val">📋 Validación de Especificaciones</button>
+  <button type="button" class="tab-btn" data-tab="cc">📊 Cuadro Comparativo</button>
+</nav>
+
 <main>
+  <div id="panel-val" class="panel">
   <form id="form">
     <div class="card">
       <h2>1. Tipo y datos generales</h2>
@@ -101,6 +120,53 @@
       <div id="msg"></div>
     </div>
   </form>
+  </div>
+
+  <div id="panel-cc" class="panel oculto">
+  <form id="form-cc">
+    <div class="card">
+      <h2>1. Datos generales</h2>
+      <div class="field"><label>Documento de solicitud</label><input type="text" id="cc-doc" placeholder="Ej: NOTA INFORMATIVA N°1096-DF-HNAL-2026"></div>
+      <div class="field"><label>Área usuaria</label><input type="text" id="cc-area" placeholder="Ej: CIRUGIA GENERAL - APARATO DIGESTIVO"></div>
+      <div class="field"><label>Adquisición <span class="hint">— va después de "ADQ. DE"</span></label><input type="text" id="cc-denom" placeholder="Ej: DISPOSITIVOS MEDICOS PARA 01 AÑO"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Bien a cotizar</h2>
+      <div class="field"><label>Descripción</label><input type="text" id="cc-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"></div>
+      <div class="grid">
+        <div class="field"><label>Medida</label><input type="text" id="cc-medida" value="UNIDAD"></div>
+        <div class="field"><label>Cantidad</label><input type="number" id="cc-cant" min="0" placeholder="Ej: 1200"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Postores (cotizaciones)</h2>
+      <p class="hint" style="margin:-8px 0 12px">Marca cuál es el <b>ganador</b> ✅ — se sombreará en gris y su precio unitario será el Valor Estimado. (Hasta 4 postores.)</p>
+      <div id="cc-postores"></div>
+      <button type="button" class="btn btn-sec" id="cc-agregar">＋ Agregar postor</button>
+    </div>
+
+    <div class="card">
+      <h2>4. Conclusiones y firma</h2>
+      <div class="field"><label>Punto 1) <span class="hint">— si lo dejas vacío se completa solo con los nombres de los postores</span></label>
+        <textarea id="cc-p1" rows="3" placeholder="1)SE REALIZO LA INDAGACIÓN DE MERCADO… TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: (se completa solo)"></textarea></div>
+      <div class="field"><label>Punto 2)</label>
+        <textarea id="cc-p2" rows="2" placeholder="2)CON MEMORANDUM N°…"></textarea></div>
+      <div class="field"><label>Punto 3) <span class="hint">(opcional)</span></label>
+        <input type="text" id="cc-p3" placeholder="Ej: PRIMERA COMPRA DEL AÑO"></div>
+      <div class="grid">
+        <div class="field"><label>Nombre del especialista (firma)</label><input type="text" id="cc-esp" placeholder="Nombre de quien firma"></div>
+        <div class="field"><label>Fecha</label><input type="text" id="cc-fecha" placeholder="DD/MM/AAAA"></div>
+      </div>
+    </div>
+
+    <div class="barra-final">
+      <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Excel</button>
+      <div id="msg-cc"></div>
+    </div>
+  </form>
+  </div>
 </main>
 
 <!-- Librería ExcelJS (incrustada, no requiere internet) -->
@@ -421,6 +487,181 @@ document.getElementById('form').addEventListener('submit', async (e)=>{
     mostrarError(err.message || 'Ocurrió un error al generar.');
     console.error(err);
   }
+});
+
+// ====================== PESTAÑAS ======================
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const t = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b===btn));
+    document.getElementById('panel-val').classList.toggle('oculto', t!=='val');
+    document.getElementById('panel-cc').classList.toggle('oculto', t!=='cc');
+  });
+});
+
+// ====================== CUADRO COMPARATIVO ======================
+const TEMPLATE_CC_B64 = "__TEMPLATE_CC_B64__";
+const GRIS = 'FFD9D9D9';
+function ccFecha(v){
+  const t=String(v||'').trim(); if(!t) return null;
+  let m=t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if(m){ let y=+m[3]; if(y<100) y+=2000; return new Date(y,+m[2]-1,+m[1]); }
+  m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  return t;
+}
+function ccNum(v){ const t=String(v==null?'':v).trim(); if(t==='') return null; const n=Number(t.replace(',','.')); return isNaN(n)?t:n; }
+
+async function generarCuadroComparativo(datos){
+  const wb=new ExcelJS.Workbook();
+  await wb.xlsx.load(b64ToArrayBuffer(TEMPLATE_CC_B64));
+  const ws=wb.worksheets[0];
+  const postores=(datos.postores||[]).filter(p=>(p.nombre||'').trim()!=='');
+  const N=postores.length;
+  if(N<1) throw new Error('Agrega al menos un postor con nombre.');
+  if(N>4) throw new Error('El cuadro comparativo admite hasta 4 postores.');
+  const setv=(r,c,v)=>{ ws.getRow(r).getCell(c).value=v; };
+  // clona el estilo antes de pintar (evita el bug de estilo compartido de ExcelJS)
+  const setFill=(r,c,argb)=>{ const cell=ws.getRow(r).getCell(c); cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:argb}}; };
+  const baseCol=i=>6+3*i;
+
+  setv(3,1,'DOCUMENTO DE SOLICITUD : '+String(datos.documento_solicitud||'').trim());
+  setv(4,1,'AREA USUARIA: '+String(datos.area_usuaria||'').trim());
+  setv(7,4,'ADQ. DE '+String(datos.denominacion||'').trim().toUpperCase());
+  setv(20,1,1);
+  setv(20,2,String(datos.descripcion||'').trim());
+  const medida=(String(datos.medida||'UNIDAD').trim().toUpperCase())||'UNIDAD';
+  setv(20,3,medida); setv(20,4,medida);
+  setv(20,5,ccNum(datos.cantidad));
+
+  for(let i=0;i<4;i++){
+    const b=baseCol(i), cols=[b,b+1,b+2];
+    if(i<N){
+      const p=postores[i];
+      setv(12,b,i+1);
+      setv(13,b,String(p.nombre||'').trim());
+      setv(15,b+1,ccNum(p.ruc));
+      setv(16,b+1,String(p.contacto||'').trim());
+      setv(17,b+1,ccNum(p.telefono));
+      setv(18,b+1,String(p.email||'').trim());
+      setv(20,b,ccNum(p.precio_unitario));
+      setv(20,b+1,{formula:'E20*'+colLetter(b)+'20'});
+      setv(20,b+2,String(p.marca||'').trim());
+      setv(21,b,{formula:colLetter(b+1)+'20'});
+      // reset a blanco (se pinta de gris solo al ganador mas abajo)
+      cols.forEach(c=> setFill(20,c,'FFFFFFFF'));
+      for(let r=22;r<=25;r++) setv(r,b,null);
+      setv(26,b,String(p.garantia||'').trim());
+      setv(27,b,String(p.plazo_entrega||'').trim());
+      setv(28,b,'CREDITO COMERCIAL');
+      setv(29,b,'SOLES');
+      setv(30,b,ccFecha(p.fecha_solicitud));
+      setv(31,b,ccNum(p.veces_reiterado));
+      setv(32,b,ccFecha(p.fecha_recepcion));
+      for(let r=33;r<=36;r++) setv(r,b,null);
+      cols.forEach(c=>{ ws.getColumn(c).hidden=false; });
+    }else{
+      for(let r=12;r<=36;r++) for(const c of cols) setv(r,c,null);
+      cols.forEach(c=>{ ws.getColumn(c).hidden=true; });
+    }
+  }
+
+  const g=Math.min(Math.max(parseInt(datos.ganador,10)||0,0),N-1);
+  const gb=baseCol(g);
+  [gb,gb+1,gb+2].forEach(c=> setFill(20,c,GRIS));
+  setv(20,22,{formula:colLetter(gb)+'20'});
+  setv(20,23,{formula:'V20*E20'});
+  setv(21,23,{formula:'W20'});
+
+  [[15,19],[16,19],[18,19],[20,18],[20,19],[20,20],[21,18]].forEach(a=> setv(a[0],a[1],null));
+
+  const nombres=postores.map(p=>String(p.nombre||'').trim()).filter(Boolean).join(', ');
+  const p1=(datos.punto1&&datos.punto1.trim())?datos.punto1.trim():
+    '1)SE REALIZO LA INDAGACIÓN DE MERCADO,INVITANDO A POSIBLES PROVEEDORES DEDICADOS AL OBJETO DE LA CONTRATACIÓN,TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: '+nombres;
+  const p2=(datos.punto2&&datos.punto2.trim())?datos.punto2.trim():'2)CON MEMORANDUM N°';
+  const p3=(datos.punto3&&datos.punto3.trim())?datos.punto3.trim():'';
+  setv(37,1,[p1,p2,p3].filter(Boolean).join('\n'));
+
+  setv(39,5,ccFecha(datos.fecha));
+  if((datos.especialista||'').trim()){
+    const cell=ws.getRow(43).getCell(2);
+    cell.value=String(datos.especialista).trim().toUpperCase();
+    cell.alignment={horizontal:'center',vertical:'center'};
+    cell.font={bold:true,size:11,name:'Calibri'};
+  }
+  return await wb.xlsx.writeBuffer();
+}
+
+// ---- Formulario CC ----
+let ccPostores=[nuevoPostorCC(),nuevoPostorCC()];
+let ccGanador=0;
+function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',precio_unitario:'',marca:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',veces_reiterado:'',fecha_recepcion:''};}
+
+function renderCC(){
+  const cont=document.getElementById('cc-postores'); cont.innerHTML='';
+  ccPostores.forEach((p,i)=>{
+    const card=document.createElement('div'); card.className='cc-postor';
+    card.innerHTML=`
+      <div class="cc-head">
+        <div class="t">Postor ${i+1}</div>
+        <label class="cc-gan"><input type="radio" name="cc-ganador" ${i===ccGanador?'checked':''}> Ganador ✅</label>
+        <button type="button" class="btn-quitar cc-quitar" title="Quitar">✕</button>
+      </div>
+      <div class="field" style="margin:0 0 12px"><label>Nombre de la empresa</label><input type="text" class="c-nombre" placeholder="Ej: LABMEDIC SAFE SAC"></div>
+      <div class="cc-grid">
+        <div class="field" style="margin:0"><label>RUC</label><input type="text" class="c-ruc"></div>
+        <div class="field" style="margin:0"><label>Contacto</label><input type="text" class="c-contacto"></div>
+        <div class="field" style="margin:0"><label>Teléfono</label><input type="text" class="c-telefono"></div>
+        <div class="field" style="margin:0"><label>E-mail</label><input type="text" class="c-email"></div>
+        <div class="field" style="margin:0"><label>Precio unitario (S/)</label><input type="number" step="any" min="0" class="c-precio"></div>
+        <div class="field" style="margin:0"><label>Marca</label><input type="text" class="c-marca"></div>
+        <div class="field" style="margin:0"><label>Garantía / vigencia</label><input type="text" class="c-garantia" placeholder="Ej: 12 MESES"></div>
+        <div class="field" style="margin:0"><label>Plazo de entrega</label><input type="text" class="c-plazo" placeholder="Ej: 05 DÍAS"></div>
+        <div class="field" style="margin:0"><label>Fecha de solicitud</label><input type="text" class="c-fsol" placeholder="DD/MM/AAAA"></div>
+        <div class="field" style="margin:0"><label>Veces que se reiteró</label><input type="number" min="0" class="c-veces"></div>
+        <div class="field" style="margin:0"><label>Fecha de recepción</label><input type="text" class="c-frec" placeholder="DD/MM/AAAA"></div>
+      </div>`;
+    const set=(sel,key)=>{ const el=card.querySelector(sel); el.value=p[key]; el.addEventListener('input',()=>p[key]=el.value); };
+    set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
+    set('.c-email','email'); set('.c-precio','precio_unitario'); set('.c-marca','marca'); set('.c-garantia','garantia');
+    set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-veces','veces_reiterado'); set('.c-frec','fecha_recepcion');
+    card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{ ccGanador=i; });
+    card.querySelector('.cc-quitar').addEventListener('click',()=>{
+      if(ccPostores.length<=1) return;
+      ccPostores.splice(i,1);
+      if(ccGanador>=ccPostores.length) ccGanador=ccPostores.length-1;
+      renderCC();
+    });
+    cont.appendChild(card);
+  });
+  document.getElementById('cc-agregar').style.display = ccPostores.length>=4 ? 'none':'';
+}
+document.getElementById('cc-agregar').addEventListener('click',()=>{ if(ccPostores.length<4){ ccPostores.push(nuevoPostorCC()); renderCC(); }});
+renderCC();
+
+function mostrarErrorCC(t){ const m=document.getElementById('msg-cc'); m.className='msg-error'; m.textContent='⚠ '+t; }
+document.getElementById('form-cc').addEventListener('submit', async(e)=>{
+  e.preventDefault();
+  const msg=document.getElementById('msg-cc'); msg.className=''; msg.textContent='Generando…';
+  const val=id=>document.getElementById(id).value;
+  const postores=ccPostores.filter(p=>(p.nombre||'').trim()!=='');
+  if(!val('cc-denom').trim()){ mostrarErrorCC('Escribe la adquisición (ADQ. DE).'); return; }
+  if(postores.length===0){ mostrarErrorCC('Agrega al menos un postor con nombre.'); return; }
+  const datos={
+    documento_solicitud:val('cc-doc'), area_usuaria:val('cc-area'), denominacion:val('cc-denom'),
+    descripcion:val('cc-desc'), medida:val('cc-medida'), cantidad:val('cc-cant'),
+    postores:ccPostores.map(p=>({...p})), ganador:ccGanador,
+    punto1:val('cc-p1'), punto2:val('cc-p2'), punto3:val('cc-p3'),
+    especialista:val('cc-esp'), fecha:val('cc-fecha'),
+  };
+  try{
+    const buffer=await generarCuadroComparativo(datos);
+    const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const baseN=val('cc-denom').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'CUADRO';
+    const nombre='CUADRO_COMPARATIVO_'+baseN+'.xlsx';
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    msg.className='msg-ok'; msg.textContent='✅ ¡Listo! Se descargó: '+nombre;
+  }catch(err){ mostrarErrorCC(err.message||'Ocurrió un error al generar.'); console.error(err); }
 });
 </script>
 </body>
