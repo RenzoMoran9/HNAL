@@ -155,8 +155,9 @@
         <textarea id="cc-p2" rows="2" placeholder="2)CON MEMORANDUM N°…"></textarea></div>
       <div class="field"><label>Punto 3) <span class="hint">(opcional)</span></label>
         <input type="text" id="cc-p3" placeholder="Ej: PRIMERA COMPRA DEL AÑO"></div>
-      <div class="grid">
+      <div class="grid3">
         <div class="field"><label>Nombre del especialista (firma)</label><input type="text" id="cc-esp" placeholder="Nombre de quien firma"></div>
+        <div class="field"><label>Cargo</label><input type="text" id="cc-cargo" value="Especialista en Contrataciones Públicas"></div>
         <div class="field"><label>Fecha</label><input type="text" id="cc-fecha" placeholder="DD/MM/AAAA"></div>
       </div>
     </div>
@@ -646,20 +647,21 @@ async function generarCuadroComparativo(datos){
   }
   for(let c=1;c<=5;c++) quitarRelleno(ws.getRow(20).getCell(c)); // gris sobrante fila item
 
-  // ---- FECHA + firma del especialista (columnas A-B, a la izquierda) ----
+  // ---- FECHA + firma del especialista (columna B, centrada, arriba) ----
   setv(39,5,ccFecha(datos.fecha));
-  ws.mergeCells(31,1,31,2); ws.mergeCells(32,1,32,2);
-  const cFN=ws.getRow(31).getCell(1);
-  cFN.value=String(datos.especialista||'').trim().toUpperCase()||null;
-  cFN.alignment={horizontal:'center',vertical:'center'};
-  cFN.font={bold:true,size:11,name:'Calibri'};
-  cFN.border={top:{style:'thin'}};
-  ws.getRow(31).getCell(2).style=JSON.parse(JSON.stringify(ws.getRow(31).getCell(2).style||{}));
-  ws.getRow(31).getCell(2).border={top:{style:'thin'}};
-  const cFC=ws.getRow(32).getCell(1);
-  cFC.value='Especialista en Contrataciones del Estado';
-  cFC.alignment={horizontal:'center',vertical:'center'};
-  cFC.font={size:10,name:'Calibri'};
+  const cargo=(String(datos.cargo||'').trim()||'Especialista en Contrataciones Públicas');
+  const firma=[
+    [25, '________________________________', false, 10],
+    [26, (String(datos.especialista||'').trim().toUpperCase()||null), true, 11],
+    [27, cargo, false, 10],
+  ];
+  firma.forEach(a=>{
+    const cell=ws.getRow(a[0]).getCell(2);
+    cell.style=JSON.parse(JSON.stringify(cell.style||{}));
+    cell.value=a[1];
+    cell.alignment={horizontal:'center',vertical:'center',wrapText:true};
+    cell.font={bold:a[2],size:a[3],name:'Calibri'};
+  });
 
   // Impresion profesional: horizontal, ajustado al ancho (las columnas
   // ocultas no se imprimen -> el PDF sale limpio)
@@ -731,7 +733,7 @@ document.getElementById('form-cc').addEventListener('submit', async(e)=>{
     descripcion:val('cc-desc'), medida:val('cc-medida'), cantidad:val('cc-cant'),
     postores:ccPostores.map(p=>({...p})), ganador:ccGanador,
     punto1:val('cc-p1'), punto2:val('cc-p2'), punto3:val('cc-p3'),
-    especialista:val('cc-esp'), fecha:val('cc-fecha'),
+    especialista:val('cc-esp'), cargo:val('cc-cargo'), fecha:val('cc-fecha'),
   };
   try{
     const buffer=await generarCuadroComparativo(datos);
