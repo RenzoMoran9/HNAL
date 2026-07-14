@@ -369,6 +369,14 @@ async function generarValidacion(datos){
   merge(F(21),2,F(21),ultima+1);
   merge(F(25),2,F(25),6);   // recuadro centrado (B..F)
 
+  // Lineas de observacion mas limpias: sin guiones, con borde inferior
+  const bordeInf=(r,c)=>{ const cell=ws.getRow(r).getCell(c); cell.style=JSON.parse(JSON.stringify(cell.style||{})); const b=Object.assign({},cell.border); b.bottom={style:'thin'}; cell.border=b; };
+  ws.getRow(F(17)).getCell(1).value=null;   // quitar la 'p' suelta
+  [18,19,20,21,22,23,24].forEach(r=>{
+    ws.getRow(F(r)).getCell(2).value=null;
+    for(let c=2;c<=ultima;c++) bordeInf(F(r),c);
+  });
+
   ws.pageSetup = Object.assign({}, ws.pageSetup, {fitToPage:true, fitToWidth:1, fitToHeight:0});
   return await wb.xlsx.writeBuffer();
 }
@@ -635,6 +643,13 @@ async function generarCuadroComparativo(datos){
     cell.alignment={horizontal:'center',vertical:'center'};
     cell.font={bold:true,size:11,name:'Calibri'};
   }
+  // Impresion profesional: horizontal, ajustado al ancho (las columnas
+  // ocultas no se imprimen -> el PDF sale limpio)
+  ws.pageSetup = Object.assign({}, ws.pageSetup, {
+    orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0,
+    margins:{left:0.3,right:0.3,top:0.4,bottom:0.4,header:0.2,footer:0.2},
+    printArea:'A1:W45',
+  });
   return await wb.xlsx.writeBuffer();
 }
 

@@ -24,7 +24,7 @@ Uso como libreria:
 from copy import copy
 from pathlib import Path
 from openpyxl import load_workbook
-from openpyxl.styles import PatternFill, Border
+from openpyxl.styles import PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
 # --------------------------------------------------------------------------- #
@@ -252,6 +252,16 @@ def generar(datos, salida, plantilla=PLANTILLA):
         _merge(ws, F(f), 2, F(f), ultima)
     _merge(ws, F(21), 2, F(21), ultima + 1)
     _merge(ws, F(25), 2, F(25), 6)
+
+    # Lineas de observacion mas limpias: sin guiones, con borde inferior
+    ws.cell(F(17), 1).value = None   # quitar la 'p' suelta
+    _thin = Side(style="thin")
+    for r in (18, 19, 20, 21, 22, 23, 24):
+        ws.cell(F(r), 2).value = None
+        for c in range(2, ultima + 1):
+            cell = ws.cell(F(r), c)
+            b = cell.border
+            cell.border = Border(left=b.left, right=b.right, top=b.top, bottom=_thin)
 
     # Impresion: que entre a lo ancho
     ws.page_setup.fitToWidth = 1
