@@ -703,8 +703,10 @@ const OSCE_UIS=['https://apps.oece.gob.pe/perfilprov-ui/',
                 'https://apps.osce.gob.pe/perfilprov-ui/'];
 const OSCE_APIS=['https://apps.oece.gob.pe/perfilprov-api',
                  'https://apps.osce.gob.pe/perfilprov-api'];
-const PROXIES=[u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
-               u=>'https://corsproxy.io/?url='+encodeURIComponent(u)];
+const PROXIES=[u=>u,   // directo (por si la API permite CORS: instantaneo)
+               u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
+               u=>'https://corsproxy.io/?url='+encodeURIComponent(u),
+               u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u)];
 async function fetchTxt(u,ms){
   const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),ms||15000);
   try{ const r=await fetch(u,{signal:ctl.signal}); clearTimeout(t);
@@ -783,18 +785,21 @@ function candidatosRapidos(ruc){
   return c;
 }
 // Lanza todas las consultas en paralelo; gana la primera con datos validos
-function primeraConDatos(urls,ruc,ms){
+function primeraConDatos(urls,ruc,ms,stats){
   return new Promise((resolve,reject)=>{
     let pend=urls.length;
     if(!pend) return reject(new Error('sin candidatos'));
     urls.forEach(u=>{
       fetchTxt(u,ms).then(txt=>{
-        if(txt.indexOf(ruc)===-1) throw new Error('sin el RUC');
+        if(txt.indexOf(ruc)===-1) throw new Error('respuesta sin el RUC');
         const res=extraerPorRuc(JSON.parse(txt),ruc);
         if(res.nombre||res.telefono||res.email) resolve({url:u,datos:res});
         else throw new Error('sin datos');
-      }).catch(e=>{ console.log('OSCE fallo:',u.substring(0,90),e.message); })
-        .finally(()=>{ if(--pend===0) reject(new Error('sin respuesta')); });
+      }).catch(e=>{
+        const m=String(e&&e.message||e);
+        if(stats){ if(/fetch|abort|network/i.test(m)) stats.red++; else stats.otros++; }
+        console.log('OECE fallo:',u.substring(0,100),m);
+      }).finally(()=>{ if(--pend===0) reject(new Error('sin respuesta')); });
     });
   });
 }
@@ -813,14 +818,14 @@ async function buscarRucOsce(ruc,estado){
     }catch(e){ localStorage.removeItem('osce_endpoint_ok'); }
   }
   // 1) ola rapida: patron real del portal, todo en paralelo
+  const stats={red:0,otros:0};
   const rapidos=candidatosRapidos(ruc);
   for(let p=0;p<PROXIES.length;p++){
-    estado('Consultando OECE…');
+    estado('Consultando OECE ('+(p+1)+'/'+PROXIES.length+')…');
     try{
-      const r=await primeraConDatos(rapidos.map(PROXIES[p]),ruc,10000);
-      localStorage.setItem('osce_endpoint_ok', r.url.includes('allorigins')||r.url.includes('corsproxy')
-        ? decodeURIComponent(r.url.split('url=')[1]).split(ruc).join('{ruc}')
-        : r.url.split(ruc).join('{ruc}'));
+      const r=await primeraConDatos(rapidos.map(PROXIES[p]),ruc,10000,stats);
+      localStorage.setItem('osce_endpoint_ok', (r.url.indexOf('url=')>-1||r.url.indexOf('quest=')>-1
+        ? decodeURIComponent(r.url.split(/url=|quest=/)[1]) : r.url).split(ruc).join('{ruc}'));
       return r.datos;
     }catch(e){}
   }
@@ -828,14 +833,17 @@ async function buscarRucOsce(ruc,estado){
   const rutas=await descubrirRutasOsce(estado);
   const cands=candidatosOsce(rutas,ruc);
   estado('Consultando rutas descubiertas…');
-  for(let p=0;p<PROXIES.length;p++){
+  for(let p=1;p<PROXIES.length;p++){
     try{
-      const r=await primeraConDatos(cands.map(PROXIES[p]),ruc,10000);
-      localStorage.setItem('osce_endpoint_ok', decodeURIComponent((r.url.split('url=')[1]||r.url)).split(ruc).join('{ruc}'));
+      const r=await primeraConDatos(cands.map(PROXIES[p]),ruc,10000,stats);
+      localStorage.setItem('osce_endpoint_ok', decodeURIComponent((r.url.split(/url=|quest=/)[1]||r.url)).split(ruc).join('{ruc}'));
       return r.datos;
     }catch(e){}
   }
-  throw new Error('No se pudo consultar OECE. Completa manualmente.');
+  const diag = stats.otros===0 && stats.red>0
+    ? 'tu red parece bloquear las consultas externas'
+    : 'las rutas de la API no respondieron con datos';
+  throw new Error('No se pudo consultar OECE ('+diag+'). Completa manualmente.');
 }
 
 // ---- Formulario CC ----
