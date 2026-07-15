@@ -653,7 +653,12 @@ function extraerDatosProveedor(obj){
   visit(obj);
   return out;
 }
-const OSCE_UI='https://apps.osce.gob.pe/perfilprov-ui/';
+// OSCE paso a ser OECE: el buscador ahora vive en apps.oece.gob.pe
+// (apps.osce.gob.pe redirige a gob.pe). Se prueban ambos dominios.
+const OSCE_UIS=['https://apps.oece.gob.pe/perfilprov-ui/',
+                'https://apps.osce.gob.pe/perfilprov-ui/'];
+const OSCE_APIS=['https://apps.oece.gob.pe/perfilprov-api',
+                 'https://apps.osce.gob.pe/perfilprov-api'];
 const PROXIES=[u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
                u=>'https://corsproxy.io/?url='+encodeURIComponent(u)];
 async function fetchTxt(u,ms){
@@ -664,41 +669,44 @@ async function fetchTxt(u,ms){
 }
 // Descubre las rutas reales de la API leyendo el JS del portal OSCE
 async function descubrirRutasOsce(estado){
-  const cache=localStorage.getItem('osce_rutas_v1');
+  const cache=localStorage.getItem('osce_rutas_v2');
   if(cache){ try{ return JSON.parse(cache); }catch(e){} }
-  for(const prox of PROXIES){
-    try{
-      estado('Leyendo el portal OSCE…');
-      const html=await fetchTxt(prox(OSCE_UI),20000);
-      const scripts=[...html.matchAll(/src="([^"]+\.js)"/g)].map(m=>m[1])
-        .filter(s=>/main/i.test(s)).concat([...html.matchAll(/src="([^"]+\.js)"/g)].map(m=>m[1]));
-      const rutas=new Set();
-      for(const s of scripts.slice(0,4)){
-        estado('Analizando '+s.split('/').pop().substring(0,24)+'…');
-        let js=''; try{ js=await fetchTxt(prox(s.startsWith('http')?s:OSCE_UI+s),30000); }catch(e){ continue; }
-        [...js.matchAll(/https?:\/\/[^"'\s\\]*perfilprov-api[^"'\s\\]*/g)].forEach(m=>rutas.add(m[0]));
-        [...js.matchAll(/"((?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]*(?:[Pp]roveedor|[Ff]icha|buscador)[A-Za-z0-9_-]*(?:\/[A-Za-z0-9_.{}-]+)*)"/g)]
-          .forEach(m=>{ if(m[1].length<80) rutas.add(m[1]); });
-        if(rutas.size) break;
-      }
-      if(rutas.size){ const arr=[...rutas]; localStorage.setItem('osce_rutas_v1',JSON.stringify(arr)); return arr; }
-    }catch(e){ /* probar siguiente proxy */ }
+  for(const ui of OSCE_UIS){
+    for(const prox of PROXIES){
+      try{
+        estado('Leyendo el portal OECE…');
+        const html=await fetchTxt(prox(ui),20000);
+        const all=[...html.matchAll(/src="([^"]+\.js)"/g)].map(m=>m[1]);
+        const scripts=all.filter(s=>/main/i.test(s)).concat(all);
+        const rutas=new Set();
+        for(const s of scripts.slice(0,4)){
+          estado('Analizando '+s.split('/').pop().substring(0,24)+'…');
+          let js=''; try{ js=await fetchTxt(prox(s.startsWith('http')?s:ui+s),30000); }catch(e){ continue; }
+          [...js.matchAll(/https?:\/\/[^"'\s\\]*perfilprov-api[^"'\s\\]*/g)].forEach(m=>rutas.add(m[0]));
+          [...js.matchAll(/"((?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]*(?:[Pp]roveedor|[Ff]icha|buscador)[A-Za-z0-9_-]*(?:\/[A-Za-z0-9_.{}-]+)*)"/g)]
+            .forEach(m=>{ if(m[1].length<80) rutas.add(m[1]); });
+          if(rutas.size) break;
+        }
+        if(rutas.size){ const arr=[...rutas]; localStorage.setItem('osce_rutas_v2',JSON.stringify(arr)); return arr; }
+      }catch(e){ /* probar siguiente combinacion */ }
+    }
   }
   return [];
 }
 function candidatosOsce(rutas,ruc){
-  const base='https://apps.osce.gob.pe/perfilprov-api';
   const set=new Set();
-  rutas.forEach(r=>{
-    if(r.startsWith('http')){ set.add(r.replace(/\{[^}]*\}/g,ruc)); return; }
-    const p=r.replace(/^\/+/,'').replace(/\{[^}]*\}/g,ruc);
-    set.add(base+'/'+p+(p.endsWith(ruc)?'':'/'+ruc));
-    set.add(base+'/'+p+'?ruc='+ruc);
-  });
-  // rutas conocidas de respaldo
-  ['proveedor/2.2/'+ruc,'proveedor/'+ruc,'fichaProveedor/'+ruc,
-   'buscador/buscarFichaProveedor?filtro='+ruc].forEach(p=>set.add(base+'/'+p));
-  return [...set].slice(0,14);
+  for(const base of OSCE_APIS){
+    rutas.forEach(r=>{
+      if(r.startsWith('http')){ set.add(r.replace(/\{[^}]*\}/g,ruc)); return; }
+      const p=r.replace(/^\/+/,'').replace(/\{[^}]*\}/g,ruc);
+      set.add(base+'/'+p+(p.endsWith(ruc)?'':'/'+ruc));
+      set.add(base+'/'+p+'?ruc='+ruc);
+    });
+    // rutas conocidas de respaldo
+    ['proveedor/2.2/'+ruc,'proveedor/'+ruc,'fichaProveedor/'+ruc,
+     'buscador/buscarFichaProveedor?filtro='+ruc].forEach(p=>set.add(base+'/'+p));
+  }
+  return [...set].slice(0,20);
 }
 async function buscarRucOsce(ruc,estado){
   estado=estado||function(){};
