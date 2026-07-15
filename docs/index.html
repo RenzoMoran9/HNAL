@@ -752,31 +752,90 @@ function candidatosOsce(rutas,ruc){
   }
   return [...set].slice(0,20);
 }
+// Extrae los datos SOLO del nodo del JSON que contiene el RUC consultado
+// (evita tomar datos de otro proveedor si la respuesta trae varios)
+function extraerPorRuc(obj,ruc){
+  let nodo=null;
+  const visit=o=>{
+    if(!o||typeof o!=='object') return;
+    if(Array.isArray(o)){ o.forEach(visit); return; }
+    if(!nodo){
+      const vals=Object.values(o);
+      if(vals.some(v=>(typeof v==='string'&&v.replace(/\D/g,'')===ruc)||(typeof v==='number'&&String(v)===ruc))) nodo=o;
+    }
+    Object.values(o).forEach(visit);
+  };
+  visit(obj);
+  return extraerDatosProveedor(nodo||obj);
+}
+// Rutas rapidas construidas con el patron real del portal OECE
+function candidatosRapidos(ruc){
+  const c=[];
+  const q='langTag=es&searchText='+ruc+'&pageNumber=1&pageSize=6';
+  for(const base of OSCE_APIS){
+    c.push(base+'/buscador/inicial?'+q);
+    c.push(base+'/inicial?'+q);
+    c.push(base+'/buscador/buscar?'+q);
+    c.push(base+'/buscar?'+q);
+    c.push(base+'/ficha/'+ruc+'?langTag=es');
+    c.push(base+'/proveedor/ficha/'+ruc);
+  }
+  return c;
+}
+// Lanza todas las consultas en paralelo; gana la primera con datos validos
+function primeraConDatos(urls,ruc,ms){
+  return new Promise((resolve,reject)=>{
+    let pend=urls.length;
+    if(!pend) return reject(new Error('sin candidatos'));
+    urls.forEach(u=>{
+      fetchTxt(u,ms).then(txt=>{
+        if(txt.indexOf(ruc)===-1) throw new Error('sin el RUC');
+        const res=extraerPorRuc(JSON.parse(txt),ruc);
+        if(res.nombre||res.telefono||res.email) resolve({url:u,datos:res});
+        else throw new Error('sin datos');
+      }).catch(e=>{ console.log('OSCE fallo:',u.substring(0,90),e.message); })
+        .finally(()=>{ if(--pend===0) reject(new Error('sin respuesta')); });
+    });
+  });
+}
 async function buscarRucOsce(ruc,estado){
   estado=estado||function(){};
   ruc=String(ruc||'').replace(/\D/g,'');
   if(ruc.length!==11) throw new Error('El RUC debe tener 11 dígitos.');
+
+  // 0) ruta que ya funciono antes (1 sola consulta, rapidisima)
   const ok=localStorage.getItem('osce_endpoint_ok');
-  const rutas=await descubrirRutasOsce(estado);
-  let cands=candidatosOsce(rutas,ruc);
-  if(ok) cands.unshift(ok.replace('{ruc}',ruc));
-  let intentos=0;
-  for(const prox of PROXIES){
-    for(const ep of cands){
-      intentos++;
-      estado('Consultando ('+intentos+')…');
-      try{
-        const txt=await fetchTxt(prox(ep),12000);
-        const j=JSON.parse(txt);
-        const res=extraerDatosProveedor(j);
-        if(res.nombre||res.telefono||res.email){
-          localStorage.setItem('osce_endpoint_ok', ep.replace(ruc,'{ruc}'));
-          return res;
-        }
-      }catch(e){ console.log('OSCE intento fallido:',ep,e.message); }
-    }
+  if(ok){
+    try{
+      estado('Consultando OECE…');
+      const r=await primeraConDatos([PROXIES[0](ok.replace('{ruc}',ruc))],ruc,9000);
+      return r.datos;
+    }catch(e){ localStorage.removeItem('osce_endpoint_ok'); }
   }
-  throw new Error('No se pudo consultar OSCE ('+intentos+' rutas probadas). Completa manualmente.');
+  // 1) ola rapida: patron real del portal, todo en paralelo
+  const rapidos=candidatosRapidos(ruc);
+  for(let p=0;p<PROXIES.length;p++){
+    estado('Consultando OECE…');
+    try{
+      const r=await primeraConDatos(rapidos.map(PROXIES[p]),ruc,10000);
+      localStorage.setItem('osce_endpoint_ok', r.url.includes('allorigins')||r.url.includes('corsproxy')
+        ? decodeURIComponent(r.url.split('url=')[1]).split(ruc).join('{ruc}')
+        : r.url.split(ruc).join('{ruc}'));
+      return r.datos;
+    }catch(e){}
+  }
+  // 2) respaldo: descubrir rutas leyendo el codigo del portal (lento, 1 vez)
+  const rutas=await descubrirRutasOsce(estado);
+  const cands=candidatosOsce(rutas,ruc);
+  estado('Consultando rutas descubiertas…');
+  for(let p=0;p<PROXIES.length;p++){
+    try{
+      const r=await primeraConDatos(cands.map(PROXIES[p]),ruc,10000);
+      localStorage.setItem('osce_endpoint_ok', decodeURIComponent((r.url.split('url=')[1]||r.url)).split(ruc).join('{ruc}'));
+      return r.datos;
+    }catch(e){}
+  }
+  throw new Error('No se pudo consultar OECE. Completa manualmente.');
 }
 
 // ---- Formulario CC ----
