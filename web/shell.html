@@ -637,6 +637,55 @@ async function generarCuadroComparativo(datos){
   return await wb.xlsx.writeBuffer();
 }
 
+// ---- Busqueda de proveedor por RUC (portal OSCE) ----
+function extraerDatosProveedor(obj){
+  const out={nombre:'',telefono:'',email:''};
+  const visit=(o)=>{
+    if(!o||typeof o!=='object') return;
+    if(Array.isArray(o)){ o.forEach(visit); return; }
+    for(const k of Object.keys(o)){
+      const v=o[k], kl=k.toLowerCase();
+      if(typeof v==='string'&&v.trim()){
+        if(!out.nombre && /(razon|razón).*(social)|nombrecomercial|nombreproveedor|denominaci/.test(kl)) out.nombre=v.trim();
+        else if(!out.nombre && kl==='nombre') out.nombre=v.trim();
+        if(!out.telefono && /telef|celular|phone/.test(kl)) out.telefono=v.trim();
+        if(!out.email && /mail|correo/.test(kl)) out.email=v.trim();
+      } else if(typeof v==='object') visit(v);
+    }
+  };
+  visit(obj);
+  return out;
+}
+async function buscarRucOsce(ruc){
+  ruc=String(ruc||'').replace(/\D/g,'');
+  if(ruc.length!==11) throw new Error('El RUC debe tener 11 dígitos.');
+  const endpoints=[
+    'https://apps.osce.gob.pe/perfilprov-api/proveedor/2.2/'+ruc,
+    'https://apps.osce.gob.pe/perfilprov-api/proveedor/2.0/'+ruc,
+    'https://apps.osce.gob.pe/perfilprov-api/proveedores/'+ruc,
+  ];
+  // 1º intento directo; si el navegador bloquea por CORS, 2º via proxies publicos
+  const wraps=[u=>u,
+    u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
+    u=>'https://corsproxy.io/?url='+encodeURIComponent(u)];
+  let lastErr=null;
+  for(const wrap of wraps){
+    for(const ep of endpoints){
+      try{
+        const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),12000);
+        const r=await fetch(wrap(ep),{signal:ctl.signal});
+        clearTimeout(t);
+        if(!r.ok){ lastErr=new Error('HTTP '+r.status); continue; }
+        const j=await r.json();
+        const res=extraerDatosProveedor(j);
+        if(res.nombre||res.telefono||res.email) return res;
+        lastErr=new Error('sin datos reconocibles');
+      }catch(e){ lastErr=e; }
+    }
+  }
+  throw new Error('No se pudo consultar OSCE. Completa manualmente.');
+}
+
 // ---- Formulario CC ----
 let ccPostores=[nuevoPostorCC(),nuevoPostorCC()];
 let ccGanador=0;
@@ -654,7 +703,13 @@ function renderCC(){
       </div>
       <div class="field" style="margin:0 0 12px"><label>Nombre de la empresa</label><input type="text" class="c-nombre" placeholder="Ej: LABMEDIC SAFE SAC"></div>
       <div class="cc-grid">
-        <div class="field" style="margin:0"><label>RUC</label><input type="text" class="c-ruc"></div>
+        <div class="field" style="margin:0"><label>RUC <span class="hint">— 🔎 busca en OSCE</span></label>
+          <div style="display:flex;gap:6px">
+            <input type="text" class="c-ruc" style="flex:1" placeholder="11 dígitos">
+            <button type="button" class="btn btn-sec c-buscar" style="padding:8px 12px" title="Buscar empresa, teléfono y correo por RUC (OSCE)">🔎</button>
+          </div>
+          <div class="hint c-ruc-msg" style="min-height:14px"></div>
+        </div>
         <div class="field" style="margin:0"><label>Contacto</label><input type="text" class="c-contacto"></div>
         <div class="field" style="margin:0"><label>Teléfono</label><input type="text" class="c-telefono"></div>
         <div class="field" style="margin:0"><label>E-mail</label><input type="text" class="c-email"></div>
@@ -671,6 +726,19 @@ function renderCC(){
     set('.c-email','email'); set('.c-precio','precio_unitario'); set('.c-marca','marca'); set('.c-garantia','garantia');
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-veces','veces_reiterado'); set('.c-frec','fecha_recepcion');
     card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{ ccGanador=i; });
+    const btnB=card.querySelector('.c-buscar'), msgB=card.querySelector('.c-ruc-msg');
+    btnB.addEventListener('click', async ()=>{
+      msgB.style.color=''; msgB.textContent='Buscando en OSCE…'; btnB.disabled=true;
+      try{
+        const res=await buscarRucOsce(p.ruc);
+        if(res.nombre) p.nombre=res.nombre.toUpperCase();
+        if(res.telefono) p.telefono=res.telefono;
+        if(res.email) p.email=res.email;
+        renderCC();
+      }catch(err){
+        msgB.style.color='#c0392b'; msgB.textContent='⚠ '+err.message;
+      }finally{ btnB.disabled=false; }
+    });
     card.querySelector('.cc-quitar').addEventListener('click',()=>{
       if(ccPostores.length<=1) return;
       ccPostores.splice(i,1);
