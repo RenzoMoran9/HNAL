@@ -697,34 +697,78 @@ function extraerDatosProveedor(obj){
   visit(obj);
   return out;
 }
-async function buscarRucOsce(ruc){
+const OSCE_UI='https://apps.osce.gob.pe/perfilprov-ui/';
+const PROXIES=[u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
+               u=>'https://corsproxy.io/?url='+encodeURIComponent(u)];
+async function fetchTxt(u,ms){
+  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),ms||15000);
+  try{ const r=await fetch(u,{signal:ctl.signal}); clearTimeout(t);
+       if(!r.ok) throw new Error('HTTP '+r.status); return await r.text(); }
+  finally{ clearTimeout(t); }
+}
+// Descubre las rutas reales de la API leyendo el JS del portal OSCE
+async function descubrirRutasOsce(estado){
+  const cache=localStorage.getItem('osce_rutas_v1');
+  if(cache){ try{ return JSON.parse(cache); }catch(e){} }
+  for(const prox of PROXIES){
+    try{
+      estado('Leyendo el portal OSCE…');
+      const html=await fetchTxt(prox(OSCE_UI),20000);
+      const scripts=[...html.matchAll(/src="([^"]+\.js)"/g)].map(m=>m[1])
+        .filter(s=>/main/i.test(s)).concat([...html.matchAll(/src="([^"]+\.js)"/g)].map(m=>m[1]));
+      const rutas=new Set();
+      for(const s of scripts.slice(0,4)){
+        estado('Analizando '+s.split('/').pop().substring(0,24)+'…');
+        let js=''; try{ js=await fetchTxt(prox(s.startsWith('http')?s:OSCE_UI+s),30000); }catch(e){ continue; }
+        [...js.matchAll(/https?:\/\/[^"'\s\\]*perfilprov-api[^"'\s\\]*/g)].forEach(m=>rutas.add(m[0]));
+        [...js.matchAll(/"((?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]*(?:[Pp]roveedor|[Ff]icha|buscador)[A-Za-z0-9_-]*(?:\/[A-Za-z0-9_.{}-]+)*)"/g)]
+          .forEach(m=>{ if(m[1].length<80) rutas.add(m[1]); });
+        if(rutas.size) break;
+      }
+      if(rutas.size){ const arr=[...rutas]; localStorage.setItem('osce_rutas_v1',JSON.stringify(arr)); return arr; }
+    }catch(e){ /* probar siguiente proxy */ }
+  }
+  return [];
+}
+function candidatosOsce(rutas,ruc){
+  const base='https://apps.osce.gob.pe/perfilprov-api';
+  const set=new Set();
+  rutas.forEach(r=>{
+    if(r.startsWith('http')){ set.add(r.replace(/\{[^}]*\}/g,ruc)); return; }
+    const p=r.replace(/^\/+/,'').replace(/\{[^}]*\}/g,ruc);
+    set.add(base+'/'+p+(p.endsWith(ruc)?'':'/'+ruc));
+    set.add(base+'/'+p+'?ruc='+ruc);
+  });
+  // rutas conocidas de respaldo
+  ['proveedor/2.2/'+ruc,'proveedor/'+ruc,'fichaProveedor/'+ruc,
+   'buscador/buscarFichaProveedor?filtro='+ruc].forEach(p=>set.add(base+'/'+p));
+  return [...set].slice(0,14);
+}
+async function buscarRucOsce(ruc,estado){
+  estado=estado||function(){};
   ruc=String(ruc||'').replace(/\D/g,'');
   if(ruc.length!==11) throw new Error('El RUC debe tener 11 dígitos.');
-  const endpoints=[
-    'https://apps.osce.gob.pe/perfilprov-api/proveedor/2.2/'+ruc,
-    'https://apps.osce.gob.pe/perfilprov-api/proveedor/2.0/'+ruc,
-    'https://apps.osce.gob.pe/perfilprov-api/proveedores/'+ruc,
-  ];
-  // 1º intento directo; si el navegador bloquea por CORS, 2º via proxies publicos
-  const wraps=[u=>u,
-    u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
-    u=>'https://corsproxy.io/?url='+encodeURIComponent(u)];
-  let lastErr=null;
-  for(const wrap of wraps){
-    for(const ep of endpoints){
+  const ok=localStorage.getItem('osce_endpoint_ok');
+  const rutas=await descubrirRutasOsce(estado);
+  let cands=candidatosOsce(rutas,ruc);
+  if(ok) cands.unshift(ok.replace('{ruc}',ruc));
+  let intentos=0;
+  for(const prox of PROXIES){
+    for(const ep of cands){
+      intentos++;
+      estado('Consultando ('+intentos+')…');
       try{
-        const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),12000);
-        const r=await fetch(wrap(ep),{signal:ctl.signal});
-        clearTimeout(t);
-        if(!r.ok){ lastErr=new Error('HTTP '+r.status); continue; }
-        const j=await r.json();
+        const txt=await fetchTxt(prox(ep),12000);
+        const j=JSON.parse(txt);
         const res=extraerDatosProveedor(j);
-        if(res.nombre||res.telefono||res.email) return res;
-        lastErr=new Error('sin datos reconocibles');
-      }catch(e){ lastErr=e; }
+        if(res.nombre||res.telefono||res.email){
+          localStorage.setItem('osce_endpoint_ok', ep.replace(ruc,'{ruc}'));
+          return res;
+        }
+      }catch(e){ console.log('OSCE intento fallido:',ep,e.message); }
     }
   }
-  throw new Error('No se pudo consultar OSCE. Completa manualmente.');
+  throw new Error('No se pudo consultar OSCE ('+intentos+' rutas probadas). Completa manualmente.');
 }
 
 // ---- Formulario CC ----
@@ -771,7 +815,7 @@ function renderCC(){
     btnB.addEventListener('click', async ()=>{
       msgB.style.color=''; msgB.textContent='Buscando en OSCE…'; btnB.disabled=true;
       try{
-        const res=await buscarRucOsce(p.ruc);
+        const res=await buscarRucOsce(p.ruc, t=>{ msgB.textContent=t; });
         if(res.nombre) p.nombre=res.nombre.toUpperCase();
         if(res.telefono) p.telefono=res.telefono;
         if(res.email) p.email=res.email;
