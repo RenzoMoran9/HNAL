@@ -24,7 +24,7 @@
   .card h2{margin:0 0 16px;font-size:1.05rem;color:var(--azul);border-bottom:2px solid var(--gris);padding-bottom:8px;}
   label{display:block;font-weight:600;font-size:.88rem;margin-bottom:5px;}
   .hint{font-weight:400;color:#6b7280;font-size:.8rem;}
-  input[type=text],input[type=number],textarea{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:.95rem;font-family:inherit;}
+  input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:.95rem;font-family:inherit;}
   textarea{resize:vertical;}
   input:focus,textarea:focus{outline:2px solid var(--azul-claro);border-color:var(--azul-claro);}
   .cc-postor{border:1px solid var(--borde);border-radius:10px;padding:16px;margin-bottom:14px;background:#fafbfe;}
@@ -368,8 +368,7 @@ async function generarValidacion(datos){
   // Combinaciones del pie (posiciones desplazadas)
   merge(F(16),2,F(17),3);   // "Observaciones Usuario" (B..C, 2 filas)
   merge(F(16),4,F(17),8);   // recuadro de respuesta (D..H, 2 filas)
-  [18,19,20,22,23,24,29].forEach(f => merge(F(f),2,F(f),ultima));
-  merge(F(21),2,F(21),ultima+1);
+  [18,19,20,21,22,23,24,29].forEach(f => merge(F(f),2,F(f),ultima));
   merge(F(25),2,F(25),6);   // recuadro centrado (B..F)
 
   // Lineas de observacion mas limpias: sin guiones, con borde inferior
@@ -619,8 +618,8 @@ async function generarCuadroComparativo(datos){
       ws.getRow(32).getCell(b).numFmt='dd/mm/yyyy';
       setv(33,b,'SI');   // PROVEEDOR SE DEDICA AL OBJETO
       setv(34,b,'SI');   // LA DEPENDENCIA USUARIA PARTICIPÓ
-      setv(35,b,null);   // CUMPLE CON LOS RTM  -> en blanco
-      setv(36,b,null);   // SE TOMO EN CUENTA   -> en blanco
+      setv(35,b,(String(p.cumple_rtm||'').trim())||null);  // CUMPLE CON LOS RTM
+      setv(36,b,(String(p.se_tomo||'').trim())||null);      // SE TOMO EN CUENTA
       // desplegable SI/NO en las 4 acciones (seleccion rapida en Excel)
       for(let r=33;r<=36;r++)
         ws.getRow(r).getCell(b).dataValidation={type:'list',allowBlank:true,formulae:['"SI,NO"']};
@@ -657,6 +656,14 @@ async function generarCuadroComparativo(datos){
   }
   for(let c=1;c<=5;c++) quitarRelleno(ws.getRow(20).getCell(c)); // gris sobrante fila item
 
+  // Cabecera limpia: quitar los marcos apilados de las filas 2-9
+  // (cada linea DOCUMENTO/AREA/TIPO venia con su propio recuadro)
+  for(let r=2;r<=9;r++) for(let c=1;c<=30;c++){
+    const cell=ws.getRow(r).getCell(c);
+    cell.style=JSON.parse(JSON.stringify(cell.style||{}));
+    cell.border={};
+  }
+
   // ---- FECHA + firma del especialista ----
   setv(39,5,ccFecha(datos.fecha));
   ws.getRow(39).getCell(5).numFmt='dd/mm/yyyy';
@@ -691,7 +698,7 @@ async function generarCuadroComparativo(datos){
 // ---- Formulario CC ----
 let ccPostores=[nuevoPostorCC(),nuevoPostorCC()];
 let ccGanador=0;
-function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',precio_unitario:'',marca:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',veces_reiterado:'',fecha_recepcion:''};}
+function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',precio_unitario:'',marca:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',veces_reiterado:'',fecha_recepcion:'',cumple_rtm:'',se_tomo:''};}
 
 function renderCC(){
   const cont=document.getElementById('cc-postores'); cont.innerHTML='';
@@ -716,11 +723,16 @@ function renderCC(){
         <div class="field" style="margin:0"><label>Fecha de solicitud</label><input type="date" class="c-fsol"></div>
         <div class="field" style="margin:0"><label>Veces que se reiteró</label><input type="number" min="0" class="c-veces"></div>
         <div class="field" style="margin:0"><label>Fecha de recepción</label><input type="date" class="c-frec"></div>
+        <div class="field" style="margin:0"><label>¿Cumple con los RTM?</label>
+          <select class="c-rtm"><option value="">(en blanco)</option><option value="SI">SI</option><option value="NO">NO</option></select></div>
+        <div class="field" style="margin:0"><label>¿Se tomó en cuenta para el V. referencial?</label>
+          <select class="c-vr"><option value="">(en blanco)</option><option value="SI">SI</option><option value="NO">NO</option></select></div>
       </div>`;
     const set=(sel,key)=>{ const el=card.querySelector(sel); el.value=p[key]; el.addEventListener('input',()=>p[key]=el.value); };
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
     set('.c-email','email'); set('.c-precio','precio_unitario'); set('.c-marca','marca'); set('.c-garantia','garantia');
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-veces','veces_reiterado'); set('.c-frec','fecha_recepcion');
+    set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
     card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{ ccGanador=i; });
     card.querySelector('.cc-quitar').addEventListener('click',()=>{
       if(ccPostores.length<=1) return;
