@@ -158,7 +158,7 @@
       <div class="grid3">
         <div class="field"><label>Nombre del especialista (firma)</label><input type="text" id="cc-esp" placeholder="Nombre de quien firma"></div>
         <div class="field"><label>Cargo</label><input type="text" id="cc-cargo" value="Especialista en Contrataciones Públicas"></div>
-        <div class="field"><label>Fecha</label><input type="text" id="cc-fecha" placeholder="DD/MM/AAAA"></div>
+        <div class="field"><label>Fecha</label><input type="date" id="cc-fecha"></div>
       </div>
     </div>
 
@@ -310,6 +310,8 @@ async function generarValidacion(datos){
       applyStyle(r,cm, st.marcaDato);
       setv(r,cm, String((it.marcas && it.marcas[i])||'').trim());
       applyStyle(r,cs, st.sinoDato);
+      // desplegable SI/NO para que el area usuario seleccione rapido
+      ws.getRow(r).getCell(cs).dataValidation={type:'list',allowBlank:true,formulae:['"SI,NO"']};
     });
   });
 
@@ -335,8 +337,9 @@ async function generarValidacion(datos){
   });
 
   ws.pageSetup = Object.assign({}, ws.pageSetup, {fitToPage:true, fitToWidth:1, fitToHeight:0});
-  // Vista limpia: sin cuadriculas de Excel
-  ws.views=[{showGridLines:false, zoomScale:20, zoomScaleNormal:20, workbookViewId:0}];
+  // Estetica: sin cuadriculas, abre arriba y hoja con nombre claro
+  ws.views=[{showGridLines:false, topLeftCell:'A1', zoomScale:20, zoomScaleNormal:20, workbookViewId:0}];
+  try{ ws.name='VALIDACION'; }catch(e){}
   return await wb.xlsx.writeBuffer();
 }
 
@@ -559,19 +562,24 @@ async function generarCuadroComparativo(datos){
       setv(20,b+2,String(p.marca||'').trim());
       setv(21,b,{formula:colLetter(b+1)+'20'});
       // reset a blanco (se pinta de gris solo al ganador mas abajo)
-      cols.forEach(c=> setFill(20,c,'FFFFFFFF'));
+      cols.forEach(c=>{ setFill(20,c,'FFFFFFFF'); setFill(21,c,'FFFFFFFF'); });
       for(let r=22;r<=25;r++) setv(r,b,null);
       setv(26,b,String(p.garantia||'').trim());
       setv(27,b,String(p.plazo_entrega||'').trim());
       setv(28,b,'CREDITO COMERCIAL');
       setv(29,b,'SOLES');
       setv(30,b,ccFecha(p.fecha_solicitud));
+      ws.getRow(30).getCell(b).numFmt='dd/mm/yyyy';
       setv(31,b,ccNum(p.veces_reiterado));
       setv(32,b,ccFecha(p.fecha_recepcion));
+      ws.getRow(32).getCell(b).numFmt='dd/mm/yyyy';
       setv(33,b,'SI');   // PROVEEDOR SE DEDICA AL OBJETO
       setv(34,b,'SI');   // LA DEPENDENCIA USUARIA PARTICIPÓ
       setv(35,b,null);   // CUMPLE CON LOS RTM  -> en blanco
       setv(36,b,null);   // SE TOMO EN CUENTA   -> en blanco
+      // desplegable SI/NO en las 4 acciones (seleccion rapida en Excel)
+      for(let r=33;r<=36;r++)
+        ws.getRow(r).getCell(b).dataValidation={type:'list',allowBlank:true,formulae:['"SI,NO"']};
       cols.forEach(c=>{ ws.getColumn(c).hidden=false; });
     }else{
       for(let r=12;r<=36;r++) for(const c of cols) setv(r,c,null);
@@ -581,7 +589,7 @@ async function generarCuadroComparativo(datos){
 
   const g=Math.min(Math.max(parseInt(datos.ganador,10)||0,0),N-1);
   const gb=baseCol(g);
-  [gb,gb+1,gb+2].forEach(c=> setFill(20,c,GRIS));
+  [gb,gb+1,gb+2].forEach(c=>{ setFill(20,c,GRIS); setFill(21,c,GRIS); });
   setv(20,22,{formula:colLetter(gb)+'20'});
   setv(20,23,{formula:'V20*E20'});
   setv(21,23,{formula:'W20'});
@@ -607,6 +615,7 @@ async function generarCuadroComparativo(datos){
 
   // ---- FECHA + firma del especialista ----
   setv(39,5,ccFecha(datos.fecha));
+  ws.getRow(39).getCell(5).numFmt='dd/mm/yyyy';
   const cargo=(String(datos.cargo||'').trim()||'Especialista en Contrataciones Públicas');
   const nomEsp=String(datos.especialista||'').trim().toUpperCase();
   // Bloque compacto (linea + nombre + cargo juntos) en UNA celda con saltos
@@ -621,8 +630,9 @@ async function generarCuadroComparativo(datos){
   ]};
   cF.alignment={horizontal:'center',vertical:'center',wrapText:true};
 
-  // ---- Vista limpia: apagar las cuadriculas de Excel (las "lineas de mas") ----
-  ws.views=[{showGridLines:false, zoomScale:30, zoomScaleNormal:30, workbookViewId:0}];
+  // ---- Estetica: sin cuadriculas, abre arriba y hoja con nombre claro ----
+  ws.views=[{showGridLines:false, topLeftCell:'A1', zoomScale:30, zoomScaleNormal:30, workbookViewId:0}];
+  try{ ws.name='CUADRO COMPARATIVO'; }catch(e){}
 
   // Impresion profesional: horizontal, ajustado al ancho (las columnas
   // ocultas no se imprimen -> el PDF sale limpio)
@@ -632,174 +642,6 @@ async function generarCuadroComparativo(datos){
     printArea:'A1:W45',
   });
   return await wb.xlsx.writeBuffer();
-}
-
-// ---- Busqueda de proveedor por RUC (portal OSCE) ----
-function extraerDatosProveedor(obj){
-  const out={nombre:'',telefono:'',email:''};
-  const visit=(o)=>{
-    if(!o||typeof o!=='object') return;
-    if(Array.isArray(o)){ o.forEach(visit); return; }
-    for(const k of Object.keys(o)){
-      const v=o[k], kl=k.toLowerCase();
-      if(typeof v==='string'&&v.trim()){
-        if(!out.nombre && /(razon|razón).*(social)|nombrecomercial|nombreproveedor|denominaci/.test(kl)) out.nombre=v.trim();
-        else if(!out.nombre && kl==='nombre') out.nombre=v.trim();
-        if(!out.telefono && /telef|celular|phone/.test(kl)) out.telefono=v.trim();
-        if(!out.email && /mail|correo/.test(kl)) out.email=v.trim();
-      } else if(typeof v==='object') visit(v);
-    }
-  };
-  visit(obj);
-  return out;
-}
-// OSCE paso a ser OECE: el buscador ahora vive en apps.oece.gob.pe
-// (apps.osce.gob.pe redirige a gob.pe). Se prueban ambos dominios.
-const OSCE_UIS=['https://apps.oece.gob.pe/perfilprov-ui/',
-                'https://apps.osce.gob.pe/perfilprov-ui/'];
-const OSCE_APIS=['https://apps.oece.gob.pe/perfilprov-api',
-                 'https://apps.osce.gob.pe/perfilprov-api'];
-const PROXIES=[u=>u,   // directo (por si la API permite CORS: instantaneo)
-               u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
-               u=>'https://corsproxy.io/?url='+encodeURIComponent(u),
-               u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u)];
-async function fetchTxt(u,ms){
-  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),ms||15000);
-  try{ const r=await fetch(u,{signal:ctl.signal}); clearTimeout(t);
-       if(!r.ok) throw new Error('HTTP '+r.status); return await r.text(); }
-  finally{ clearTimeout(t); }
-}
-// Descubre las rutas reales de la API leyendo el JS del portal OSCE
-async function descubrirRutasOsce(estado){
-  const cache=localStorage.getItem('osce_rutas_v2');
-  if(cache){ try{ return JSON.parse(cache); }catch(e){} }
-  for(const ui of OSCE_UIS){
-    for(const prox of PROXIES){
-      try{
-        estado('Leyendo el portal OECE…');
-        const html=await fetchTxt(prox(ui),20000);
-        const all=[...html.matchAll(/src="([^"]+\.js)"/g)].map(m=>m[1]);
-        const scripts=all.filter(s=>/main/i.test(s)).concat(all);
-        const rutas=new Set();
-        for(const s of scripts.slice(0,4)){
-          estado('Analizando '+s.split('/').pop().substring(0,24)+'…');
-          let js=''; try{ js=await fetchTxt(prox(s.startsWith('http')?s:ui+s),30000); }catch(e){ continue; }
-          [...js.matchAll(/https?:\/\/[^"'\s\\]*perfilprov-api[^"'\s\\]*/g)].forEach(m=>rutas.add(m[0]));
-          [...js.matchAll(/"((?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]*(?:[Pp]roveedor|[Ff]icha|buscador)[A-Za-z0-9_-]*(?:\/[A-Za-z0-9_.{}-]+)*)"/g)]
-            .forEach(m=>{ if(m[1].length<80) rutas.add(m[1]); });
-          if(rutas.size) break;
-        }
-        if(rutas.size){ const arr=[...rutas]; localStorage.setItem('osce_rutas_v2',JSON.stringify(arr)); return arr; }
-      }catch(e){ /* probar siguiente combinacion */ }
-    }
-  }
-  return [];
-}
-function candidatosOsce(rutas,ruc){
-  const set=new Set();
-  for(const base of OSCE_APIS){
-    rutas.forEach(r=>{
-      if(r.startsWith('http')){ set.add(r.replace(/\{[^}]*\}/g,ruc)); return; }
-      const p=r.replace(/^\/+/,'').replace(/\{[^}]*\}/g,ruc);
-      set.add(base+'/'+p+(p.endsWith(ruc)?'':'/'+ruc));
-      set.add(base+'/'+p+'?ruc='+ruc);
-    });
-    // rutas conocidas de respaldo
-    ['proveedor/2.2/'+ruc,'proveedor/'+ruc,'fichaProveedor/'+ruc,
-     'buscador/buscarFichaProveedor?filtro='+ruc].forEach(p=>set.add(base+'/'+p));
-  }
-  return [...set].slice(0,20);
-}
-// Extrae los datos SOLO del nodo del JSON que contiene el RUC consultado
-// (evita tomar datos de otro proveedor si la respuesta trae varios)
-function extraerPorRuc(obj,ruc){
-  let nodo=null;
-  const visit=o=>{
-    if(!o||typeof o!=='object') return;
-    if(Array.isArray(o)){ o.forEach(visit); return; }
-    if(!nodo){
-      const vals=Object.values(o);
-      if(vals.some(v=>(typeof v==='string'&&v.replace(/\D/g,'')===ruc)||(typeof v==='number'&&String(v)===ruc))) nodo=o;
-    }
-    Object.values(o).forEach(visit);
-  };
-  visit(obj);
-  return extraerDatosProveedor(nodo||obj);
-}
-// Rutas rapidas construidas con el patron real del portal OECE
-function candidatosRapidos(ruc){
-  const c=[];
-  const q='langTag=es&searchText='+ruc+'&pageNumber=1&pageSize=6';
-  for(const base of OSCE_APIS){
-    c.push(base+'/buscador/inicial?'+q);
-    c.push(base+'/inicial?'+q);
-    c.push(base+'/buscador/buscar?'+q);
-    c.push(base+'/buscar?'+q);
-    c.push(base+'/ficha/'+ruc+'?langTag=es');
-    c.push(base+'/proveedor/ficha/'+ruc);
-  }
-  return c;
-}
-// Lanza todas las consultas en paralelo; gana la primera con datos validos
-function primeraConDatos(urls,ruc,ms,stats){
-  return new Promise((resolve,reject)=>{
-    let pend=urls.length;
-    if(!pend) return reject(new Error('sin candidatos'));
-    urls.forEach(u=>{
-      fetchTxt(u,ms).then(txt=>{
-        if(txt.indexOf(ruc)===-1) throw new Error('respuesta sin el RUC');
-        const res=extraerPorRuc(JSON.parse(txt),ruc);
-        if(res.nombre||res.telefono||res.email) resolve({url:u,datos:res});
-        else throw new Error('sin datos');
-      }).catch(e=>{
-        const m=String(e&&e.message||e);
-        if(stats){ if(/fetch|abort|network/i.test(m)) stats.red++; else stats.otros++; }
-        console.log('OECE fallo:',u.substring(0,100),m);
-      }).finally(()=>{ if(--pend===0) reject(new Error('sin respuesta')); });
-    });
-  });
-}
-async function buscarRucOsce(ruc,estado){
-  estado=estado||function(){};
-  ruc=String(ruc||'').replace(/\D/g,'');
-  if(ruc.length!==11) throw new Error('El RUC debe tener 11 dígitos.');
-
-  // 0) ruta que ya funciono antes (1 sola consulta, rapidisima)
-  const ok=localStorage.getItem('osce_endpoint_ok');
-  if(ok){
-    try{
-      estado('Consultando OECE…');
-      const r=await primeraConDatos([PROXIES[0](ok.replace('{ruc}',ruc))],ruc,9000);
-      return r.datos;
-    }catch(e){ localStorage.removeItem('osce_endpoint_ok'); }
-  }
-  // 1) ola rapida: patron real del portal, todo en paralelo
-  const stats={red:0,otros:0};
-  const rapidos=candidatosRapidos(ruc);
-  for(let p=0;p<PROXIES.length;p++){
-    estado('Consultando OECE ('+(p+1)+'/'+PROXIES.length+')…');
-    try{
-      const r=await primeraConDatos(rapidos.map(PROXIES[p]),ruc,10000,stats);
-      localStorage.setItem('osce_endpoint_ok', (r.url.indexOf('url=')>-1||r.url.indexOf('quest=')>-1
-        ? decodeURIComponent(r.url.split(/url=|quest=/)[1]) : r.url).split(ruc).join('{ruc}'));
-      return r.datos;
-    }catch(e){}
-  }
-  // 2) respaldo: descubrir rutas leyendo el codigo del portal (lento, 1 vez)
-  const rutas=await descubrirRutasOsce(estado);
-  const cands=candidatosOsce(rutas,ruc);
-  estado('Consultando rutas descubiertas…');
-  for(let p=1;p<PROXIES.length;p++){
-    try{
-      const r=await primeraConDatos(cands.map(PROXIES[p]),ruc,10000,stats);
-      localStorage.setItem('osce_endpoint_ok', decodeURIComponent((r.url.split(/url=|quest=/)[1]||r.url)).split(ruc).join('{ruc}'));
-      return r.datos;
-    }catch(e){}
-  }
-  const diag = stats.otros===0 && stats.red>0
-    ? 'tu red parece bloquear las consultas externas'
-    : 'las rutas de la API no respondieron con datos';
-  throw new Error('No se pudo consultar OECE ('+diag+'). Completa manualmente.');
 }
 
 // ---- Formulario CC ----
@@ -819,13 +661,7 @@ function renderCC(){
       </div>
       <div class="field" style="margin:0 0 12px"><label>Nombre de la empresa</label><input type="text" class="c-nombre" placeholder="Ej: LABMEDIC SAFE SAC"></div>
       <div class="cc-grid">
-        <div class="field" style="margin:0"><label>RUC <span class="hint">— 🔎 busca en OSCE</span></label>
-          <div style="display:flex;gap:6px">
-            <input type="text" class="c-ruc" style="flex:1" placeholder="11 dígitos">
-            <button type="button" class="btn btn-sec c-buscar" style="padding:8px 12px" title="Buscar empresa, teléfono y correo por RUC (OSCE)">🔎</button>
-          </div>
-          <div class="hint c-ruc-msg" style="min-height:14px"></div>
-        </div>
+        <div class="field" style="margin:0"><label>RUC</label><input type="text" class="c-ruc" placeholder="11 dígitos"></div>
         <div class="field" style="margin:0"><label>Contacto</label><input type="text" class="c-contacto"></div>
         <div class="field" style="margin:0"><label>Teléfono</label><input type="text" class="c-telefono"></div>
         <div class="field" style="margin:0"><label>E-mail</label><input type="text" class="c-email"></div>
@@ -833,28 +669,15 @@ function renderCC(){
         <div class="field" style="margin:0"><label>Marca</label><input type="text" class="c-marca"></div>
         <div class="field" style="margin:0"><label>Garantía / vigencia</label><input type="text" class="c-garantia" placeholder="Ej: 12 MESES"></div>
         <div class="field" style="margin:0"><label>Plazo de entrega</label><input type="text" class="c-plazo" placeholder="Ej: 05 DÍAS"></div>
-        <div class="field" style="margin:0"><label>Fecha de solicitud</label><input type="text" class="c-fsol" placeholder="DD/MM/AAAA"></div>
+        <div class="field" style="margin:0"><label>Fecha de solicitud</label><input type="date" class="c-fsol"></div>
         <div class="field" style="margin:0"><label>Veces que se reiteró</label><input type="number" min="0" class="c-veces"></div>
-        <div class="field" style="margin:0"><label>Fecha de recepción</label><input type="text" class="c-frec" placeholder="DD/MM/AAAA"></div>
+        <div class="field" style="margin:0"><label>Fecha de recepción</label><input type="date" class="c-frec"></div>
       </div>`;
     const set=(sel,key)=>{ const el=card.querySelector(sel); el.value=p[key]; el.addEventListener('input',()=>p[key]=el.value); };
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
     set('.c-email','email'); set('.c-precio','precio_unitario'); set('.c-marca','marca'); set('.c-garantia','garantia');
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-veces','veces_reiterado'); set('.c-frec','fecha_recepcion');
     card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{ ccGanador=i; });
-    const btnB=card.querySelector('.c-buscar'), msgB=card.querySelector('.c-ruc-msg');
-    btnB.addEventListener('click', async ()=>{
-      msgB.style.color=''; msgB.textContent='Buscando en OSCE…'; btnB.disabled=true;
-      try{
-        const res=await buscarRucOsce(p.ruc, t=>{ msgB.textContent=t; });
-        if(res.nombre) p.nombre=res.nombre.toUpperCase();
-        if(res.telefono) p.telefono=res.telefono;
-        if(res.email) p.email=res.email;
-        renderCC();
-      }catch(err){
-        msgB.style.color='#c0392b'; msgB.textContent='⚠ '+err.message;
-      }finally{ btnB.disabled=false; }
-    });
     card.querySelector('.cc-quitar').addEventListener('click',()=>{
       if(ccPostores.length<=1) return;
       ccPostores.splice(i,1);
