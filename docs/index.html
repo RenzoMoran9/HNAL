@@ -649,24 +649,21 @@ async function generarCuadroComparativo(datos){
   }
   for(let c=1;c<=5;c++) quitarRelleno(ws.getRow(20).getCell(c)); // gris sobrante fila item
 
-  // ---- FECHA + firma del especialista (columna B, centrada, fuente grande) ----
+  // ---- FECHA + firma del especialista ----
   setv(39,5,ccFecha(datos.fecha));
   const cargo=(String(datos.cargo||'').trim()||'Especialista en Contrataciones Públicas');
   const nomEsp=String(datos.especialista||'').trim().toUpperCase();
-  // La fila 25 esta oculta en la plantilla: usar filas visibles 26-28,
-  // con fuentes acordes a la escala de la hoja (Calibri 23 base).
-  const firma=[
-    [26, '_______________________________', false, 22],
-    [27, (nomEsp||null), true, 22],
-    [28, cargo, false, 20],
-  ];
-  firma.forEach(a=>{
-    const cell=ws.getRow(a[0]).getCell(2);
-    cell.style=JSON.parse(JSON.stringify(cell.style||{}));
-    cell.value=a[1];
-    cell.alignment={horizontal:'center',vertical:'center',wrapText:true};
-    cell.font={bold:a[2],size:a[3],name:'Calibri'};
-  });
+  // Bloque compacto (linea + nombre + cargo juntos) en UNA celda con saltos
+  // de linea, centrado en el espacio en blanco de la columna B. Arriba queda
+  // libre para el sello y la firma al imprimir.
+  const cF=ws.getRow(31).getCell(2);
+  cF.style=JSON.parse(JSON.stringify(cF.style||{}));
+  cF.value={richText:[
+    {font:{size:22,name:'Calibri'},text:'_______________________________\n'},
+    {font:{size:22,bold:true,name:'Calibri'},text:(nomEsp||' ')+'\n'},
+    {font:{size:20,name:'Calibri'},text:cargo},
+  ]};
+  cF.alignment={horizontal:'center',vertical:'center',wrapText:true};
 
   // ---- Vista limpia: apagar las cuadriculas de Excel (las "lineas de mas") ----
   ws.views=[{showGridLines:false, zoomScale:30, zoomScaleNormal:30, workbookViewId:0}];
