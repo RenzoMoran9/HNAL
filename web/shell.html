@@ -124,6 +124,16 @@
     box-shadow:0 6px 18px rgba(0,0,0,.28);}
   .home-btn:hover{background:var(--gris);}
   @media (max-width:520px){.hero-title{font-size:2rem}.hero-card{padding:28px 20px}}
+
+  /* ===================== MEMO ===================== */
+  .btn-memo{background:#0aa27a;color:#fff;border:1px solid #0aa27a;}
+  .btn-memo:hover{filter:brightness(1.07);}
+  .aviso-memo{background:#e7f6f1;border:1px solid #b6e3d4;color:#0a5c46;border-radius:10px;
+    padding:12px 14px;margin-bottom:16px;font-size:.9rem;line-height:1.4;}
+  .memo-fila{display:grid;grid-template-columns:36px 1fr 150px 190px 40px;gap:10px;align-items:end;
+    background:var(--gris);border:1px solid var(--borde);border-radius:10px;padding:12px;margin-bottom:10px;}
+  .memo-fila .num{align-self:center;font-weight:800;color:var(--azul);text-align:center;}
+  @media (max-width:640px){.memo-fila{grid-template-columns:1fr;}.memo-fila .num{text-align:left;}}
 </style>
 </head>
 <body>
@@ -167,6 +177,7 @@
 <nav class="tabs">
   <button type="button" class="tab-btn active" data-tab="val">📋 Validación de Especificaciones</button>
   <button type="button" class="tab-btn" data-tab="cc">📊 Cuadro Comparativo</button>
+  <button type="button" class="tab-btn" data-tab="memo">📝 Memo de Validación</button>
 </nav>
 
 <main>
@@ -202,6 +213,7 @@
 
     <div class="barra-final">
       <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Excel</button>
+      <button type="button" class="btn btn-memo" id="btn-emitir-memo">📝 Emitir Memo</button>
       <div id="msg"></div>
     </div>
   </form>
@@ -253,10 +265,73 @@
     </div>
   </form>
   </div>
+
+  <!-- ==================== MEMO DE VALIDACIÓN ==================== -->
+  <div id="panel-memo" class="panel oculto">
+  <form id="form-memo">
+    <div class="aviso-memo">📝 Emite el <b>Memorando de solicitud de revisión</b> en Word (.docx), con el logo y la estructura oficial. Si vienes del cuadro de validación, los <b>postores</b> y el <b>objeto</b> ya vienen cargados — solo completa el resto.</div>
+
+    <div class="card">
+      <h2>1. Encabezado del memorando</h2>
+      <div class="grid2">
+        <div class="field"><label>N° de memorando <span class="hint">(puedes dejarlo en blanco)</span></label><input type="text" id="m-num" placeholder="Ej: 123"></div>
+        <div class="field"><label>Año</label><input type="text" id="m-anio" value="2026"></div>
+      </div>
+      <div class="field"><label>Dirigido a — nombre / cargo</label>
+        <input type="text" id="m-dest-nombre" placeholder="Ej: ING. JORGE LUIS TAKAMI OBLITAS">
+        <input type="text" id="m-dest-cargo" placeholder="Ej: Jefe de la Oficina de Servicios Generales y Mantenimiento" style="margin-top:8px">
+      </div>
+      <div class="field"><label>Remitente — nombre / cargo</label>
+        <input type="text" id="m-rem-nombre" value="Lic. ARTURO C. ROJAS GONZALES">
+        <input type="text" id="m-rem-cargo" value="Jefe de la Oficina de Logística." style="margin-top:8px">
+      </div>
+      <div class="field"><label>Asunto — Solicitud de Revisión y Evaluación de Cumplimiento de…</label>
+        <select id="m-asunto">
+          <option value="et">Especificaciones Técnicas.</option>
+          <option value="tdr">Términos de Referencia.</option>
+        </select>
+      </div>
+      <div class="field"><label>Referencia</label><input type="text" id="m-ref" placeholder="Ej: NOTA INFORMATIVA N°37-2026-SCIyCC-DEyCC-HNAL"></div>
+      <div class="field"><label>Fecha</label><input type="date" id="m-fecha"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Objeto de la contratación <span class="hint">— sale automático del cuadro de validación</span></h2>
+      <div class="field"><label>Descripción (va en el contexto del memo, entre comillas)</label><input type="text" id="m-titulo" placeholder="Ej: ADQUISICION DE TOKEN DE SEGURIDAD CON CONECTOR USB"></div>
+    </div>
+
+    <div class="card">
+      <h2>3. Cuadro de postores</h2>
+      <div id="memo-filas"></div>
+      <button type="button" class="btn btn-sec" id="m-agregar-fila">＋ Agregar empresa</button>
+    </div>
+
+    <div class="card">
+      <h2>4. Pie del memorando</h2>
+      <div class="grid3">
+        <div class="field"><label>EXP. DIR.</label><input type="text" id="m-expdir" placeholder="Ej: 3557"></div>
+        <div class="field"><label>EXP. LOG.</label><input type="text" id="m-explog" placeholder="Ej: 2174"></div>
+        <div class="field"><label>Folios</label><input type="text" id="m-folios" placeholder="Ej: 149"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Elaborado por</label><input type="text" id="m-elaborado" placeholder="Ej: Frank Tipte Ruiz"></div>
+        <div class="field"><label>Iniciales <span class="hint">(las del que edita)</span></label><input type="text" id="m-iniciales" placeholder="Ej: RM"></div>
+      </div>
+    </div>
+
+    <div class="barra-final">
+      <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Memo (Word)</button>
+      <div id="msg-memo"></div>
+    </div>
+  </form>
+  </div>
 </main>
 
 <!-- Librería ExcelJS (incrustada, no requiere internet) -->
 <script>/*__EXCELJS__*/</script>
+<!-- Librerías para generar Word (.docx): PizZip + docxtemplater (incrustadas) -->
+<script>/*__PIZZIP__*/</script>
+<script>/*__DOCXTPL__*/</script>
 
 <script>
 // ====================== PLANTILLA (Excel base en base64) ======================
@@ -594,6 +669,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b===btn));
     document.getElementById('panel-val').classList.toggle('oculto', t!=='val');
     document.getElementById('panel-cc').classList.toggle('oculto', t!=='cc');
+    document.getElementById('panel-memo').classList.toggle('oculto', t!=='memo');
   });
 });
 
@@ -850,6 +926,131 @@ document.getElementById('form-cc').addEventListener('submit', async(e)=>{
     a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     msg.className='msg-ok'; msg.textContent='✅ ¡Listo! Se descargó: '+nombre;
   }catch(err){ mostrarErrorCC(err.message||'Ocurrió un error al generar.'); console.error(err); }
+});
+
+// ====================== MEMO DE VALIDACIÓN ======================
+const TEMPLATE_MEMO_B64 = "__TEMPLATE_MEMO_B64__";
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto',
+  'septiembre','octubre','noviembre','diciembre'];
+const UNIDADES = ['','UNA','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE',
+  'DIEZ','ONCE','DOCE','TRECE','CATORCE','QUINCE','DIECISEIS','DIECISIETE',
+  'DIECIOCHO','DIECINUEVE','VEINTE','VEINTIUNA','VEINTIDOS','VEINTITRES',
+  'VEINTICUATRO','VEINTICINCO','VEINTISEIS','VEINTISIETE','VEINTIOCHO',
+  'VEINTINUEVE','TREINTA'];
+
+function numeroATexto(n){
+  const palabra = UNIDADES[n] || String(n);
+  const dosDig = ('0'+n).slice(-2);
+  return palabra + ' (' + dosDig + ')';
+}
+function fechaLima(iso){
+  if(!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return iso;
+  const d = parseInt(m[3],10), mes = MESES[parseInt(m[2],10)-1], y = m[1];
+  return 'Lima, '+d+' de '+mes+' del '+y;
+}
+
+// --- Estado de las filas del memo (empresa/ruc/observación) ---
+let memoFilas = [{empresa:'',ruc:'',obs:'NINGUNA OBSERVACION'}];
+
+function renderMemoFilas(){
+  const cont = document.getElementById('memo-filas'); cont.innerHTML='';
+  memoFilas.forEach((f,i)=>{
+    const div = document.createElement('div');
+    div.className='memo-fila';
+    div.innerHTML = `
+      <div class="num">${('0'+(i+1)).slice(-2)}</div>
+      <div class="field" style="margin:0"><label>Empresa</label><input type="text" class="mf-empresa" placeholder="Ej: EGUSQFARMA EIRL"></div>
+      <div class="field" style="margin:0"><label>RUC</label><input type="text" class="mf-ruc" placeholder="Ej: 20604200131"></div>
+      <div class="field" style="margin:0"><label>Observación</label>
+        <select class="mf-obs">
+          <option value="NINGUNA OBSERVACION">NINGUNA OBSERVACION</option>
+          <option value="CON OBSERVACION">CON OBSERVACION</option>
+        </select></div>
+      <button type="button" class="btn-quitar" title="Quitar">✕</button>`;
+    const emp=div.querySelector('.mf-empresa'), ruc=div.querySelector('.mf-ruc'), obs=div.querySelector('.mf-obs');
+    emp.value=f.empresa; ruc.value=f.ruc; obs.value=f.obs;
+    emp.addEventListener('input',()=>f.empresa=emp.value);
+    ruc.addEventListener('input',()=>f.ruc=ruc.value);
+    obs.addEventListener('change',()=>f.obs=obs.value);
+    div.querySelector('.btn-quitar').addEventListener('click',()=>{
+      if(memoFilas.length<=1) return;
+      memoFilas.splice(i,1); renderMemoFilas();
+    });
+    cont.appendChild(div);
+  });
+}
+document.getElementById('m-agregar-fila').addEventListener('click',()=>{
+  memoFilas.push({empresa:'',ruc:'',obs:'NINGUNA OBSERVACION'}); renderMemoFilas();
+});
+renderMemoFilas();
+
+// --- "Emitir Memo": trae los datos del cuadro de validación y va a la pestaña ---
+document.getElementById('btn-emitir-memo').addEventListener('click',()=>{
+  const adq = document.getElementById('adquisicion').value.trim();
+  document.getElementById('m-titulo').value = adq.toUpperCase();
+  document.getElementById('m-asunto').value = (tipo==='servicio') ? 'tdr' : 'et';
+  const nombres = postores.map(p=>(p.nombre||'').trim()).filter(Boolean);
+  if(nombres.length){
+    memoFilas = nombres.map(n=>({empresa:n.toUpperCase(),ruc:'',obs:'NINGUNA OBSERVACION'}));
+  }
+  renderMemoFilas();
+  if(!document.getElementById('m-fecha').value){
+    document.getElementById('m-fecha').value = new Date().toISOString().slice(0,10);
+  }
+  document.querySelector('.tab-btn[data-tab="memo"]').click();
+  window.scrollTo(0,0);
+});
+
+// --- Generar el memo (.docx) ---
+function mostrarErrorMemo(t){ const m=document.getElementById('msg-memo'); m.className='msg-error'; m.textContent='⚠ '+t; }
+document.getElementById('form-memo').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const msg=document.getElementById('msg-memo'); msg.className=''; msg.textContent='Generando…';
+  const val=id=>document.getElementById(id).value;
+  const filas = memoFilas.filter(f=>(f.empresa||'').trim()!=='');
+  if(!val('m-titulo').trim()){ mostrarErrorMemo('Escribe el objeto de la contratación.'); return; }
+  if(filas.length===0){ mostrarErrorMemo('Agrega al menos una empresa.'); return; }
+  const esET = val('m-asunto')==='et';
+  const datos = {
+    memoNum: val('m-num').trim() || '          ',
+    anio: val('m-anio').trim() || '2026',
+    destNombre: val('m-dest-nombre').trim(),
+    destCargo: val('m-dest-cargo').trim(),
+    remNombre: val('m-rem-nombre').trim(),
+    remCargo: val('m-rem-cargo').trim(),
+    asunto: esET ? 'Especificaciones Técnicas.' : 'Términos de Referencia.',
+    referencia: val('m-ref').trim(),
+    fecha: fechaLima(val('m-fecha')),
+    titulo: val('m-titulo').trim(),
+    cantidad: numeroATexto(filas.length),
+    solicitud: esET ? 'las Especificaciones Técnicas' : 'los Términos de Referencia',
+    filas: filas.map((f,i)=>({
+      num: ('0'+(i+1)).slice(-2),
+      empresa: (f.empresa||'').trim(),
+      ruc: (f.ruc||'').trim(),
+      obs: f.obs || 'NINGUNA OBSERVACION',
+    })),
+    expDir: val('m-expdir').trim(),
+    expLog: val('m-explog').trim(),
+    folios: val('m-folios').trim(),
+    elaborado: val('m-elaborado').trim(),
+    iniciales: val('m-iniciales').trim().toUpperCase(),
+  };
+  try{
+    const DT = window.docxtemplater.default || window.docxtemplater;
+    const zip = new window.PizZip(TEMPLATE_MEMO_B64, {base64:true});
+    const doc = new DT(zip, {paragraphLoop:true, linebreaks:true});
+    doc.render(datos);
+    const blob = doc.getZip().generate({type:'blob',
+      mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const baseN = datos.titulo.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'MEMO';
+    const nombre = 'MEMO_'+baseN+'.docx';
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    msg.className='msg-ok'; msg.textContent='✅ ¡Listo! Se descargó: '+nombre;
+  }catch(err){ mostrarErrorMemo(err.message||'Ocurrió un error al generar el memo.'); console.error(err); }
 });
 </script>
 </body>
