@@ -50,7 +50,7 @@ AZUL = "0000FF"
 
 # Marco que ancla el bloque al fondo del area de texto (justo sobre el pie de
 # pagina). Todos los parrafos que lo comparten se agrupan en un solo marco.
-FRAME_BOTTOM = ('<w:framePr w:w="9000" w:h="1400" w:hRule="atLeast" '
+FRAME_BOTTOM = ('<w:framePr w:w="9000" w:h="1200" w:hRule="atLeast" '
                 'w:wrap="around" w:vAnchor="margin" w:hAnchor="margin" '
                 'w:x="0" w:yAlign="bottom"/>')
 
@@ -63,10 +63,11 @@ def para(runs_xml, jc="both", font="Arial", sz=14, bold=False, border=False,
     if border:
         ppr += ('<w:pBdr><w:bottom w:val="single" w:sz="18" w:space="1" '
                 'w:color="auto"/></w:pBdr>')
-    # Sin espaciado extra (como el estilo "Sin espaciado" del original), para
-    # que el memo mantenga la densidad y quepa en una pagina.
+    # Interlineado 1.15x (line=276) como el memo hecho a mano, para que no
+    # salga "pegado". El espacio despues (after) se usa entre las filas del
+    # bloque destinatario.
     after = 0 if spacing_after is None else spacing_after
-    ppr += '<w:spacing w:after="%d" w:line="240" w:lineRule="auto"/>' % after
+    ppr += '<w:spacing w:after="%d" w:line="276" w:lineRule="auto"/>' % after
     if jc:
         ppr += '<w:jc w:val="%s"/>' % jc
     ppr += "<w:rPr>"
@@ -109,20 +110,22 @@ def tabla_destinatario():
         c2 = tcell(W2, cel2_paras)
         return "<w:tr>%s%s%s</w:tr>" % (c0, c1, c2)
 
+    GAP = 150   # espacio despues de cada fila (como el memo manual)
     dest = (para(run("{destNombre}", font="Arial", sz=21, bold=True),
                  jc="left", font="Arial", sz=21, bold=True)
             + para(run("{destCargo}", font="Arial", sz=21, bold=True),
-                   jc="left", font="Arial", sz=21, bold=True))
+                   jc="left", font="Arial", sz=21, bold=True,
+                   spacing_after=GAP))
     rem = (para(run("{remNombre}", font="Arial", sz=21, bold=True),
                 jc="left", font="Arial", sz=21, bold=True)
            + para(run("{remCargo}", font="Arial Narrow", sz=20),
-                  jc="left", font="Arial Narrow", sz=20))
+                  jc="left", font="Arial Narrow", sz=20, spacing_after=GAP))
     asunto = para(
         run("Solicitud de Revisión y Evaluación de Cumplimiento de "
             "{asunto}", font="Arial Narrow", sz=20),
-        jc="left", font="Arial Narrow", sz=20)
+        jc="left", font="Arial Narrow", sz=20, spacing_after=GAP)
     ref = para(run("{referencia}", font="Arial Narrow", sz=20, bold=True),
-               jc="left", font="Arial Narrow", sz=20)
+               jc="left", font="Arial Narrow", sz=20, spacing_after=GAP)
     fecha = cell_para("{fecha}", font="Arial Narrow", sz=20)
 
     tblpr = ('<w:tblPr><w:tblW w:w="0" w:type="auto"/>'
@@ -294,10 +297,10 @@ def build_body():
     parts.append(blank())
     parts.append(para(run(ENTALSENTIDO, sz=14), jc="both", sz=14))
     parts.append(blank())
-    # Atentamente + espacio para sello/firma
+    # Atentamente (el espacio para sello/firma lo da el bloque EXP anclado al
+    # pie, que flota; por eso aqui basta una linea en blanco)
     parts.append(para(run("Atentamente,", sz=14), jc="left", sz=14))
-    for _ in range(3):
-        parts.append(blank())
+    parts.append(blank())
     # Pie: bloque anclado al fondo de la pagina (framePr compartido). Siempre
     # sale pegado al pie. Arial 8pt, etiquetas en negrita (como el manual).
     def pie_para(runs_xml):
@@ -307,7 +310,8 @@ def build_body():
     parts.append(pie_para(run("EXP. DIR.: {expDir}", sz=16, bold=True)))
     parts.append(pie_para(run("EXP. LOG. {expLog}", sz=16, bold=True)))
     parts.append(pie_para(
-        run("Folios: ", sz=16) + run("( {folios} )", sz=16, bold=True)
+        run("Folios: ", sz=16)
+        + run("(        {folios}        )", sz=16, bold=True)
         + run(" original", sz=16)))
     parts.append(pie_para(run("C.c.  Archivo", sz=16)))
     parts.append(pie_para(
