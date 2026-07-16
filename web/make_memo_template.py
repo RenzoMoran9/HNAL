@@ -27,17 +27,25 @@ def esc(t):
     return (t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
-def run(text, font="Arial", sz=14, bold=False, underline=False, preserve=True):
+def run(text, font="Arial", sz=14, bold=False, italic=False, underline=False,
+        color=None, preserve=True):
     rpr = "<w:rPr>"
     rpr += '<w:rFonts w:ascii="%s" w:hAnsi="%s" w:cs="%s"/>' % (font, font, font)
     if bold:
         rpr += "<w:b/>"
+    if italic:
+        rpr += "<w:i/>"
+    if color:
+        rpr += '<w:color w:val="%s"/>' % color
     if underline:
         rpr += '<w:u w:val="single"/>'
     rpr += '<w:sz w:val="%d"/><w:szCs w:val="%d"/>' % (sz, sz)
     rpr += "</w:rPr>"
     sp = ' xml:space="preserve"' if preserve else ""
     return "<w:r>%s<w:t%s>%s</w:t></w:r>" % (rpr, sp, esc(text))
+
+
+AZUL = "0000FF"
 
 
 # Marco que ancla el bloque al fondo del area de texto (justo sobre el pie de
@@ -101,18 +109,17 @@ def tabla_destinatario():
         c2 = tcell(W2, cel2_paras)
         return "<w:tr>%s%s%s</w:tr>" % (c0, c1, c2)
 
-    dest = (para(run("{destNombre}", font="Arial Narrow", sz=24, bold=True),
-                 jc="left", font="Arial Narrow", sz=24, bold=True)
-            + para(run("{destCargo}", font="Arial Narrow", sz=20),
-                   jc="left", font="Arial Narrow", sz=20))
-    rem = (para(run("{remNombre}", font="Arial", sz=20, bold=True),
-                jc="left", font="Arial", sz=20, bold=True)
-           + para(run("{remCargo}", font="Arial", sz=20),
-                  jc="left", font="Arial", sz=20))
+    dest = (para(run("{destNombre}", font="Arial", sz=21, bold=True),
+                 jc="left", font="Arial", sz=21, bold=True)
+            + para(run("{destCargo}", font="Arial", sz=21, bold=True),
+                   jc="left", font="Arial", sz=21, bold=True))
+    rem = (para(run("{remNombre}", font="Arial", sz=21, bold=True),
+                jc="left", font="Arial", sz=21, bold=True)
+           + para(run("{remCargo}", font="Arial Narrow", sz=20),
+                  jc="left", font="Arial Narrow", sz=20))
     asunto = para(
-        run("Solicitud de Revisión y Evaluación de Cumplimiento de ",
-            font="Arial Narrow", sz=20)
-        + run("{asunto}", font="Arial Narrow", sz=20, bold=True),
+        run("Solicitud de Revisión y Evaluación de Cumplimiento de "
+            "{asunto}", font="Arial Narrow", sz=20),
         jc="left", font="Arial Narrow", sz=20)
     ref = para(run("{referencia}", font="Arial Narrow", sz=20, bold=True),
                jc="left", font="Arial Narrow", sz=20)
@@ -142,7 +149,8 @@ def tabla_postores():
                                   bold=True), shd="A6A6A6")
 
     def dcell(w, txt):
-        return tcell(w, cell_para(txt, jc="center", font="Arial", sz=16))
+        return tcell(w, cell_para(txt, jc="center", font="Arial", sz=16,
+                                  bold=True))
 
     header = "<w:tr>%s%s%s%s</w:tr>" % (
         hcell(cols[0], "N°"), hcell(cols[1], "EMPRESA"),
@@ -206,15 +214,53 @@ ENTALSENTIDO = ("En tal sentido, se corre el traslado del expediente en original
                 "Técnicas, a fin de continuar con los trámites correspondientes y "
                 "ejecución del ejercicio presupuestal de acuerdo a Ley.")
 
+# Partes con formato mixto (negrita / cursiva / subrayado) como el memo manual
+ACUERDO_CITA1 = ("El requerimiento no incluye exigencias desproporcionadas e "
+                 "innecesarias que limiten la concurrencia o favorezcan a "
+                 "determinado proveedor ni hace referencia a procedencia , "
+                 "fabricante , marca, patente, origen o tipos de producción, ni "
+                 "descripción que oriente la contratación hacía ellos,")
+ACUERDO_CITA2 = (" salvo que la autoridad de la gestión administrativa haya "
+                 "aprobado el correspondiente proceso de compatibilización del "
+                 "requerimiento, conforme a las disposiciones que establezca la "
+                 "DGA mediante directiva”")
+DELO_1 = ("De lo anterior, en caso la cotización no cumpla con los términos de "
+          "referencia y/o Especificaciones Técnicas requeridos, ")
+DELO_3 = (" considerando lo consignado en el Numeral 46.4 del Artículo 46 de la "
+          "LGCP, así como los principios que rigen la contratación pública "
+          "contenidos en el Artículo 5 de la Ley General de las Contrataciones "
+          "Públicas.")
+
+
+def parrafo_acuerdo():
+    return (
+        run("De acuerdo al", sz=14)
+        + run(" Numeral 44.6 del Artículo 44°", sz=14, bold=True)
+        + run(" del Reglamento de la Ley General de Contrataciones públicas, ",
+              sz=14)
+        + run("señala lo siguiente", sz=14, bold=True)
+        + run(": ", sz=14)
+        + run("“", sz=14, italic=True)
+        + run(ACUERDO_CITA1, sz=14, bold=True, italic=True, underline=True)
+        + run(ACUERDO_CITA2, sz=14, bold=True, italic=True)
+    )
+
+
+def parrafo_deloanterior():
+    return (
+        run(DELO_1, sz=14, italic=True)
+        + run("deberá indicar el motivo de manera clara y objetiva",
+              sz=14, bold=True, italic=True)
+        + run(DELO_3, sz=14, italic=True)
+    )
+
 
 def build_body():
     parts = []
-    # Titulo
+    # Titulo (sin numero: se agrega a mano; se deja el espacio subrayado)
     parts.append(para(
-        run("MEMORANDO N° ", font="Cambria", sz=32, bold=True, underline=True)
-        + run("{memoNum}", font="Cambria", sz=32, bold=True, underline=True)
-        + run(" -OL-J- H.N.A.L.-", font="Cambria", sz=32, bold=True,
-              underline=True)
+        run("MEMORANDO N°            -OL-J- H.N.A.L.-", font="Cambria",
+            sz=32, bold=True, underline=True)
         + run("{anio}", font="Cambria", sz=32, bold=True, underline=True),
         jc="center", font="Cambria", sz=32, bold=True))
     # Tabla destinatario
@@ -223,12 +269,12 @@ def build_body():
     # Linea separadora
     parts.append(para("", jc=None, border=True))
     parts.append(blank())
-    # Contexto
+    # Contexto: el objeto y el numero de cotizaciones van en AZUL + negrita
     ctx = (run(CONTEXTO_PRE, sz=16) + run("“", sz=16)
-           + run("{titulo}", sz=16, bold=True) + run("”", sz=16)
+           + run("{titulo}", sz=16, bold=True, color=AZUL) + run("”", sz=16)
            + run(CONTEXTO_MID, sz=16)
-           + run("{cantidad}", sz=16, bold=True)
-           + run(CONTEXTO_MID2, sz=16)
+           + run("{cantidad} cotizaciones", sz=16, bold=True, color=AZUL)
+           + run(" a solicitud de ", sz=16)
            + run("{solicitud}", sz=16)
            + run(CONTEXTO_END, sz=16))
     parts.append(para(ctx, jc="both", sz=16))
@@ -236,27 +282,37 @@ def build_body():
     # Tabla de postores
     parts.append(tabla_postores())
     parts.append(blank())
-    # Parrafos legales
-    for txt in (SOBRE, ACUERDO, ASIMISMO, DELOANTERIOR, ENTALSENTIDO):
-        parts.append(para(run(txt, sz=14), jc="both", sz=14))
-        parts.append(blank())
+    # Parrafos legales (con el formato del memo hecho a mano)
+    parts.append(para(run(SOBRE, sz=16), jc="both", sz=16))
+    parts.append(blank())
+    parts.append(para(parrafo_acuerdo(), jc="both", sz=14))
+    parts.append(blank())
+    parts.append(para(run(ASIMISMO, sz=14, bold=True, italic=True),
+                      jc="both", sz=14))
+    parts.append(blank())
+    parts.append(para(parrafo_deloanterior(), jc="both", sz=14))
+    parts.append(blank())
+    parts.append(para(run(ENTALSENTIDO, sz=14), jc="both", sz=14))
+    parts.append(blank())
     # Atentamente + espacio para sello/firma
     parts.append(para(run("Atentamente,", sz=14), jc="left", sz=14))
     for _ in range(3):
         parts.append(blank())
     # Pie: bloque anclado al fondo de la pagina (framePr compartido). Siempre
-    # sale pegado al pie, sin importar cuanto texto haya arriba.
-    pie = [
-        "EXP. DIR.: {expDir}",
-        "EXP. LOG. {expLog}",
-        "Folios: ( {folios} ) original",
-        "C.c.  Archivo",
-        "Elaborado por: {elaborado}",
-        "{iniciales}",
-    ]
-    for linea in pie:
-        parts.append(cell_para(linea, font="Arial Narrow", sz=20,
-                               frame=FRAME_BOTTOM))
+    # sale pegado al pie. Arial 8pt, etiquetas en negrita (como el manual).
+    def pie_para(runs_xml):
+        return para(runs_xml, jc="left", font="Arial", sz=16,
+                    frame=FRAME_BOTTOM)
+
+    parts.append(pie_para(run("EXP. DIR.: {expDir}", sz=16, bold=True)))
+    parts.append(pie_para(run("EXP. LOG. {expLog}", sz=16, bold=True)))
+    parts.append(pie_para(
+        run("Folios: ", sz=16) + run("( {folios} )", sz=16, bold=True)
+        + run(" original", sz=16)))
+    parts.append(pie_para(run("C.c.  Archivo", sz=16)))
+    parts.append(pie_para(
+        run("Elaborado por: ", sz=16, bold=True) + run("{elaborado}", sz=16)))
+    parts.append(pie_para(run("{iniciales}", sz=16)))
     return "".join(parts)
 
 

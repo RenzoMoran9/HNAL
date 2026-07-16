@@ -273,10 +273,7 @@
 
     <div class="card">
       <h2>1. Encabezado del memorando</h2>
-      <div class="grid2">
-        <div class="field"><label>N° de memorando <span class="hint">(puedes dejarlo en blanco)</span></label><input type="text" id="m-num" placeholder="Ej: 123"></div>
-        <div class="field"><label>Año</label><input type="text" id="m-anio" value="2026"></div>
-      </div>
+      <div class="field" style="max-width:200px"><label>Año</label><input type="text" id="m-anio" value="2026"></div>
       <div class="field"><label>Dirigido a — nombre / cargo</label>
         <input type="text" id="m-dest-nombre" placeholder="Ej: ING. JORGE LUIS TAKAMI OBLITAS">
         <input type="text" id="m-dest-cargo" placeholder="Ej: Jefe de la Oficina de Servicios Generales y Mantenimiento" style="margin-top:8px">
@@ -1014,7 +1011,6 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
   if(filas.length===0){ mostrarErrorMemo('Agrega al menos una empresa.'); return; }
   const esET = val('m-asunto')==='et';
   const datos = {
-    memoNum: val('m-num').trim() || '          ',
     anio: val('m-anio').trim() || '2026',
     destNombre: val('m-dest-nombre').trim(),
     destCargo: val('m-dest-cargo').trim(),
