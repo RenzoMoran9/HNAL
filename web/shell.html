@@ -134,6 +134,10 @@
     background:var(--gris);border:1px solid var(--borde);border-radius:10px;padding:12px;margin-bottom:10px;}
   .memo-fila .num{align-self:center;font-weight:800;color:var(--azul);text-align:center;}
   @media (max-width:640px){.memo-fila{grid-template-columns:1fr;}.memo-fila .num{text-align:left;}}
+  .btn-nota{background:#7a4bd0;color:#fff;border:1px solid #7a4bd0;}
+  .btn-nota:hover{filter:brightness(1.07);}
+  .aviso-nota{background:#f0eafb;border:1px solid #d6c6f2;color:#4a2b86;border-radius:10px;
+    padding:12px 14px;margin-bottom:16px;font-size:.9rem;line-height:1.4;}
 </style>
 </head>
 <body>
@@ -178,6 +182,7 @@
   <button type="button" class="tab-btn active" data-tab="val">📋 Validación de Especificaciones</button>
   <button type="button" class="tab-btn" data-tab="cc">📊 Cuadro Comparativo</button>
   <button type="button" class="tab-btn" data-tab="memo">📝 Memo de Validación</button>
+  <button type="button" class="tab-btn" data-tab="nota">📄 Nota Informativa</button>
 </nav>
 
 <main>
@@ -261,6 +266,7 @@
 
     <div class="barra-final">
       <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Excel</button>
+      <button type="button" class="btn btn-nota" id="btn-emitir-nota">📄 Emitir Nota Informativa</button>
       <div id="msg-cc"></div>
     </div>
   </form>
@@ -319,6 +325,67 @@
     <div class="barra-final">
       <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Memo (Word)</button>
       <div id="msg-memo"></div>
+    </div>
+  </form>
+  </div>
+
+  <!-- ==================== NOTA INFORMATIVA ==================== -->
+  <div id="panel-nota" class="panel oculto">
+  <form id="form-nota">
+    <div class="aviso-nota">📄 Emite la <b>Nota Informativa</b> de solicitud de aprobación de Certificación de Crédito Presupuestario en Word (.docx). Si vienes del cuadro comparativo, la <b>descripción</b> y el <b>monto</b> ya vienen cargados.</div>
+
+    <div class="card">
+      <h2>1. Encabezado</h2>
+      <div class="field" style="max-width:200px"><label>Año</label><input type="text" id="n-anio" value="2026"></div>
+      <div class="field"><label>Dirigido a — nombre / cargo</label>
+        <input type="text" id="n-dest-nombre" placeholder="Ej: M.C. JOSÉ RAÚL CARPIO BARBIERI.">
+        <input type="text" id="n-dest-cargo" placeholder="Ej: Director de la Oficina Ejecutiva de Planeamiento Estratégico." style="margin-top:8px">
+      </div>
+      <div class="field"><label>Remitente — nombre / cargo</label>
+        <input type="text" id="n-rem-nombre" value="LIC. ARTURO C. ROJAS GONZALES">
+        <input type="text" id="n-rem-cargo" value="Jefe de la Oficina de Logística" style="margin-top:8px">
+      </div>
+      <div class="field"><label>Asunto — Solicito Aprobación de Certificación de Crédito Presupuestario N°</label>
+        <input type="text" id="n-asunto-num" placeholder="Ej: 3171"></div>
+      <div class="field"><label>Referencia <span class="hint">(sale en azul)</span></label><input type="text" id="n-ref" placeholder="Ej: NOTA INFORMATIVA N°926-2026-DF-HNAL"></div>
+      <div class="field"><label>Fecha</label><input type="date" id="n-fecha"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Cuadro de crédito presupuestario</h2>
+      <div class="grid2">
+        <div class="field"><label>CCMN</label><input type="text" id="n-ccmn" placeholder="Ej: 4996"></div>
+        <div class="field"><label>CCP SIAF</label><input type="text" id="n-ccpsiaf" placeholder="Ej: 3171"></div>
+      </div>
+      <div class="field"><label>Descripción <span class="hint">— sale del cuadro comparativo</span></label><input type="text" id="n-desc" placeholder="Ej: MICROCUBETA DESCARTABLE PARA HEMOGLOBINOMETRO"></div>
+      <div class="grid3">
+        <div class="field"><label>Meta</label><input type="text" id="n-meta" placeholder="Ej: 0083"></div>
+        <div class="field"><label>Específica de Gasto</label><input type="text" id="n-especifica" placeholder="Ej: 23.18.21"></div>
+        <div class="field"><label>F.F.</label>
+          <select id="n-ff">
+            <option value="DyT 4-13">DyT 4-13</option>
+            <option value="RO 1-00">RO 1-00</option>
+          </select></div>
+      </div>
+      <div class="field" style="max-width:280px"><label>Monto <span class="hint">— sale del cuadro comparativo</span></label><input type="text" id="n-monto" placeholder="Ej: S/ 2,100.00"></div>
+    </div>
+
+    <div class="card">
+      <h2>3. Pie de la nota</h2>
+      <div class="grid3">
+        <div class="field"><label>EXP. DIR.</label><input type="text" id="n-expdir" placeholder="Ej: 09002"></div>
+        <div class="field"><label>EXP. LOG.</label><input type="text" id="n-explog" placeholder="Ej: 6337"></div>
+        <div class="field"><label>Folios</label><input type="text" id="n-folios" placeholder="Ej: 149"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Elaborado por</label><input type="text" id="n-elaborado" placeholder="Ej: Frank Tipte Ruiz"></div>
+        <div class="field"><label>Iniciales <span class="hint">(las del que edita)</span></label><input type="text" id="n-iniciales" placeholder="Ej: RM"></div>
+      </div>
+    </div>
+
+    <div class="barra-final">
+      <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Nota (Word)</button>
+      <div id="msg-nota"></div>
     </div>
   </form>
   </div>
@@ -667,6 +734,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.getElementById('panel-val').classList.toggle('oculto', t!=='val');
     document.getElementById('panel-cc').classList.toggle('oculto', t!=='cc');
     document.getElementById('panel-memo').classList.toggle('oculto', t!=='memo');
+    document.getElementById('panel-nota').classList.toggle('oculto', t!=='nota');
   });
 });
 
@@ -1047,6 +1115,85 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
     a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     msg.className='msg-ok'; msg.textContent='✅ ¡Listo! Se descargó: '+nombre;
   }catch(err){ mostrarErrorMemo(err.message||'Ocurrió un error al generar el memo.'); console.error(err); }
+});
+
+// ====================== NOTA INFORMATIVA ======================
+const TEMPLATE_NOTA_B64 = "__TEMPLATE_NOTA_B64__";
+
+// fecha "Lima, D de MMMM de YYYY" (la nota usa "de", no "del")
+function fechaLimaDe(iso){
+  if(!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return iso;
+  const d = parseInt(m[3],10), mes = MESES[parseInt(m[2],10)-1], y = m[1];
+  return 'Lima, '+d+' de '+mes+' de '+y;
+}
+function montoSoles(n){
+  const num = Number(n);
+  if(!isFinite(num) || num===0) return '';
+  return 'S/ '+num.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// "Emitir Nota Informativa": trae descripción y monto del cuadro comparativo
+document.getElementById('btn-emitir-nota').addEventListener('click',()=>{
+  const v=id=>document.getElementById(id).value;
+  const desc = (v('cc-desc')||'').trim() || (v('cc-denom')||'').trim();
+  document.getElementById('n-desc').value = desc.toUpperCase();
+  // Monto = valor estimado (precio unitario del ganador × cantidad)
+  const g = ccPostores[ccGanador] || ccPostores[0];
+  const pu = g ? Number(String(g.precio_unitario||'').replace(',','.')) : NaN;
+  const cant = Number(String(v('cc-cant')||'').replace(',','.'));
+  if(isFinite(pu) && isFinite(cant) && pu>0 && cant>0){
+    document.getElementById('n-monto').value = montoSoles(pu*cant);
+  }
+  if(!document.getElementById('n-fecha').value){
+    document.getElementById('n-fecha').value = new Date().toISOString().slice(0,10);
+  }
+  document.querySelector('.tab-btn[data-tab="nota"]').click();
+  window.scrollTo(0,0);
+});
+
+function mostrarErrorNota(t){ const m=document.getElementById('msg-nota'); m.className='msg-error'; m.textContent='⚠ '+t; }
+document.getElementById('form-nota').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const msg=document.getElementById('msg-nota'); msg.className=''; msg.textContent='Generando…';
+  const val=id=>document.getElementById(id).value;
+  if(!val('n-desc').trim()){ mostrarErrorNota('Escribe la descripción del bien.'); return; }
+  const datos = {
+    anio: val('n-anio').trim() || '2026',
+    destNombre: val('n-dest-nombre').trim(),
+    destCargo: val('n-dest-cargo').trim(),
+    remNombre: val('n-rem-nombre').trim(),
+    remCargo: val('n-rem-cargo').trim(),
+    asuntoNum: val('n-asunto-num').trim(),
+    referencia: val('n-ref').trim(),
+    fecha: fechaLimaDe(val('n-fecha')),
+    ccmn: val('n-ccmn').trim(),
+    ccpSiaf: val('n-ccpsiaf').trim(),
+    descripcion: val('n-desc').trim(),
+    meta: val('n-meta').trim(),
+    especifica: val('n-especifica').trim(),
+    ff: val('n-ff'),
+    monto: val('n-monto').trim(),
+    expDir: val('n-expdir').trim(),
+    expLog: val('n-explog').trim(),
+    folios: val('n-folios').trim(),
+    elaborado: val('n-elaborado').trim(),
+    iniciales: val('n-iniciales').trim().toUpperCase(),
+  };
+  try{
+    const DT = window.docxtemplater.default || window.docxtemplater;
+    const zip = new window.PizZip(TEMPLATE_NOTA_B64, {base64:true});
+    const doc = new DT(zip, {paragraphLoop:true, linebreaks:true});
+    doc.render(datos);
+    const blob = doc.getZip().generate({type:'blob',
+      mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const baseN = datos.descripcion.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'NOTA';
+    const nombre = 'NOTA_INFORMATIVA_'+baseN+'.docx';
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    msg.className='msg-ok'; msg.textContent='✅ ¡Listo! Se descargó: '+nombre;
+  }catch(err){ mostrarErrorNota(err.message||'Ocurrió un error al generar la nota.'); console.error(err); }
 });
 </script>
 </body>
