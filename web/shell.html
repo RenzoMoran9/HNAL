@@ -71,9 +71,94 @@
   @media (max-width:640px){
     .grid,.grid3{grid-template-columns:1fr;}
   }
+
+  /* ===================== PORTADA 3D ===================== */
+  #landing{position:fixed;inset:0;z-index:1000;overflow:hidden;display:flex;align-items:center;justify-content:center;
+    opacity:1;transition:opacity .55s ease, transform .55s ease;}
+  #landing.lp-out{opacity:0;transform:scale(1.06);pointer-events:none;}
+  .lp-bg{position:absolute;inset:-20%;
+    background:
+      radial-gradient(40% 55% at 18% 22%,#1e5fd0 0%,transparent 60%),
+      radial-gradient(45% 55% at 85% 15%,#0aa2a2 0%,transparent 55%),
+      radial-gradient(60% 60% at 72% 92%,#0b3d91 0%,transparent 60%),
+      linear-gradient(135deg,#071f4d,#0b3d91 55%,#07314f);
+    background-size:200% 200%;animation:lpShift 16s ease-in-out infinite;}
+  @keyframes lpShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  .lp-grid{position:absolute;inset:0;opacity:.14;
+    background-image:linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px);
+    background-size:44px 44px;mask-image:radial-gradient(circle at 50% 45%,#000 30%,transparent 75%);
+    -webkit-mask-image:radial-gradient(circle at 50% 45%,#000 30%,transparent 75%);transform:perspective(500px) rotateX(55deg) translateY(30%);}
+  .lp-orbs span{position:absolute;border-radius:50%;filter:blur(1px);
+    background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.85),rgba(255,255,255,0));animation:lpFloat 9s ease-in-out infinite;}
+  .lp-orbs span:nth-child(1){width:120px;height:120px;left:8%;top:20%;opacity:.5}
+  .lp-orbs span:nth-child(2){width:70px;height:70px;left:83%;top:32%;opacity:.55;animation-delay:1.6s}
+  .lp-orbs span:nth-child(3){width:190px;height:190px;left:68%;top:66%;opacity:.28;animation-delay:3s}
+  .lp-orbs span:nth-child(4){width:48px;height:48px;left:20%;top:74%;opacity:.5;animation-delay:2.2s}
+  @keyframes lpFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-26px)}}
+  .hero-3d{perspective:1200px;width:min(690px,92vw);padding:18px;}
+  .hero-card{position:relative;transform-style:preserve-3d;transition:transform .25s ease;text-align:center;color:#fff;
+    background:rgba(255,255,255,.12);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,.35);border-radius:24px;padding:38px 34px 28px;
+    box-shadow:0 34px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.4);}
+  .hero-emblem{font-size:3.6rem;line-height:1;filter:drop-shadow(0 10px 18px rgba(0,0,0,.45));transform:translateZ(70px);animation:lpFloat 6s ease-in-out infinite;}
+  .hero-kicker{margin-top:8px;font-size:.78rem;letter-spacing:.18em;text-transform:uppercase;color:#c3d7ff;font-weight:700;transform:translateZ(35px);}
+  .hero-title{margin:6px 0 4px;font-size:2.55rem;font-weight:800;letter-spacing:-.5px;transform:translateZ(50px);
+    background:linear-gradient(180deg,#fff,#cfe0ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .hero-sub{margin:0 0 22px;color:#dbe7ff;font-size:1rem;transform:translateZ(28px);}
+  .hero-tiles{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;transform:translateZ(42px);}
+  .f-tile{cursor:pointer;flex:1;min-width:190px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
+    border-radius:16px;padding:16px 14px;color:#fff;display:flex;flex-direction:column;gap:3px;align-items:center;
+    transition:transform .2s,box-shadow .2s,background .2s;}
+  .f-tile .ico{font-size:2rem}
+  .f-tile b{font-size:1rem}
+  .f-tile small{color:#cdddff;font-size:.78rem}
+  .f-tile:hover{background:rgba(255,255,255,.24);transform:translateY(-5px) scale(1.03);box-shadow:0 18px 42px rgba(0,0,0,.4);}
+  .hero-start{margin-top:26px;cursor:pointer;border:none;border-radius:999px;padding:16px 48px;font-size:1.15rem;font-weight:800;color:#0b3d91;
+    background:linear-gradient(180deg,#fff,#dbe7ff);transform:translateZ(60px);
+    box-shadow:0 16px 32px rgba(0,0,0,.4), inset 0 -3px 0 rgba(11,61,145,.25);transition:transform .15s,filter .15s;}
+  .hero-start:hover{filter:brightness(1.06);transform:translateZ(60px) translateY(-2px) scale(1.04);}
+  .hero-start:active{transform:translateZ(60px) scale(.98);}
+  .hero-foot{margin-top:16px;font-size:.78rem;color:#b3caff;transform:translateZ(22px);}
+  .home-btn{position:fixed;left:12px;top:12px;z-index:900;background:#fff;border:1px solid var(--borde);
+    color:var(--azul);border-radius:10px;padding:8px 14px;font-size:.85rem;font-weight:700;cursor:pointer;
+    box-shadow:0 6px 18px rgba(0,0,0,.28);}
+  .home-btn:hover{background:var(--gris);}
+  @media (max-width:520px){.hero-title{font-size:2rem}.hero-card{padding:28px 20px}}
 </style>
 </head>
 <body>
+
+<!-- ==================== PORTADA 3D ==================== -->
+<div id="landing">
+  <div class="lp-bg"></div>
+  <div class="lp-grid"></div>
+  <div class="lp-orbs"><span></span><span></span><span></span><span></span></div>
+  <div class="hero-3d">
+    <div class="hero-card" id="heroCard">
+      <div class="hero-emblem">🏥</div>
+      <div class="hero-kicker">Hospital Nacional Arzobispo Loayza</div>
+      <h1 class="hero-title">Generador de Formatos</h1>
+      <p class="hero-sub">Llena un formulario y descarga el Excel oficial ya completo, con el mismo formato, logo y fórmulas. Todo en tu navegador.</p>
+      <div class="hero-tiles">
+        <div class="f-tile" data-go="val">
+          <span class="ico">📋</span>
+          <b>Validación de EE.TT.</b>
+          <small>Bienes y servicios · postores e ítems</small>
+        </div>
+        <div class="f-tile" data-go="cc">
+          <span class="ico">📊</span>
+          <b>Cuadro Comparativo</b>
+          <small>Indagación de mercado · hasta 4 postores</small>
+        </div>
+      </div>
+      <button type="button" class="hero-start" id="btnIniciar">🚀 Iniciar</button>
+      <div class="hero-foot">Área de Logística · Contrataciones Públicas</div>
+    </div>
+  </div>
+</div>
+
+<button type="button" class="home-btn" id="btnInicio" style="display:none">‹ Inicio</button>
+
 <header>
   <h1>Generador de Formatos — HNAL</h1>
   <p>Llena los datos y descarga el Excel ya completo — con el mismo formato y logo. Todo funciona en tu navegador.</p>
@@ -511,6 +596,44 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.getElementById('panel-cc').classList.toggle('oculto', t!=='cc');
   });
 });
+
+// ====================== PORTADA 3D ======================
+const landing = document.getElementById('landing');
+const btnInicio = document.getElementById('btnInicio');
+const heroCard = document.getElementById('heroCard');
+
+function entrar(tab){
+  if(tab){ const b=document.querySelector('.tab-btn[data-tab="'+tab+'"]'); if(b) b.click(); }
+  landing.classList.add('lp-out');
+  btnInicio.style.display='';
+  setTimeout(()=>{ landing.style.display='none'; }, 560);
+  window.scrollTo(0,0);
+}
+function volverInicio(){
+  landing.style.display='';
+  // reflow para reactivar la transición de salida->entrada
+  void landing.offsetWidth;
+  landing.classList.remove('lp-out');
+  btnInicio.style.display='none';
+  window.scrollTo(0,0);
+}
+
+document.getElementById('btnIniciar').addEventListener('click', ()=> entrar('val'));
+document.querySelectorAll('.f-tile').forEach(t=>{
+  t.addEventListener('click', ()=> entrar(t.dataset.go));
+});
+btnInicio.addEventListener('click', volverInicio);
+
+// Inclinación 3D con el mouse (parallax)
+landing.addEventListener('mousemove', (e)=>{
+  if(landing.classList.contains('lp-out')) return;
+  const r = heroCard.getBoundingClientRect();
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  const rx = ((e.clientY - cy) / r.height) * -10;
+  const ry = ((e.clientX - cx) / r.width) * 10;
+  heroCard.style.transform = 'rotateX('+rx.toFixed(2)+'deg) rotateY('+ry.toFixed(2)+'deg)';
+});
+landing.addEventListener('mouseleave', ()=>{ heroCard.style.transform=''; });
 
 // ====================== CUADRO COMPARATIVO ======================
 const TEMPLATE_CC_B64 = "__TEMPLATE_CC_B64__";
