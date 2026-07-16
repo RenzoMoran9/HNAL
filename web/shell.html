@@ -106,6 +106,48 @@
   .nota-sino{background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:10px 14px;font-size:.85rem;margin-top:12px;}
   #msg{text-align:center;margin-top:16px;font-weight:600;min-height:22px;}
   .msg-error{color:var(--rojo);} .msg-ok{color:var(--verde);}
+
+  /* Campo con error (validación) */
+  .campo-error{border-color:var(--rojo)!important;background:#fff5f4;}
+  .campo-error:focus{outline-color:var(--rojo);}
+
+  /* Barra de borrador (autoguardado) */
+  .draft-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:#fff8e1;border:1px solid #ffe08a;border-radius:10px;
+    padding:11px 16px;margin:18px 26px 0;font-size:.9rem;}
+  .draft-bar .db-txt{flex:1;min-width:180px;color:#7a5b00;}
+  .draft-bar button{border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:.85rem;cursor:pointer;}
+  .db-si{background:var(--azul);color:#fff;} .db-no{background:#eef1f8;color:var(--azul);border:1px solid var(--borde);}
+  @media (max-width:820px){.draft-bar{margin:14px 16px 0;}}
+
+  /* Selector de destinatarios guardados */
+  .dest-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+  .dest-row select{flex:1;min-width:160px;}
+  .btn-mini{border:1px solid var(--borde);background:#eef1f8;color:var(--azul);border-radius:8px;
+    padding:8px 12px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .btn-mini:hover{background:#e0e6f5;}
+  .btn-mini.danger{background:#fde8e6;color:var(--rojo);border-color:#f5c6c1;}
+
+  /* Modal de vista previa */
+  .pv-overlay{position:fixed;inset:0;z-index:1200;background:rgba(8,20,45,.55);
+    display:none;align-items:center;justify-content:center;padding:20px;}
+  .pv-overlay.open{display:flex;}
+  .pv-card{background:#fff;border-radius:14px;width:min(680px,96vw);max-height:90vh;display:flex;flex-direction:column;
+    box-shadow:0 30px 80px rgba(0,0,0,.4);overflow:hidden;}
+  .pv-head{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;
+    background:var(--azul);color:#fff;}
+  .pv-head h3{margin:0;font-size:1.1rem;}
+  .pv-head button{background:transparent;border:none;color:#fff;font-size:1.3rem;cursor:pointer;line-height:1;}
+  .pv-body{padding:18px 22px;overflow-y:auto;}
+  .pv-note{color:#6b7280;font-size:.85rem;margin:0 0 14px;}
+  .pv-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0 0 8px;font-size:.9rem;}
+  .pv-dl dt{font-weight:700;color:var(--azul);}
+  .pv-dl dd{margin:0;word-break:break-word;}
+  .pv-sub{font-weight:700;color:var(--azul);margin:16px 0 8px;font-size:.92rem;border-top:1px solid var(--gris);padding-top:12px;}
+  .pv-tab{width:100%;border-collapse:collapse;font-size:.84rem;}
+  .pv-tab th,.pv-tab td{border:1px solid var(--borde);padding:5px 8px;text-align:left;}
+  .pv-tab th{background:var(--gris);color:var(--azul);}
+  .pv-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--borde);flex-wrap:wrap;}
   @media (max-width:640px){
     .grid,.grid3{grid-template-columns:1fr;}
   }
@@ -246,9 +288,15 @@
       <span class="tb-flow" id="tb-flow">Flujo 1</span>
     </header>
 
+    <div class="draft-bar" id="draftBar" style="display:none">
+      <span class="db-txt">💾 Tienes un borrador sin terminar guardado en este navegador.</span>
+      <button type="button" class="db-si" id="draftRestore">Retomar</button>
+      <button type="button" class="db-no" id="draftDiscard">Empezar de cero</button>
+    </div>
+
 <main>
   <div id="panel-val" class="panel">
-  <form id="form">
+  <form id="form" novalidate>
     <div class="card">
       <h2>1. Tipo y datos generales</h2>
       <div class="field">
@@ -286,7 +334,7 @@
   </div>
 
   <div id="panel-cc" class="panel oculto">
-  <form id="form-cc">
+  <form id="form-cc" novalidate>
     <div class="card">
       <h2>1. Datos generales</h2>
       <div class="field"><label>Documento de solicitud</label><input type="text" id="cc-doc" placeholder="Ej: NOTA INFORMATIVA N°1096-DF-HNAL-2026"></div>
@@ -335,13 +383,18 @@
 
   <!-- ==================== MEMO DE VALIDACIÓN ==================== -->
   <div id="panel-memo" class="panel oculto">
-  <form id="form-memo">
+  <form id="form-memo" novalidate>
     <div class="aviso-memo">📝 Emite el <b>Memorando de solicitud de revisión</b> en Word (.docx), con el logo y la estructura oficial. Si vienes del cuadro de validación, los <b>postores</b> y el <b>objeto</b> ya vienen cargados — solo completa el resto.</div>
 
     <div class="card">
       <h2>1. Encabezado del memorando</h2>
       <div class="field" style="max-width:200px"><label>Año</label><input type="text" id="m-anio" value="2026"></div>
       <div class="field"><label>Dirigido a — nombre / cargo</label>
+        <div class="dest-row">
+          <select class="dest-select" data-target="m"><option value="">— Elegir destinatario guardado —</option></select>
+          <button type="button" class="btn-mini dest-save" data-target="m">＋ Guardar</button>
+          <button type="button" class="btn-mini danger dest-del" data-target="m" title="Quitar de la lista">🗑</button>
+        </div>
         <input type="text" id="m-dest-nombre" placeholder="Ej: ING. JORGE LUIS TAKAMI OBLITAS">
         <input type="text" id="m-dest-cargo" placeholder="Ej: Jefe de la Oficina de Servicios Generales y Mantenimiento" style="margin-top:8px">
       </div>
@@ -392,13 +445,18 @@
 
   <!-- ==================== NOTA INFORMATIVA ==================== -->
   <div id="panel-nota" class="panel oculto">
-  <form id="form-nota">
+  <form id="form-nota" novalidate>
     <div class="aviso-nota">📄 Emite la <b>Nota Informativa</b> de solicitud de aprobación de Certificación de Crédito Presupuestario en Word (.docx). Si vienes del cuadro comparativo, la <b>descripción</b> y el <b>monto</b> ya vienen cargados.</div>
 
     <div class="card">
       <h2>1. Encabezado</h2>
       <div class="field" style="max-width:200px"><label>Año</label><input type="text" id="n-anio" value="2026"></div>
       <div class="field"><label>Dirigido a — nombre / cargo</label>
+        <div class="dest-row">
+          <select class="dest-select" data-target="n"><option value="">— Elegir destinatario guardado —</option></select>
+          <button type="button" class="btn-mini dest-save" data-target="n">＋ Guardar</button>
+          <button type="button" class="btn-mini danger dest-del" data-target="n" title="Quitar de la lista">🗑</button>
+        </div>
         <input type="text" id="n-dest-nombre" placeholder="Ej: M.C. JOSÉ RAÚL CARPIO BARBIERI.">
         <input type="text" id="n-dest-cargo" placeholder="Ej: Director de la Oficina Ejecutiva de Planeamiento Estratégico." style="margin-top:8px">
       </div>
@@ -453,6 +511,21 @@
 </main>
   </div><!-- /content -->
 </div><!-- /app -->
+
+<!-- Modal: vista previa antes de descargar -->
+<div class="pv-overlay" id="preview">
+  <div class="pv-card">
+    <div class="pv-head">
+      <h3 id="pv-title">Revisa antes de descargar</h3>
+      <button type="button" id="pv-close" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="pv-body" id="pv-body"></div>
+    <div class="pv-foot">
+      <button type="button" class="btn btn-sec" id="pv-cancel">← Volver a editar</button>
+      <button type="button" class="btn btn-azul" id="pv-ok">⬇ Confirmar y descargar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Librería ExcelJS (incrustada, no requiere internet) -->
 <script>/*__EXCELJS__*/</script>
@@ -750,43 +823,41 @@ function nombreArchivo(adq){
 }
 function mostrarError(t){ const m=document.getElementById('msg'); m.className='msg-error'; m.textContent='⚠ '+t; }
 
-document.getElementById('form').addEventListener('submit', async (e)=>{
+document.getElementById('form').addEventListener('submit', (e)=>{
   e.preventDefault();
-  const msg = document.getElementById('msg');
-  msg.className=''; msg.textContent='Generando…';
+  const msg = document.getElementById('msg'); msg.className=''; msg.textContent='';
+  if(!validarReq(['adquisicion'])){ mostrarError('Completa los campos marcados en rojo.'); return; }
 
   const adquisicion = document.getElementById('adquisicion').value;
   const postValid = postores.filter(p=> p.nombre.trim()!=='');
   const itemsValid = items.filter(it=> it.denom.trim()!=='' || it.codigo.trim()!=='' || String(it.cantidad).trim()!=='');
-
-  if (!adquisicion.trim()){ mostrarError('Escribe qué se valida (adquisición / servicio).'); return; }
   if (postValid.length===0){ mostrarError('Agrega al menos un postor con nombre.'); return; }
   if (itemsValid.length===0){ mostrarError('Agrega al menos un bien/servicio con datos.'); return; }
 
   const datos = {
-    tipo,
-    adquisicion,
+    tipo, adquisicion,
     postores: postores.map(p=>({nombre:p.nombre})),
     items: items.map(it=>({
       codigo_siga: it.codigo, denominacion: it.denom, unidad: it.unidad,
       cantidad: it.cantidad, marcas: it.marcas.slice(),
     })),
   };
+  const resumen = pvDL([
+    ['Tipo', tipo==='servicio'?'Servicio (Término de Referencia)':'Bien (Adquisición)'],
+    ['Objeto', adquisicion],
+    ['Postores', postValid.map(p=>p.nombre).join(' · ')],
+  ]) + '<div class="pv-sub">Bienes / servicios</div>' + pvTabla(
+    ['#','Código SIGA','Denominación','Und','Cant'],
+    itemsValid.map((it,i)=>[i+1, it.codigo, it.denom, it.unidad, it.cantidad]));
 
-  try{
-    const buffer = await generarValidacion(datos);
-    const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const nombre = nombreArchivo(adquisicion);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download=nombre;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    msg.className='msg-ok'; msg.textContent='✅ ¡Listo! Se descargó: '+nombre;
-  }catch(err){
-    mostrarError(err.message || 'Ocurrió un error al generar.');
-    console.error(err);
-  }
+  abrirPreview('Cuadro de Validación', resumen, async ()=>{
+    msg.className=''; msg.textContent='Generando…';
+    try{
+      const buffer = await generarValidacion(datos);
+      const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      descargarBlob(blob, nombreArchivo(adquisicion), msg);
+    }catch(err){ mostrarError(err.message || 'Ocurrió un error al generar.'); console.error(err); }
+  });
 });
 
 // ====================== NAVEGACIÓN (barra lateral) ======================
@@ -828,6 +899,7 @@ function entrar(tab){
   landing.classList.add('lp-out');
   setTimeout(()=>{ landing.style.display='none'; }, 560);
   window.scrollTo(0,0);
+  if(typeof revisarDraft==='function') revisarDraft();
 }
 function volverInicio(){
   landing.style.display='';
@@ -1046,12 +1118,12 @@ document.getElementById('cc-agregar').addEventListener('click',()=>{ if(ccPostor
 renderCC();
 
 function mostrarErrorCC(t){ const m=document.getElementById('msg-cc'); m.className='msg-error'; m.textContent='⚠ '+t; }
-document.getElementById('form-cc').addEventListener('submit', async(e)=>{
+document.getElementById('form-cc').addEventListener('submit', (e)=>{
   e.preventDefault();
-  const msg=document.getElementById('msg-cc'); msg.className=''; msg.textContent='Generando…';
+  const msg=document.getElementById('msg-cc'); msg.className=''; msg.textContent='';
   const val=id=>document.getElementById(id).value;
+  if(!validarReq(['cc-denom'])){ mostrarErrorCC('Completa los campos marcados en rojo.'); return; }
   const postores=ccPostores.filter(p=>(p.nombre||'').trim()!=='');
-  if(!val('cc-denom').trim()){ mostrarErrorCC('Escribe la adquisición (ADQ. DE).'); return; }
   if(postores.length===0){ mostrarErrorCC('Agrega al menos un postor con nombre.'); return; }
   const datos={
     documento_solicitud:val('cc-doc'), area_usuaria:val('cc-area'), denominacion:val('cc-denom'),
@@ -1060,15 +1132,26 @@ document.getElementById('form-cc').addEventListener('submit', async(e)=>{
     punto1:val('cc-p1'), punto2:val('cc-p2'), punto3:val('cc-p3'),
     especialista:val('cc-esp'), cargo:val('cc-cargo'), fecha:val('cc-fecha'),
   };
-  try{
-    const buffer=await generarCuadroComparativo(datos);
-    const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const baseN=val('cc-denom').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'CUADRO';
-    const nombre='CUADRO_COMPARATIVO_'+baseN+'.xlsx';
-    const url=URL.createObjectURL(blob); const a=document.createElement('a');
-    a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    msg.className='msg-ok'; msg.textContent='✅ ¡Listo! Se descargó: '+nombre;
-  }catch(err){ mostrarErrorCC(err.message||'Ocurrió un error al generar.'); console.error(err); }
+  const gName=(ccPostores[ccGanador]||{}).nombre||'—';
+  const resumen = pvDL([
+    ['Adquisición', val('cc-denom')],
+    ['Área usuaria', val('cc-area')],
+    ['Descripción', val('cc-desc')],
+    ['Cantidad', val('cc-cant')],
+    ['Ganador (Valor Estimado)', gName],
+  ]) + '<div class="pv-sub">Postores</div>' + pvTabla(
+    ['#','Postor','P. unitario','Marca'],
+    postores.map((p,i)=>[i+1, p.nombre, p.precio_unitario, p.marca]));
+
+  abrirPreview('Cuadro Comparativo', resumen, async ()=>{
+    msg.className=''; msg.textContent='Generando…';
+    try{
+      const buffer=await generarCuadroComparativo(datos);
+      const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      const baseN=val('cc-denom').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'CUADRO';
+      descargarBlob(blob, 'CUADRO_COMPARATIVO_'+baseN+'.xlsx', msg);
+    }catch(err){ mostrarErrorCC(err.message||'Ocurrió un error al generar.'); console.error(err); }
+  });
 });
 
 // ====================== MEMO DE VALIDACIÓN ======================
@@ -1150,10 +1233,10 @@ document.getElementById('btn-emitir-memo').addEventListener('click',()=>{
 function mostrarErrorMemo(t){ const m=document.getElementById('msg-memo'); m.className='msg-error'; m.textContent='⚠ '+t; }
 document.getElementById('form-memo').addEventListener('submit',(e)=>{
   e.preventDefault();
-  const msg=document.getElementById('msg-memo'); msg.className=''; msg.textContent='Generando…';
+  const msg=document.getElementById('msg-memo'); msg.className=''; msg.textContent='';
   const val=id=>document.getElementById(id).value;
+  if(!validarReq(['m-dest-nombre','m-titulo','m-ref','m-fecha'])){ mostrarErrorMemo('Completa los campos marcados en rojo.'); return; }
   const filas = memoFilas.filter(f=>(f.empresa||'').trim()!=='');
-  if(!val('m-titulo').trim()){ mostrarErrorMemo('Escribe el objeto de la contratación.'); return; }
   if(filas.length===0){ mostrarErrorMemo('Agrega al menos una empresa.'); return; }
   const esET = val('m-asunto')==='et';
   const datos = {
@@ -1180,19 +1263,33 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
     elaborado: val('m-elaborado').trim(),
     iniciales: val('m-iniciales').trim().toUpperCase(),
   };
-  try{
-    const DT = window.docxtemplater.default || window.docxtemplater;
-    const zip = new window.PizZip(TEMPLATE_MEMO_B64, {base64:true});
-    const doc = new DT(zip, {paragraphLoop:true, linebreaks:true});
-    doc.render(datos);
-    const blob = doc.getZip().generate({type:'blob',
-      mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    const baseN = datos.titulo.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'MEMO';
-    const nombre = 'MEMO_'+baseN+'.docx';
-    const url=URL.createObjectURL(blob); const a=document.createElement('a');
-    a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    msg.className='msg-ok'; msg.textContent='✅ ¡Listo! Se descargó: '+nombre;
-  }catch(err){ mostrarErrorMemo(err.message||'Ocurrió un error al generar el memo.'); console.error(err); }
+  const rucMal = filas.some(f=>f.ruc && !/^\d{11}$/.test(f.ruc.trim()));
+  const aviso = rucMal ? '<p class="pv-note" style="color:#c0392b">⚠ Revisa los RUC: deben tener 11 dígitos.</p>' : '';
+  const resumen = aviso + pvDL([
+    ['Dirigido a', val('m-dest-nombre')+(val('m-dest-cargo')?' — '+val('m-dest-cargo'):'')],
+    ['Asunto', 'Cumplimiento de '+(esET?'Especificaciones Técnicas.':'Términos de Referencia.')],
+    ['Referencia', val('m-ref')],
+    ['Fecha', datos.fecha],
+    ['Objeto', val('m-titulo')],
+    ['Cotizaciones', datos.cantidad],
+    ['Elaborado por', val('m-elaborado')+(val('m-iniciales')?' ('+val('m-iniciales').toUpperCase()+')':'')],
+  ]) + '<div class="pv-sub">Empresas</div>' + pvTabla(
+    ['#','Empresa','RUC','Observación'],
+    filas.map((f,i)=>[('0'+(i+1)).slice(-2), f.empresa, f.ruc, f.obs]));
+
+  abrirPreview('Memo de Validación', resumen, ()=>{
+    msg.className=''; msg.textContent='Generando…';
+    try{
+      const DT = window.docxtemplater.default || window.docxtemplater;
+      const zip = new window.PizZip(TEMPLATE_MEMO_B64, {base64:true});
+      const doc = new DT(zip, {paragraphLoop:true, linebreaks:true});
+      doc.render(datos);
+      const blob = doc.getZip().generate({type:'blob',
+        mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+      const baseN = datos.titulo.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'MEMO';
+      descargarBlob(blob, 'MEMO_'+baseN+'.docx', msg);
+    }catch(err){ mostrarErrorMemo(err.message||'Ocurrió un error al generar el memo.'); console.error(err); }
+  });
 });
 
 // ====================== NOTA INFORMATIVA ======================
@@ -1234,9 +1331,9 @@ document.getElementById('btn-emitir-nota').addEventListener('click',()=>{
 function mostrarErrorNota(t){ const m=document.getElementById('msg-nota'); m.className='msg-error'; m.textContent='⚠ '+t; }
 document.getElementById('form-nota').addEventListener('submit',(e)=>{
   e.preventDefault();
-  const msg=document.getElementById('msg-nota'); msg.className=''; msg.textContent='Generando…';
+  const msg=document.getElementById('msg-nota'); msg.className=''; msg.textContent='';
   const val=id=>document.getElementById(id).value;
-  if(!val('n-desc').trim()){ mostrarErrorNota('Escribe la descripción del bien.'); return; }
+  if(!validarReq(['n-dest-nombre','n-desc','n-ref','n-monto','n-fecha'])){ mostrarErrorNota('Completa los campos marcados en rojo.'); return; }
   const datos = {
     anio: val('n-anio').trim() || '2026',
     destNombre: val('n-dest-nombre').trim(),
@@ -1259,19 +1356,183 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
     elaborado: val('n-elaborado').trim(),
     iniciales: val('n-iniciales').trim().toUpperCase(),
   };
+  const resumen = pvDL([
+    ['Dirigido a', val('n-dest-nombre')+(val('n-dest-cargo')?' — '+val('n-dest-cargo'):'')],
+    ['Asunto (N° Certificación)', 'N°'+val('n-asunto-num')],
+    ['Referencia', val('n-ref')],
+    ['Fecha', datos.fecha],
+  ]) + '<div class="pv-sub">Crédito presupuestario</div>' + pvTabla(
+    ['CCMN','CCP SIAF','Descripción','Meta','Específica','F.F.','Monto'],
+    [[val('n-ccmn'), val('n-ccpsiaf'), val('n-desc'), val('n-meta'), val('n-especifica'), val('n-ff'), val('n-monto')]]);
+
+  abrirPreview('Nota Informativa', resumen, ()=>{
+    msg.className=''; msg.textContent='Generando…';
+    try{
+      const DT = window.docxtemplater.default || window.docxtemplater;
+      const zip = new window.PizZip(TEMPLATE_NOTA_B64, {base64:true});
+      const doc = new DT(zip, {paragraphLoop:true, linebreaks:true});
+      doc.render(datos);
+      const blob = doc.getZip().generate({type:'blob',
+        mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+      const baseN = datos.descripcion.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'NOTA';
+      descargarBlob(blob, 'NOTA_INFORMATIVA_'+baseN+'.docx', msg);
+    }catch(err){ mostrarErrorNota(err.message||'Ocurrió un error al generar la nota.'); console.error(err); }
+  });
+});
+
+// ====================== UTILIDADES (previa, validación, descarga) ======================
+function escH(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function pvDL(rows){
+  return '<dl class="pv-dl">'+rows.filter(Boolean).map(r=>'<dt>'+escH(r[0])+'</dt><dd>'+escH((r[1]==null||r[1]==='')?'—':r[1])+'</dd>').join('')+'</dl>';
+}
+function pvTabla(headers, rows){
+  return '<table class="pv-tab"><thead><tr>'+headers.map(h=>'<th>'+escH(h)+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+escH(c==null?'':c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+}
+function descargarBlob(blob, nombre, msgEl){
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  if(msgEl){ msgEl.className='msg-ok'; msgEl.textContent='✅ ¡Listo! Se descargó: '+nombre; }
+}
+function validarReq(ids){
+  let firstBad=null;
+  ids.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    const bad=!el.value.trim();
+    el.classList.toggle('campo-error', bad);
+    if(bad && !firstBad) firstBad=el;
+  });
+  if(firstBad){ firstBad.scrollIntoView({behavior:'smooth',block:'center'}); try{firstBad.focus();}catch(e){} }
+  return !firstBad;
+}
+
+// ----- Modal de vista previa -----
+let pvAction=null;
+function abrirPreview(titulo, html, onConfirm){
+  document.getElementById('pv-title').textContent=titulo;
+  document.getElementById('pv-body').innerHTML=
+    '<p class="pv-note">Revisa que los datos estén correctos antes de descargar. Si algo está mal, vuelve a editar.</p>'+html;
+  pvAction=onConfirm;
+  document.getElementById('preview').classList.add('open');
+}
+function cerrarPreview(){ document.getElementById('preview').classList.remove('open'); pvAction=null; }
+document.getElementById('pv-close').addEventListener('click', cerrarPreview);
+document.getElementById('pv-cancel').addEventListener('click', cerrarPreview);
+document.getElementById('pv-ok').addEventListener('click', ()=>{ const a=pvAction; cerrarPreview(); if(a) a(); });
+document.getElementById('preview').addEventListener('click', (e)=>{ if(e.target.id==='preview') cerrarPreview(); });
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') cerrarPreview(); });
+
+// ====================== DESTINATARIOS FRECUENTES ======================
+let destinatarios=[];
+try{ destinatarios=JSON.parse(localStorage.getItem('hnal_destinatarios')||'[]')||[]; }catch(e){ destinatarios=[]; }
+const DEST_MAP={ m:{nombre:'m-dest-nombre',cargo:'m-dest-cargo'}, n:{nombre:'n-dest-nombre',cargo:'n-dest-cargo'} };
+function guardarDest(){ try{ localStorage.setItem('hnal_destinatarios', JSON.stringify(destinatarios)); }catch(e){} }
+function renderDestSelects(){
+  document.querySelectorAll('.dest-select').forEach(sel=>{
+    sel.innerHTML='<option value="">— Elegir destinatario guardado —</option>'+
+      destinatarios.map((d,i)=>'<option value="'+i+'">'+escH(d.nombre)+(d.cargo?' — '+escH(d.cargo):'')+'</option>').join('');
+  });
+}
+document.querySelectorAll('.dest-select').forEach(sel=>{
+  sel.addEventListener('change',()=>{
+    if(sel.value==='') return;
+    const d=destinatarios[+sel.value]; if(!d) return;
+    const map=DEST_MAP[sel.dataset.target];
+    const en=document.getElementById(map.nombre), ec=document.getElementById(map.cargo);
+    en.value=d.nombre; ec.value=d.cargo||'';
+    en.classList.remove('campo-error');
+    scheduleSave();
+  });
+});
+document.querySelectorAll('.dest-save').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const map=DEST_MAP[btn.dataset.target];
+    const nombre=document.getElementById(map.nombre).value.trim();
+    const cargo=document.getElementById(map.cargo).value.trim();
+    if(!nombre){ alert('Escribe primero el nombre del destinatario para guardarlo.'); return; }
+    if(!destinatarios.some(d=>d.nombre===nombre && d.cargo===cargo)){
+      destinatarios.push({nombre,cargo}); guardarDest(); renderDestSelects();
+    }
+    btn.textContent='✓ Guardado'; setTimeout(()=>{ btn.textContent='＋ Guardar'; }, 1200);
+  });
+});
+document.querySelectorAll('.dest-del').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const sel=document.querySelector('.dest-select[data-target="'+btn.dataset.target+'"]');
+    if(!sel || sel.value===''){ alert('Elige primero un destinatario guardado de la lista para quitarlo.'); return; }
+    destinatarios.splice(+sel.value,1); guardarDest(); renderDestSelects();
+  });
+});
+renderDestSelects();
+
+// ====================== AUTOGUARDADO (borrador) ======================
+let saveReady=false, pendingDraft=null, draftMostrado=false, saveTimer=null;
+function snapshot(){
+  const inputs={};
+  document.querySelectorAll('#app input[id], #app select[id], #app textarea[id]').forEach(el=>{ inputs[el.id]=el.value; });
+  return { v:2, ts:Date.now(), tipo, postores, items, ccPostores, ccGanador, memoFilas, inputs };
+}
+function guardarYa(){ if(!saveReady) return; try{ localStorage.setItem('hnal_borrador', JSON.stringify(snapshot())); }catch(e){} }
+function scheduleSave(){ if(!saveReady) return; clearTimeout(saveTimer); saveTimer=setTimeout(guardarYa, 500); }
+function restore(d){
   try{
-    const DT = window.docxtemplater.default || window.docxtemplater;
-    const zip = new window.PizZip(TEMPLATE_NOTA_B64, {base64:true});
-    const doc = new DT(zip, {paragraphLoop:true, linebreaks:true});
-    doc.render(datos);
-    const blob = doc.getZip().generate({type:'blob',
-      mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    const baseN = datos.descripcion.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'NOTA';
-    const nombre = 'NOTA_INFORMATIVA_'+baseN+'.docx';
-    const url=URL.createObjectURL(blob); const a=document.createElement('a');
-    a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    msg.className='msg-ok'; msg.textContent='✅ ¡Listo! Se descargó: '+nombre;
-  }catch(err){ mostrarErrorNota(err.message||'Ocurrió un error al generar la nota.'); console.error(err); }
+    if(d.tipo){ tipo=d.tipo; const r=document.querySelector('input[name=tipo][value="'+tipo+'"]'); if(r){ r.checked=true; r.dispatchEvent(new Event('change')); } }
+    if(Array.isArray(d.postores)&&d.postores.length) postores=d.postores.map(p=>({nombre:p.nombre||''}));
+    if(Array.isArray(d.items)&&d.items.length) items=d.items.map(it=>({codigo:it.codigo||'',denom:it.denom||'',unidad:it.unidad||'UND',cantidad:it.cantidad||'',marcas:(it.marcas||[]).slice()}));
+    items.forEach(it=>{ while(it.marcas.length<postores.length) it.marcas.push(''); it.marcas.length=postores.length; });
+    if(Array.isArray(d.ccPostores)&&d.ccPostores.length) ccPostores=d.ccPostores.map(p=>Object.assign(nuevoPostorCC(),p));
+    if(typeof d.ccGanador==='number') ccGanador=Math.min(Math.max(d.ccGanador,0),ccPostores.length-1);
+    if(Array.isArray(d.memoFilas)&&d.memoFilas.length) memoFilas=d.memoFilas.map(f=>({empresa:f.empresa||'',ruc:f.ruc||'',obs:f.obs||'NINGUNA OBSERVACION'}));
+    renderPostores(); renderItems(); renderCC(); renderMemoFilas();
+    if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(el) el.value=d.inputs[id]; }); }
+  }catch(e){ console.error('restore', e); }
+}
+function draftTieneContenido(d){
+  if(!d) return false;
+  if(d.inputs){ for(const k in d.inputs){ if(String(d.inputs[k]||'').trim()) return true; } }
+  if((d.postores||[]).some(p=>(p.nombre||'').trim())) return true;
+  if((d.ccPostores||[]).some(p=>(p.nombre||'').trim())) return true;
+  if((d.memoFilas||[]).some(f=>(f.empresa||'').trim())) return true;
+  if((d.items||[]).some(it=>((it.denom||'')+(it.codigo||'')+(it.cantidad||'')).trim())) return true;
+  return false;
+}
+function revisarDraft(){
+  if(saveReady || draftMostrado) return;
+  if(pendingDraft && draftTieneContenido(pendingDraft)){
+    document.getElementById('draftBar').style.display=''; draftMostrado=true;
+  } else { pendingDraft=null; saveReady=true; }
+}
+function descartarDraftSilencio(){ pendingDraft=null; saveReady=true; const b=document.getElementById('draftBar'); if(b) b.style.display='none'; }
+try{ pendingDraft=JSON.parse(localStorage.getItem('hnal_borrador')||'null'); }catch(e){ pendingDraft=null; }
+if(!draftTieneContenido(pendingDraft)){ pendingDraft=null; saveReady=true; }
+
+document.getElementById('draftRestore').addEventListener('click', ()=>{
+  if(pendingDraft) restore(pendingDraft);
+  pendingDraft=null; saveReady=true; draftMostrado=true;
+  document.getElementById('draftBar').style.display='none';
+  guardarYa();
+});
+document.getElementById('draftDiscard').addEventListener('click', ()=>{
+  pendingDraft=null; saveReady=true; draftMostrado=true;
+  try{ localStorage.removeItem('hnal_borrador'); }catch(e){}
+  document.getElementById('draftBar').style.display='none';
+});
+
+document.addEventListener('input', (e)=>{
+  if(e.target && e.target.classList) e.target.classList.remove('campo-error');
+  if(e.target && e.target.closest && e.target.closest('#app')){
+    if(!saveReady) descartarDraftSilencio();
+    scheduleSave();
+  }
+});
+document.addEventListener('change', (e)=>{
+  if(e.target && e.target.closest && e.target.closest('#app')){
+    if(!saveReady) descartarDraftSilencio();
+    scheduleSave();
+  }
+});
+document.addEventListener('click', (e)=>{
+  if(saveReady && e.target && e.target.closest && e.target.closest('#app') && e.target.closest('button')) scheduleSave();
 });
 </script>
 </body>
