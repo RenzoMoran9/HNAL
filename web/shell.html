@@ -632,8 +632,8 @@ async function generarCuadroComparativo(datos){
   cF.style=JSON.parse(JSON.stringify(cF.style||{}));
   cF.value={richText:[
     {font:{size:22,name:'Calibri'},text:'_______________________________\n'},
-    {font:{size:22,bold:true,name:'Calibri'},text:(nomEsp||' ')+'\n'},
-    {font:{size:20,name:'Calibri'},text:cargo},
+    {font:{size:26,bold:true,name:'Calibri'},text:(nomEsp||' ')+'\n'},
+    {font:{size:22,name:'Calibri'},text:cargo},
   ]};
   cF.alignment={horizontal:'center',vertical:'center',wrapText:true};
 
