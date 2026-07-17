@@ -1081,20 +1081,21 @@ async function generarCuadroComparativo(datos){
     const medida=(String(it.medida||'UNIDAD').trim().toUpperCase())||'UNIDAD';
     setv(r,3,medida); setv(r,4,medida);
     setv(r,5,ccNum(it.cantidad));
-    // decimales que escribio el usuario en este item (para que salga igualito)
+    // Precio UNITARIO: sale con los decimales tal cual los ingresa el usuario.
+    // Precio TOTAL y Valor estimado: salen normal (2 decimales).
     let dec=2; for(let i=0;i<N;i++) dec=Math.max(dec, ccDec((it.precios||[])[i]));
-    const fmt=ccMontoFmt(dec);
+    const fmtUnit=ccMontoFmt(dec), fmtTot=ccMontoFmt(2);
     for(let i=0;i<4;i++){ const b=baseCol(i);
       if(i<N){
         setv(r,b,ccNum((it.precios||[])[i])); setv(r,b+1,{formula:'E'+r+'*'+colLetter(b)+r}); setv(r,b+2,String((it.marcas||[])[i]||'').trim());
-        ws.getRow(r).getCell(b).numFmt=fmt; ws.getRow(r).getCell(b+1).numFmt=fmt;
+        ws.getRow(r).getCell(b).numFmt=fmtUnit; ws.getRow(r).getCell(b+1).numFmt=fmtTot;
       } else { setv(r,b,null); setv(r,b+1,null); setv(r,b+2,null); }
     }
     setv(r,18,null); setv(r,19,null); setv(r,20,null); // FUENTE 2 no se usa
     // metodologia con el numero del postor ganador
     setv(r,21,'SE TOMO COMO V.ESTIMADO  LA COTIZACIÓN('+('0'+(g+1)).slice(-2)+') DE LA FUENTE 1:COTIZACIONES ACTUALIZADAS');
     setv(r,22,{formula:colLetter(gb)+r}); setv(r,23,{formula:'V'+r+'*E'+r}); // valor unit/estimado del item
-    ws.getRow(r).getCell(22).numFmt=fmt; ws.getRow(r).getCell(23).numFmt=fmt;
+    ws.getRow(r).getCell(22).numFmt=fmtUnit; ws.getRow(r).getCell(23).numFmt=fmtTot;
   });
 
   // Encabezado de postores (11-19) + detalle (pie desplazado)
@@ -1125,9 +1126,8 @@ async function generarCuadroComparativo(datos){
     }
   }
 
-  // Fila TOTAL (era 21)
-  let gDec=2; items.forEach(it=>{ for(let i=0;i<N;i++) gDec=Math.max(gDec, ccDec((it.precios||[])[i])); });
-  const gFmt=ccMontoFmt(gDec);
+  // Fila TOTAL (era 21) — total normal (2 decimales)
+  const gFmt=ccMontoFmt(2);
   const totalRow=F(21);
   for(let i=0;i<4;i++){ const b=baseCol(i);
     if(i<N){ setv(totalRow,b,{formula:'SUM('+colLetter(b+1)+ITEM+':'+colLetter(b+1)+(ITEM+OFF)+')'}); ws.getRow(totalRow).getCell(b).numFmt=gFmt; }
@@ -1191,6 +1191,24 @@ async function generarCuadroComparativo(datos){
       {font:{size:22,name:'Calibri'},text:cargo},
     ]};
     cF.alignment={horizontal:'center',vertical:'center',wrapText:true};
+  }
+
+  // Modelo 2: tipo de letra Arial, tamaño del pie y anchos de columna (segun ejemplo del usuario)
+  if(modelo2){
+    const maxR=FOOT_BOT+OFF;
+    for(let r=1;r<=maxR;r++){ const row=ws.getRow(r);
+      for(let c=1;c<=24;c++){ const cell=row.getCell(c);
+        if(cell.font){ cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.font=Object.assign({},cell.font,{name:'Arial'}); }
+      }
+    }
+    // Pie del cuadro: Arial 26 negrita
+    const pie=ws.getRow(F(37)).getCell(1);
+    pie.style=JSON.parse(JSON.stringify(pie.style||{}));
+    pie.font=Object.assign({},pie.font,{name:'Arial',size:26,bold:true});
+    ws.getRow(F(37)).height=162.75;
+    // Anchos de columna
+    ws.getColumn(1).width=15.29;  // ITEM Nº
+    ws.getColumn(2).width=61.71;  // DESCRIPCIÓN
   }
 
   ws.views=[{showGridLines:false, topLeftCell:'A1', zoomScale:30, zoomScaleNormal:30, workbookViewId:0}];
