@@ -397,6 +397,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
           <option value="COMPARACIÓN DE PRECIOS">COMPARACIÓN DE PRECIOS</option>
           <option value="CONTRATACIÓN DIRECTA">CONTRATACIÓN DIRECTA</option>
         </select></div>
+      <div class="field"><label>Veces que se reiteró la solicitud <span class="hint">— se aplica a todos los postores</span></label><input type="number" min="0" id="cc-veces" placeholder="Ej: 1"></div>
     </div>
 
     <div class="card">
@@ -1099,7 +1100,7 @@ async function generarCuadroComparativo(datos){
       setv(F(27),b,String(p.plazo_entrega||'').trim());
       setv(F(28),b,'CREDITO COMERCIAL'); setv(F(29),b,'SOLES');
       setv(F(30),b,ccFecha(p.fecha_solicitud)); ws.getRow(F(30)).getCell(b).numFmt='dd/mm/yyyy';
-      setv(F(31),b,ccNum(p.veces_reiterado));
+      setv(F(31),b,ccNum(datos.veces));
       setv(F(32),b,ccFecha(p.fecha_recepcion)); ws.getRow(F(32)).getCell(b).numFmt='dd/mm/yyyy';
       setv(F(33),b,(String(p.se_dedica||'').trim())||null);
       setv(F(34),b,(String(p.verifica||'').trim())||null);
@@ -1125,11 +1126,15 @@ async function generarCuadroComparativo(datos){
   setv(totalRow,18,null);
   setv(totalRow,23,{formula:'SUM(W'+ITEM+':W'+(ITEM+OFF)+')'}); ws.getRow(totalRow).getCell(23).numFmt=gFmt;
 
-  // Ganador: sombrear sus columnas en cada fila de item (reset blanco primero)
+  // Sombreado: SOLO el ganador. Limpiar el relleno base de la plantilla
+  // (columna de ítem, postores no usados, filas de total) antes de sombrear.
+  const sinRelleno=(r,c)=>{ const cell=ws.getRow(r).getCell(c); cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.fill={type:'pattern',pattern:'none'}; };
   items.forEach((it,k)=>{ const r=ITEM+k;
-    for(let i=0;i<N;i++){ const b=baseCol(i); [b,b+1,b+2].forEach(c=>setFill(r,c,'FFFFFFFF')); }
+    for(let c=1;c<=20;c++) sinRelleno(r,c);
     [gb,gb+1,gb+2].forEach(c=>setFill(r,c,GRIS));
   });
+  for(let c=1;c<=20;c++) sinRelleno(totalRow,c);
+  [gb,gb+1,gb+2].forEach(c=>setFill(totalRow,c,GRIS));
 
   // Limpiar datos de FUENTE 2 en la cabecera
   [[15,19],[16,19],[18,19]].forEach(a=> setv(a[0],a[1],null));
@@ -1184,7 +1189,7 @@ function ccTextoPunto1(){
   return '1)SE REALIZO LA INDAGACIÓN DE MERCADO,INVITANDO A POSIBLES PROVEEDORES DEDICADOS AL OBJETO DE LA CONTRATACIÓN,TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: '+nombres;
 }
 function syncPunto1(){ if(ccP1Auto){ const el=document.getElementById('cc-p1'); if(el) el.value=ccTextoPunto1(); } }
-function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',veces_reiterado:'',fecha_recepcion:'',se_dedica:'SI',verifica:'SI',cumple_rtm:'',se_tomo:''};}
+function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',fecha_recepcion:'',se_dedica:'SI',verifica:'SI',cumple_rtm:'',se_tomo:''};}
 function nuevoItemCC(){return{descripcion:'',medida:'UNIDAD',cantidad:'',precios:ccPostores?ccPostores.map(()=> ''):['',''],marcas:ccPostores?ccPostores.map(()=> ''):['','']};}
 
 function nombreItemCC(k){ const d=(ccItems[k]&&ccItems[k].descripcion||'').trim(); return 'Ítem '+(k+1)+(d?' — '+d:''); }
@@ -1215,7 +1220,6 @@ function renderCC(){
         <div class="field" style="margin:0"><label>Garantía / vigencia</label><input type="text" class="c-garantia" placeholder="Ej: 12 MESES"></div>
         <div class="field" style="margin:0"><label>Plazo de entrega</label><input type="text" class="c-plazo" placeholder="Ej: 05 DÍAS"></div>
         <div class="field" style="margin:0"><label>Fecha de solicitud</label><input type="date" class="c-fsol"></div>
-        <div class="field" style="margin:0"><label>Veces que se reiteró</label><input type="number" min="0" class="c-veces"></div>
         <div class="field" style="margin:0"><label>Fecha de recepción</label><input type="date" class="c-frec"></div>
         <div class="field" style="margin:0"><label>¿Proveedor se dedica al objeto?</label>
           <select class="c-dedica"><option value="SI">SI</option><option value="NO">NO</option><option value="">(en blanco)</option></select></div>
@@ -1231,7 +1235,7 @@ function renderCC(){
     const set=(sel,key)=>{ const el=card.querySelector(sel); el.value=p[key]; el.addEventListener('input',()=>p[key]=el.value); };
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
     set('.c-email','email'); set('.c-garantia','garantia');
-    set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-veces','veces_reiterado'); set('.c-frec','fecha_recepcion');
+    set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-frec','fecha_recepcion');
     set('.c-dedica','se_dedica'); set('.c-verifica','verifica'); set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
     card.querySelector('.c-nombre').addEventListener('input', syncPunto1);
     card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{ ccGanador=i; });
@@ -1300,7 +1304,7 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
   const ganadorRemap = Math.max(0, usedIdx.indexOf(ccGanador));
   const datos={
     documento_solicitud:val('cc-doc'), area_usuaria:val('cc-area'), denominacion:val('cc-denom'),
-    tipo_proceso:val('cc-tipo'),
+    tipo_proceso:val('cc-tipo'), veces:val('cc-veces'),
     items:itemsData, postores:postoresUsed, ganador:ganadorRemap,
     punto1:val('cc-p1'), punto2:val('cc-p2'), punto3:val('cc-p3'),
     especialista:val('cc-esp'), cargo:val('cc-cargo'), fecha:val('cc-fecha'),
