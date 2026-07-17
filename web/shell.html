@@ -387,6 +387,16 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       <div class="field"><label>Documento de solicitud</label><input type="text" id="cc-doc" placeholder="Ej: NOTA INFORMATIVA N°1096-DF-HNAL-2026"></div>
       <div class="field"><label>Área usuaria</label><input type="text" id="cc-area" placeholder="Ej: CIRUGIA GENERAL - APARATO DIGESTIVO"></div>
       <div class="field"><label>Adquisición <span class="hint">— va después de "ADQ. DE"</span></label><input type="text" id="cc-denom" placeholder="Ej: DISPOSITIVOS MEDICOS PARA 01 AÑO"></div>
+      <div class="field"><label>Tipo de proceso de selección</label>
+        <select id="cc-tipo">
+          <option value="CONTRATO MENOR">CONTRATO MENOR</option>
+          <option value="ADJUDICACIÓN SIMPLIFICADA">ADJUDICACIÓN SIMPLIFICADA</option>
+          <option value="LICITACIÓN PÚBLICA">LICITACIÓN PÚBLICA</option>
+          <option value="CONCURSO PÚBLICO">CONCURSO PÚBLICO</option>
+          <option value="SUBASTA INVERSA ELECTRÓNICA">SUBASTA INVERSA ELECTRÓNICA</option>
+          <option value="COMPARACIÓN DE PRECIOS">COMPARACIÓN DE PRECIOS</option>
+          <option value="CONTRATACIÓN DIRECTA">CONTRATACIÓN DIRECTA</option>
+        </select></div>
     </div>
 
     <div class="card">
@@ -959,6 +969,9 @@ function ccFecha(v){
   return t;
 }
 function ccNum(v){ const t=String(v==null?'':v).trim(); if(t==='') return null; const n=Number(t.replace(',','.')); return isNaN(n)?t:n; }
+// decimales que escribió el usuario (para que el monto salga igualito en el Excel)
+function ccDec(v){ const t=String(v==null?'':v).trim(); const m=t.match(/[.,](\d+)$/); return m?m[1].length:0; }
+function ccMontoFmt(dec){ const z='0'.repeat(Math.max(2,dec)); return '_-"S/"\\ * #,##0.'+z+'_-;\\-"S/"\\ * #,##0.'+z+'_-;_-"S/"\\ * "-"??_-;_-@_-'; }
 
 async function generarCuadroComparativo(datos){
   const wb=new ExcelJS.Workbook();
@@ -980,6 +993,7 @@ async function generarCuadroComparativo(datos){
   // Cabecera
   setv(3,1,'DOCUMENTO DE SOLICITUD : '+String(datos.documento_solicitud||'').trim());
   setv(4,1,'AREA USUARIA: '+String(datos.area_usuaria||'').trim());
+  setv(5,1,'TIPO DE PROCESO DE SELECCIÓN:'+(String(datos.tipo_proceso||'CONTRATO MENOR').trim().toUpperCase()));
   setv(7,4,'ADQ. DE '+String(datos.denominacion||'').trim().toUpperCase());
 
   // Prototipo de la fila de item (fila 20) y del pie (21..45)
@@ -1011,12 +1025,20 @@ async function generarCuadroComparativo(datos){
     const medida=(String(it.medida||'UNIDAD').trim().toUpperCase())||'UNIDAD';
     setv(r,3,medida); setv(r,4,medida);
     setv(r,5,ccNum(it.cantidad));
+    // decimales que escribio el usuario en este item (para que salga igualito)
+    let dec=2; for(let i=0;i<N;i++) dec=Math.max(dec, ccDec((it.precios||[])[i]));
+    const fmt=ccMontoFmt(dec);
     for(let i=0;i<4;i++){ const b=baseCol(i);
-      if(i<N){ setv(r,b,ccNum((it.precios||[])[i])); setv(r,b+1,{formula:'E'+r+'*'+colLetter(b)+r}); setv(r,b+2,String((it.marcas||[])[i]||'').trim()); }
-      else { setv(r,b,null); setv(r,b+1,null); setv(r,b+2,null); }
+      if(i<N){
+        setv(r,b,ccNum((it.precios||[])[i])); setv(r,b+1,{formula:'E'+r+'*'+colLetter(b)+r}); setv(r,b+2,String((it.marcas||[])[i]||'').trim());
+        ws.getRow(r).getCell(b).numFmt=fmt; ws.getRow(r).getCell(b+1).numFmt=fmt;
+      } else { setv(r,b,null); setv(r,b+1,null); setv(r,b+2,null); }
     }
     setv(r,18,null); setv(r,19,null); setv(r,20,null); // FUENTE 2 no se usa
+    // metodologia con el numero del postor ganador
+    setv(r,21,'SE TOMO COMO V.ESTIMADO  LA COTIZACIÓN('+('0'+(g+1)).slice(-2)+') DE LA FUENTE 1:COTIZACIONES ACTUALIZADAS');
     setv(r,22,{formula:colLetter(gb)+r}); setv(r,23,{formula:'V'+r+'*E'+r}); // valor unit/estimado del item
+    ws.getRow(r).getCell(22).numFmt=fmt; ws.getRow(r).getCell(23).numFmt=fmt;
   });
 
   // Encabezado de postores (11-19) + detalle (pie desplazado)
@@ -1047,13 +1069,15 @@ async function generarCuadroComparativo(datos){
   }
 
   // Fila TOTAL (era 21)
+  let gDec=2; items.forEach(it=>{ for(let i=0;i<N;i++) gDec=Math.max(gDec, ccDec((it.precios||[])[i])); });
+  const gFmt=ccMontoFmt(gDec);
   const totalRow=F(21);
   for(let i=0;i<4;i++){ const b=baseCol(i);
-    if(i<N) setv(totalRow,b,{formula:'SUM('+colLetter(b+1)+ITEM+':'+colLetter(b+1)+(ITEM+OFF)+')'});
+    if(i<N){ setv(totalRow,b,{formula:'SUM('+colLetter(b+1)+ITEM+':'+colLetter(b+1)+(ITEM+OFF)+')'}); ws.getRow(totalRow).getCell(b).numFmt=gFmt; }
     else setv(totalRow,b,null);
   }
   setv(totalRow,18,null);
-  setv(totalRow,23,{formula:'SUM(W'+ITEM+':W'+(ITEM+OFF)+')'});
+  setv(totalRow,23,{formula:'SUM(W'+ITEM+':W'+(ITEM+OFF)+')'}); ws.getRow(totalRow).getCell(23).numFmt=gFmt;
 
   // Ganador: sombrear sus columnas en cada fila de item (reset blanco primero)
   items.forEach((it,k)=>{ const r=ITEM+k;
@@ -1108,6 +1132,12 @@ async function generarCuadroComparativo(datos){
 let ccPostores=[nuevoPostorCC(),nuevoPostorCC()];
 let ccGanador=0;
 let ccItems=[nuevoItemCC()];
+let ccP1Auto=true;   // el punto 1) se autocompleta con los postores hasta que el usuario lo edite
+function ccTextoPunto1(){
+  const nombres=ccPostores.map(p=>(p.nombre||'').trim()).filter(Boolean).join(', ');
+  return '1)SE REALIZO LA INDAGACIÓN DE MERCADO,INVITANDO A POSIBLES PROVEEDORES DEDICADOS AL OBJETO DE LA CONTRATACIÓN,TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: '+nombres;
+}
+function syncPunto1(){ if(ccP1Auto){ const el=document.getElementById('cc-p1'); if(el) el.value=ccTextoPunto1(); } }
 function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',veces_reiterado:'',fecha_recepcion:'',cumple_rtm:'',se_tomo:''};}
 function nuevoItemCC(){return{descripcion:'',medida:'UNIDAD',cantidad:'',precios:ccPostores?ccPostores.map(()=> ''):['',''],marcas:ccPostores?ccPostores.map(()=> ''):['','']};}
 
@@ -1150,14 +1180,14 @@ function renderCC(){
       ccPostores.splice(i,1);
       ccItems.forEach(it=>{ it.precios.splice(i,1); it.marcas.splice(i,1); });
       if(ccGanador>=ccPostores.length) ccGanador=ccPostores.length-1;
-      renderCC(); renderCCItems();
+      renderCC(); renderCCItems(); syncPunto1();
     });
     cont.appendChild(card);
   });
   document.getElementById('cc-agregar').style.display = ccPostores.length>=4 ? 'none':'';
 }
 document.getElementById('cc-agregar').addEventListener('click',()=>{
-  if(ccPostores.length<4){ ccPostores.push(nuevoPostorCC()); ccItems.forEach(it=>{ it.precios.push(''); it.marcas.push(''); }); renderCC(); renderCCItems(); }
+  if(ccPostores.length<4){ ccPostores.push(nuevoPostorCC()); ccItems.forEach(it=>{ it.precios.push(''); it.marcas.push(''); }); renderCC(); renderCCItems(); syncPunto1(); }
 });
 
 // ---- Ítems del CC (precio + marca por postor) ----
@@ -1196,9 +1226,11 @@ function renderCCItems(){
     cont.appendChild(card);
   });
 }
-function actualizarNombresItemsCC(){ document.querySelectorAll('#cc-items .cc-cot').forEach(el=>{ const t=el.querySelector('.cc-cot-t'); if(t) t.textContent=nombrePostorCC(+el.dataset.i); }); }
+function actualizarNombresItemsCC(){ document.querySelectorAll('#cc-items .cc-cot').forEach(el=>{ const t=el.querySelector('.cc-cot-t'); if(t) t.textContent=nombrePostorCC(+el.dataset.i); }); syncPunto1(); }
 document.getElementById('cc-agregar-item').addEventListener('click',()=>{ ccItems.push(nuevoItemCC()); renderCCItems(); });
-renderCC(); renderCCItems();
+// Punto 1): al escribir manualmente deja de autocompletarse (si se vacía, vuelve a auto)
+document.getElementById('cc-p1').addEventListener('input', function(){ ccP1Auto = (this.value.trim()===''); });
+renderCC(); renderCCItems(); syncPunto1();
 
 function mostrarErrorCC(t){ const m=document.getElementById('msg-cc'); m.className='msg-error'; m.textContent='⚠ '+t; }
 document.getElementById('form-cc').addEventListener('submit', (e)=>{
@@ -1218,6 +1250,7 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
   const ganadorRemap = Math.max(0, usedIdx.indexOf(ccGanador));
   const datos={
     documento_solicitud:val('cc-doc'), area_usuaria:val('cc-area'), denominacion:val('cc-denom'),
+    tipo_proceso:val('cc-tipo'),
     items:itemsData, postores:postoresUsed, ganador:ganadorRemap,
     punto1:val('cc-p1'), punto2:val('cc-p2'), punto3:val('cc-p3'),
     especialista:val('cc-esp'), cargo:val('cc-cargo'), fecha:val('cc-fecha'),
@@ -1610,6 +1643,7 @@ function restore(d){
     if(Array.isArray(d.notaFilas)&&d.notaFilas.length) notaFilas=d.notaFilas.map(f=>({ccmn:f.ccmn||'',ccpsiaf:f.ccpsiaf||'',descripcion:f.descripcion||'',meta:f.meta||'',especifica:f.especifica||'',ff:f.ff||'DyT 4-13',monto:f.monto||''}));
     renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas();
     if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(el) el.value=d.inputs[id]; }); }
+    const p1el=document.getElementById('cc-p1'); if(p1el) ccP1Auto=(p1el.value.trim()===''||p1el.value===ccTextoPunto1());
   }catch(e){ console.error('restore', e); }
 }
 function draftTieneContenido(d){
