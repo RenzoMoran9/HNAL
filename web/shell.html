@@ -64,6 +64,8 @@ body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--texto);li
 .topbar p{margin:3px 0 0;color:var(--muted);font-size:.85rem;}
 .tb-flow{flex-shrink:0;background:var(--azul-suave);color:var(--azul);border:1px solid var(--azul-bd);
   border-radius:999px;padding:6px 15px;font-size:.74rem;font-weight:700;white-space:nowrap;letter-spacing:.03em;}
+.tb-save{flex-shrink:0;color:var(--verde);font-size:.76rem;font-weight:700;white-space:nowrap;transition:opacity .2s;}
+@media (max-width:820px){.tb-save{display:none;}}
 .side-toggle{display:none;background:var(--gris);border:1px solid var(--borde);border-radius:8px;
   font-size:1.2rem;line-height:1;padding:6px 11px;cursor:pointer;color:var(--azul);}
 
@@ -332,6 +334,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         <h1 id="tb-title">Cuadro de Validación</h1>
         <p id="tb-sub">Valida las especificaciones técnicas y descarga el Excel oficial.</p>
       </div>
+      <span class="tb-save" id="tbSave" title="Tu trabajo se guarda solo en este navegador">💾 Guardado automático</span>
       <span class="tb-flow" id="tb-flow">Flujo 1</span>
     </header>
 
@@ -512,7 +515,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   <!-- ==================== NOTA INFORMATIVA ==================== -->
   <div id="panel-nota" class="panel oculto">
   <form id="form-nota" novalidate>
-    <div class="aviso-nota">📄 Emite la <b>Nota Informativa</b> de solicitud de aprobación de Certificación de Crédito Presupuestario en Word (.docx). Si vienes del cuadro comparativo, la <b>descripción</b> y el <b>monto</b> ya vienen cargados.</div>
+    <div class="aviso-nota">📄 Emite la <b>Nota Informativa</b> de solicitud de aprobación de Certificación de Crédito Presupuestario en Word (.docx). Si vienes del cuadro comparativo, la <b>descripción</b> y el <b>monto</b> ya vienen cargados. Si lo hiciste antes y volviste después, usa <b>“⬇ Jalar datos del Cuadro Comparativo”</b> para traerlos.</div>
 
     <div class="card">
       <h2>1. Encabezado</h2>
@@ -539,6 +542,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
     <div class="card">
       <h2>2. Cuadro de crédito presupuestario</h2>
       <p class="hint" style="margin:-8px 0 12px">Una fila por ítem. La <b>descripción</b> y el <b>monto</b> salen del cuadro comparativo; completa CCMN, CCP SIAF, Meta, Específica y F.F.</p>
+      <button type="button" class="btn btn-nota" id="n-jalar-cc" style="margin-bottom:12px">⬇ Jalar datos del Cuadro Comparativo</button>
       <div id="nota-filas"></div>
       <button type="button" class="btn btn-sec" id="n-agregar-fila">＋ Agregar fila</button>
     </div>
@@ -1530,21 +1534,34 @@ document.getElementById('n-agregar-fila').addEventListener('click',()=>{ notaFil
 renderNotaFilas();
 
 // "Emitir Nota Informativa": trae una fila por item del cuadro comparativo (descripción + monto del ganador)
-document.getElementById('btn-emitir-nota').addEventListener('click',()=>{
+// Jala descripción + monto (precio del ganador × cantidad) del cuadro comparativo
+// a las filas de la Nota. Conserva lo que ya escribiste (CCMN, CCP SIAF, Meta,
+// Específica, F.F.) por posición y solo actualiza descripción y monto.
+function jalarNotaDesdeCC(){
   const gw=ccGanador;
   const itemsUsed=ccItems.filter(it=>(it.descripcion||'').trim()!=='' || (it.precios||[]).some(x=>String(x).trim()!==''));
-  if(itemsUsed.length){
-    notaFilas=itemsUsed.map(it=>{
-      const pu=Number(String((it.precios||[])[gw]||'').replace(',','.'));
-      const cant=Number(String(it.cantidad||'').replace(',','.'));
-      const monto=(isFinite(pu)&&isFinite(cant)&&pu>0&&cant>0)?montoSoles(pu*cant):'';
-      return {ccmn:'',ccpsiaf:'',descripcion:(it.descripcion||'').trim().toUpperCase(),meta:'',especifica:'',ff:'DyT 4-13',monto};
-    });
-    renderNotaFilas();
-  }
+  if(!itemsUsed.length) return 0;
+  notaFilas=itemsUsed.map((it,idx)=>{
+    const prev=notaFilas[idx]||nuevaFilaNota();
+    const pu=Number(String((it.precios||[])[gw]||'').replace(',','.'));
+    const cant=Number(String(it.cantidad||'').replace(',','.'));
+    const monto=(isFinite(pu)&&isFinite(cant)&&pu>0&&cant>0)?montoSoles(pu*cant):'';
+    return {ccmn:prev.ccmn||'',ccpsiaf:prev.ccpsiaf||'',descripcion:(it.descripcion||'').trim().toUpperCase(),meta:prev.meta||'',especifica:prev.especifica||'',ff:prev.ff||'DyT 4-13',monto};
+  });
+  renderNotaFilas();
+  return itemsUsed.length;
+}
+document.getElementById('btn-emitir-nota').addEventListener('click',()=>{
+  jalarNotaDesdeCC();
   if(!document.getElementById('n-fecha').value){ document.getElementById('n-fecha').value=new Date().toISOString().slice(0,10); }
   irA('nota');
   window.scrollTo(0,0);
+});
+document.getElementById('n-jalar-cc').addEventListener('click',()=>{
+  const msg=document.getElementById('msg-nota'); msg.className=''; msg.textContent='';
+  const n=jalarNotaDesdeCC();
+  if(n>0){ msg.className='msg-ok'; msg.textContent='✓ Se jalaron '+n+' ítem(s) del cuadro comparativo (descripción y monto).'; scheduleSave(); }
+  else { msg.className='msg-error'; msg.textContent='⚠ Aún no hay ítems en el cuadro comparativo. Llénalo primero y vuelve.'; }
 });
 
 function mostrarErrorNota(t){ const m=document.getElementById('msg-nota'); m.className='msg-error'; m.textContent='⚠ '+t; }
@@ -1690,7 +1707,12 @@ function snapshot(){
   document.querySelectorAll('#app input[id], #app select[id], #app textarea[id]').forEach(el=>{ inputs[el.id]=el.value; });
   return { v:3, ts:Date.now(), tipo, postores, items, ccPostores, ccGanador, ccItems, memoFilas, notaFilas, inputs };
 }
-function guardarYa(){ if(!saveReady) return; try{ localStorage.setItem('hnal_borrador', JSON.stringify(snapshot())); }catch(e){} }
+function guardarYa(){ if(!saveReady) return; try{ localStorage.setItem('hnal_borrador', JSON.stringify(snapshot())); marcarGuardado(); }catch(e){} }
+function marcarGuardado(){ const el=document.getElementById('tbSave'); if(!el) return;
+  const h=new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+  el.textContent='💾 Guardado '+h; el.style.opacity='1';
+  clearTimeout(marcarGuardado._t); marcarGuardado._t=setTimeout(()=>{ el.style.opacity='.55'; }, 1500);
+}
 function scheduleSave(){ if(!saveReady) return; clearTimeout(saveTimer); saveTimer=setTimeout(guardarYa, 500); }
 function restore(d){
   try{
