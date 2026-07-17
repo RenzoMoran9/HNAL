@@ -384,6 +384,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   <form id="form-cc" novalidate>
     <div class="card">
       <h2>1. Datos generales</h2>
+      <div class="field"><label>Modelo del cuadro <span class="hint">— cambia el pie del documento</span></label>
+        <select id="cc-modelo">
+          <option value="1">Modelo 1 — con puntos 1)2)3) y firma del especialista</option>
+          <option value="2">Modelo 2 — pie automático (documento + denominación), sin firma</option>
+        </select></div>
       <div class="field"><label>Documento de solicitud</label><input type="text" id="cc-doc" placeholder="Ej: NOTA INFORMATIVA N°1096-DF-HNAL-2026"></div>
       <div class="field"><label>Área usuaria</label><input type="text" id="cc-area" placeholder="Ej: CIRUGIA GENERAL - APARATO DIGESTIVO"></div>
       <div class="field"><label>Adquisición <span class="hint">— va después de "ADQ. DE"</span></label><input type="text" id="cc-denom" placeholder="Ej: DISPOSITIVOS MEDICOS PARA 01 AÑO"></div>
@@ -416,16 +421,21 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 
     <div class="card">
       <h2>4. Conclusiones y firma</h2>
-      <div class="field"><label>Punto 1) <span class="hint">— si lo dejas vacío se completa solo con los nombres de los postores</span></label>
-        <textarea id="cc-p1" rows="3" placeholder="1)SE REALIZO LA INDAGACIÓN DE MERCADO… TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: (se completa solo)"></textarea></div>
-      <div class="field"><label>Punto 2)</label>
-        <textarea id="cc-p2" rows="2" placeholder="2)CON MEMORANDUM N°…"></textarea></div>
-      <div class="field"><label>Punto 3) <span class="hint">(opcional)</span></label>
-        <input type="text" id="cc-p3" placeholder="Ej: PRIMERA COMPRA DEL AÑO"></div>
-      <div class="grid3">
-        <div class="field"><label>Nombre del especialista (firma)</label><input type="text" id="cc-esp" placeholder="Nombre de quien firma"></div>
-        <div class="field"><label>Cargo</label><input type="text" id="cc-cargo" value="Especialista en Contrataciones Públicas"></div>
-        <div class="field"><label>Fecha</label><input type="date" id="cc-fecha"></div>
+      <div id="cc-concl-m1">
+        <div class="field"><label>Punto 1) <span class="hint">— si lo dejas vacío se completa solo con los nombres de los postores</span></label>
+          <textarea id="cc-p1" rows="3" placeholder="1)SE REALIZO LA INDAGACIÓN DE MERCADO… TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: (se completa solo)"></textarea></div>
+        <div class="field"><label>Punto 2)</label>
+          <textarea id="cc-p2" rows="2" placeholder="2)CON MEMORANDUM N°…"></textarea></div>
+        <div class="field"><label>Punto 3) <span class="hint">(opcional)</span></label>
+          <input type="text" id="cc-p3" placeholder="Ej: PRIMERA COMPRA DEL AÑO"></div>
+        <div class="grid3">
+          <div class="field"><label>Nombre del especialista (firma)</label><input type="text" id="cc-esp" placeholder="Nombre de quien firma"></div>
+          <div class="field"><label>Cargo</label><input type="text" id="cc-cargo" value="Especialista en Contrataciones Públicas"></div>
+          <div class="field"><label>Fecha</label><input type="date" id="cc-fecha"></div>
+        </div>
+      </div>
+      <div id="cc-concl-m2" style="display:none">
+        <p class="hint" style="margin:0;line-height:1.5">El <b>Modelo 2</b> genera el pie del cuadro automáticamente y <b>todo en MAYÚSCULAS</b>: el <b>guión 2</b> jala el <i>Documento de solicitud</i> ingresado arriba, y el <b>guión 3</b> jala la <i>Denominación</i> (“ADQUISICIÓN DE…”). Este modelo <b>no lleva firma de especialista</b>.</p>
       </div>
     </div>
 
@@ -1142,13 +1152,25 @@ async function generarCuadroComparativo(datos){
   // Reconstruir merges del pie (desplazados)
   footMerges.forEach(a=>{ try{ ws.mergeCells(a[0]+(a[1]+OFF)+':'+a[2]+(a[3]+OFF)); }catch(e){} });
 
-  // Puntos 1)2)3)
-  const nombres=postores.map(p=>String(p.nombre||'').trim()).filter(Boolean).join(', ');
-  const p1=(datos.punto1&&datos.punto1.trim())?datos.punto1.trim():
-    '1)SE REALIZO LA INDAGACIÓN DE MERCADO,INVITANDO A POSIBLES PROVEEDORES DEDICADOS AL OBJETO DE LA CONTRATACIÓN,TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: '+nombres;
-  const p2=(datos.punto2&&datos.punto2.trim())?datos.punto2.trim():'2)CON MEMORANDUM N°';
-  const p3=(datos.punto3&&datos.punto3.trim())?datos.punto3.trim():'';
-  setv(F(37),1,[p1,p2,p3].filter(Boolean).join('\n'));
+  // Pie del cuadro segun el modelo
+  const modelo2 = String(datos.modelo||'1')==='2';
+  if(modelo2){
+    // Modelo 2: pie automatico en MAYUSCULAS (jala documento y denominacion)
+    const doc=String(datos.documento_solicitud||'').trim().toUpperCase();
+    const den=String(datos.denominacion||'').trim().toUpperCase();
+    const t1='EL CUMPLIMIENTO DE LAS EE.TT FUERON EVALUADOS POR EL AREA USUARIA MEDIANTE FORMATO DE VALIDACION DE PROPUESTAS ECONOMICAS EN CUMPLIMIENTO DE LAS EE.TT, EL CUAL SE ADJUNTA AL PRESENTE EXPEDIENTE. CONSIDERAR DE LAS EE.TT.';
+    const t2='-SEGUN '+doc+' -SE ADJUNTA';
+    const t3='-CUADRO DE VALIDACION DE ESPECIFICACIONES TECNICAS PARA LA '+den;
+    setv(F(37),1,[t1,t2,t3].join('\n'));
+  }else{
+    // Modelo 1: puntos 1)2)3)
+    const nombres=postores.map(p=>String(p.nombre||'').trim()).filter(Boolean).join(', ');
+    const p1=(datos.punto1&&datos.punto1.trim())?datos.punto1.trim():
+      '1)SE REALIZO LA INDAGACIÓN DE MERCADO,INVITANDO A POSIBLES PROVEEDORES DEDICADOS AL OBJETO DE LA CONTRATACIÓN,TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: '+nombres;
+    const p2=(datos.punto2&&datos.punto2.trim())?datos.punto2.trim():'2)CON MEMORANDUM N°';
+    const p3=(datos.punto3&&datos.punto3.trim())?datos.punto3.trim():'';
+    setv(F(37),1,[p1,p2,p3].filter(Boolean).join('\n'));
+  }
 
   // Quitar sombreado melon (theme9) salvo el gris del ganador
   const quitarRelleno=(cell)=>{ cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.fill={type:'pattern',pattern:'none'}; };
@@ -1156,18 +1178,20 @@ async function generarCuadroComparativo(datos){
   // Cabecera limpia: quitar marcos apilados filas 2-9
   for(let r=2;r<=9;r++) for(let c=1;c<=30;c++){ const cell=ws.getRow(r).getCell(c); cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.border={}; }
 
-  // FECHA + firma del especialista (fila 31 desplazada)
-  setv(F(39),5,ccFecha(datos.fecha)); ws.getRow(F(39)).getCell(5).numFmt='dd/mm/yyyy';
-  const cargo=(String(datos.cargo||'').trim()||'Especialista en Contrataciones Públicas');
-  const nomEsp=String(datos.especialista||'').trim().toUpperCase();
-  const cF=ws.getRow(F(31)).getCell(2);
-  cF.style=JSON.parse(JSON.stringify(cF.style||{}));
-  cF.value={richText:[
-    {font:{size:22,name:'Calibri'},text:'_______________________________\n'},
-    {font:{size:26,bold:true,name:'Calibri'},text:(nomEsp||' ')+'\n'},
-    {font:{size:22,name:'Calibri'},text:cargo},
-  ]};
-  cF.alignment={horizontal:'center',vertical:'center',wrapText:true};
+  // FECHA + firma del especialista (fila 31 desplazada) — solo Modelo 1
+  if(!modelo2){
+    setv(F(39),5,ccFecha(datos.fecha)); ws.getRow(F(39)).getCell(5).numFmt='dd/mm/yyyy';
+    const cargo=(String(datos.cargo||'').trim()||'Especialista en Contrataciones Públicas');
+    const nomEsp=String(datos.especialista||'').trim().toUpperCase();
+    const cF=ws.getRow(F(31)).getCell(2);
+    cF.style=JSON.parse(JSON.stringify(cF.style||{}));
+    cF.value={richText:[
+      {font:{size:22,name:'Calibri'},text:'_______________________________\n'},
+      {font:{size:26,bold:true,name:'Calibri'},text:(nomEsp||' ')+'\n'},
+      {font:{size:22,name:'Calibri'},text:cargo},
+    ]};
+    cF.alignment={horizontal:'center',vertical:'center',wrapText:true};
+  }
 
   ws.views=[{showGridLines:false, topLeftCell:'A1', zoomScale:30, zoomScaleNormal:30, workbookViewId:0}];
   try{ ws.name='CUADRO COMPARATIVO'; }catch(e){}
@@ -1284,6 +1308,14 @@ function actualizarLabelsItemsEnPostores(){ document.querySelectorAll('#cc-posto
 document.getElementById('cc-agregar-item').addEventListener('click',()=>{ ccItems.push(nuevoItemCC()); renderCCItems(); renderCC(); });
 // Punto 1): al escribir manualmente deja de autocompletarse (si se vacía, vuelve a auto)
 document.getElementById('cc-p1').addEventListener('input', function(){ ccP1Auto = (this.value.trim()===''); });
+// Modelo 1 / Modelo 2: alterna el pie del cuadro
+function aplicarModeloCC(){
+  const m=(document.getElementById('cc-modelo').value||'1');
+  document.getElementById('cc-concl-m1').style.display = (m==='2')?'none':'';
+  document.getElementById('cc-concl-m2').style.display = (m==='2')?'':'none';
+}
+document.getElementById('cc-modelo').addEventListener('change', aplicarModeloCC);
+aplicarModeloCC();
 renderCCItems(); renderCC(); syncPunto1();
 
 function mostrarErrorCC(t){ const m=document.getElementById('msg-cc'); m.className='msg-error'; m.textContent='⚠ '+t; }
@@ -1291,7 +1323,9 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
   e.preventDefault();
   const msg=document.getElementById('msg-cc'); msg.className=''; msg.textContent='';
   const val=id=>document.getElementById(id).value;
-  if(!validarReq(['cc-denom'])){ mostrarErrorCC('Completa los campos marcados en rojo.'); return; }
+  const modelo=(val('cc-modelo')||'1');
+  const reqCC = modelo==='2' ? ['cc-denom','cc-doc'] : ['cc-denom'];
+  if(!validarReq(reqCC)){ mostrarErrorCC(modelo==='2'?'Completa la Denominación y el Documento de solicitud (el Modelo 2 los usa en el pie).':'Completa los campos marcados en rojo.'); return; }
   const usedIdx = ccPostores.map((p,i)=>i).filter(i=>(ccPostores[i].nombre||'').trim()!=='');
   if(usedIdx.length===0){ mostrarErrorCC('Agrega al menos un postor con nombre.'); return; }
   const itemsUsed = ccItems.filter(it=>(it.descripcion||'').trim()!=='' || it.precios.some(x=>String(x).trim()!==''));
@@ -1304,7 +1338,7 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
   const ganadorRemap = Math.max(0, usedIdx.indexOf(ccGanador));
   const datos={
     documento_solicitud:val('cc-doc'), area_usuaria:val('cc-area'), denominacion:val('cc-denom'),
-    tipo_proceso:val('cc-tipo'), veces:val('cc-veces'),
+    tipo_proceso:val('cc-tipo'), veces:val('cc-veces'), modelo:modelo,
     items:itemsData, postores:postoresUsed, ganador:ganadorRemap,
     punto1:val('cc-p1'), punto2:val('cc-p2'), punto3:val('cc-p3'),
     especialista:val('cc-esp'), cargo:val('cc-cargo'), fecha:val('cc-fecha'),
@@ -1699,6 +1733,7 @@ function restore(d){
     if(Array.isArray(d.notaFilas)&&d.notaFilas.length) notaFilas=d.notaFilas.map(f=>({ccmn:f.ccmn||'',ccpsiaf:f.ccpsiaf||'',descripcion:f.descripcion||'',meta:f.meta||'',especifica:f.especifica||'',ff:f.ff||'DyT 4-13',monto:f.monto||''}));
     renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas();
     if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(el) el.value=d.inputs[id]; }); }
+    if(typeof aplicarModeloCC==='function') aplicarModeloCC();
     const p1el=document.getElementById('cc-p1'); if(p1el) ccP1Auto=(p1el.value.trim()===''||p1el.value===ccTextoPunto1());
   }catch(e){ console.error('restore', e); }
 }
