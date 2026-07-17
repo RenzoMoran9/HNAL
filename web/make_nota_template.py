@@ -182,7 +182,7 @@ def build_body():
     parts = []
     # Titulo (sin numero: se agrega a mano)
     parts.append(para(
-        run("INFORMATIVA Nº            - OL-J-HNAL-", font=None, sz=24,
+        run("NOTA INFORMATIVA Nº            - OL-J-HNAL-", font=None, sz=24,
             bold=True, underline=True)
         + run("{anio}", font=None, sz=24, bold=True, underline=True),
         jc="center", font=None, sz=24, bold=True))
