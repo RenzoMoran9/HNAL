@@ -158,6 +158,18 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .db-si{background:var(--azul);color:#fff;} .db-no{background:#f4f6fb;color:var(--azul);border:1px solid var(--borde);}
 @media (max-width:820px){.draft-bar{margin:14px 16px 0;}}
 
+/* Mis trabajos */
+.tr-guardar-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.tr-guardar-row input{flex:1;min-width:220px;}
+.tr-guardar-row .btn{white-space:nowrap;}
+.tr-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--borde);
+  border-radius:10px;padding:12px 15px;margin-bottom:10px;background:#fbfcfe;}
+.tr-row .tr-info{flex:1;min-width:180px;}
+.tr-row .tr-nom{font-weight:700;color:var(--azul);}
+.tr-row .tr-meta{font-size:.8rem;color:var(--muted);margin-top:2px;}
+.tr-row .btn-mini{flex-shrink:0;}
+.tr-vacio{color:var(--muted);font-size:.9rem;padding:6px 2px;}
+
 /* Destinatarios guardados */
 .dest-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
 .dest-row select{flex:1;min-width:160px;}
@@ -319,6 +331,10 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         <div class="side-group-t">2 · Indagación de Mercado</div>
         <button type="button" class="side-item" data-tab="cc"><span class="si-ico">📊</span> Cuadro Comparativo</button>
         <button type="button" class="side-item" data-tab="nota"><span class="si-ico">📄</span> Nota Informativa</button>
+      </div>
+      <div class="side-group">
+        <div class="side-group-t">Archivo</div>
+        <button type="button" class="side-item" data-tab="trabajos"><span class="si-ico">💼</span> Mis trabajos</button>
       </div>
     </nav>
     <div class="side-foot">
@@ -565,6 +581,25 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       <div id="msg-nota"></div>
     </div>
   </form>
+  </div>
+
+  <!-- ==================== MIS TRABAJOS ==================== -->
+  <div id="panel-trabajos" class="panel oculto">
+    <div class="card">
+      <h2>💼 Mis trabajos guardados</h2>
+      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">Guarda aquí el trabajo completo (validación, memo, cuadro comparativo y nota) para <b>consultarlo o seguir editándolo después</b>, aunque cierres la app. Se guardan en <b>esta computadora y navegador</b>.</p>
+      <div class="field"><label>Nombre para guardar el trabajo actual</label>
+        <div class="tr-guardar-row">
+          <input type="text" id="tr-nombre" placeholder="Ej: ADQUISICIÓN DE PRODUCTOS FARMACÉUTICOS - JULIO">
+          <button type="button" class="btn btn-azul" id="tr-guardar">💾 Guardar trabajo</button>
+        </div>
+        <div id="msg-tr"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Trabajos guardados</h2>
+      <div id="tr-lista"></div>
+    </div>
   </div>
 </main>
   </div><!-- /content -->
@@ -969,6 +1004,7 @@ const META_TAB = {
   memo: {title:'Memo de Validación',    sub:'Emite el memorando de solicitud de revisión en Word.',                    flow:'Flujo 1 · Validación'},
   cc:   {title:'Cuadro Comparativo',    sub:'Indagación de mercado: compara cotizaciones y define el valor estimado.', flow:'Flujo 2 · Indagación'},
   nota: {title:'Nota Informativa',      sub:'Solicita la aprobación de la Certificación de Crédito Presupuestario.',    flow:'Flujo 2 · Indagación'},
+  trabajos: {title:'Mis trabajos',      sub:'Guarda y vuelve a abrir tus trabajos cuando quieras.',                    flow:'Archivo'},
 };
 function irA(t){
   document.querySelectorAll('.side-item').forEach(b=> b.classList.toggle('active', b.dataset.tab===t));
@@ -976,6 +1012,8 @@ function irA(t){
   document.getElementById('panel-cc').classList.toggle('oculto', t!=='cc');
   document.getElementById('panel-memo').classList.toggle('oculto', t!=='memo');
   document.getElementById('panel-nota').classList.toggle('oculto', t!=='nota');
+  document.getElementById('panel-trabajos').classList.toggle('oculto', t!=='trabajos');
+  if(t==='trabajos' && typeof renderTrabajos==='function') renderTrabajos();
   const m = META_TAB[t] || META_TAB.val;
   document.getElementById('tb-title').textContent = m.title;
   document.getElementById('tb-sub').textContent = m.sub;
@@ -1806,6 +1844,78 @@ document.getElementById('draftDiscard').addEventListener('click', ()=>{
   pendingDraft=null; saveReady=true; draftMostrado=true;
   try{ localStorage.removeItem('hnal_borrador'); }catch(e){}
   document.getElementById('draftBar').style.display='none';
+});
+
+// ====================== MIS TRABAJOS (guardar / abrir varios) ======================
+function leerTrabajos(){ try{ return JSON.parse(localStorage.getItem('hnal_trabajos')||'[]'); }catch(e){ return []; } }
+function guardarTrabajos(a){ try{ localStorage.setItem('hnal_trabajos', JSON.stringify(a)); return true; }catch(e){ return false; } }
+function nombreSugerido(){
+  const v=id=>{ const el=document.getElementById(id); return el?String(el.value||'').trim():''; };
+  const base=v('cc-denom')||v('n-ref')||v('adquisicion')||v('cc-doc');
+  if(base) return base.toUpperCase();
+  const f=new Date().toLocaleDateString('es-PE');
+  return 'TRABAJO '+f;
+}
+function fechaTrabajo(ts){
+  try{ return new Date(ts).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return ''; }
+}
+function tabDeTrabajo(d){
+  const inp=(d&&d.inputs)||{}; const has=id=>String(inp[id]||'').trim()!=='';
+  if((d.ccPostores||[]).some(p=>(p.nombre||'').trim()) || (d.ccItems||[]).some(it=>(it.descripcion||'').trim()) || has('cc-denom')) return 'cc';
+  if((d.notaFilas||[]).some(f=>(f.descripcion||'').trim()) || has('n-ref') || has('n-dest-nombre')) return 'nota';
+  if((d.memoFilas||[]).some(f=>(f.empresa||'').trim()) || has('m-dest-nombre')) return 'memo';
+  return 'val';
+}
+function msgTr(txt,ok){ const m=document.getElementById('msg-tr'); if(!m) return; m.className=ok?'msg-ok':'msg-error'; m.textContent=txt; setTimeout(()=>{ if(m.textContent===txt){ m.textContent=''; m.className=''; } }, 3500); }
+function renderTrabajos(){
+  const cont=document.getElementById('tr-lista'); if(!cont) return;
+  const lista=leerTrabajos();
+  if(!lista.length){ cont.innerHTML='<div class="tr-vacio">Todavía no has guardado ningún trabajo. Escribe un nombre arriba y pulsa “Guardar trabajo”.</div>'; return; }
+  cont.innerHTML=lista.map(t=>{
+    const meta=fechaTrabajo(t.ts);
+    return '<div class="tr-row" data-id="'+escH(t.id)+'">'
+      +'<div class="tr-info"><div class="tr-nom">'+escH(t.nombre||'(sin nombre)')+'</div><div class="tr-meta">Guardado: '+escH(meta)+'</div></div>'
+      +'<button type="button" class="btn-mini tr-abrir" data-id="'+escH(t.id)+'">📂 Abrir</button>'
+      +'<button type="button" class="btn-mini danger tr-borrar" data-id="'+escH(t.id)+'">🗑 Eliminar</button>'
+      +'</div>';
+  }).join('');
+}
+function guardarTrabajoActual(){
+  const inp=document.getElementById('tr-nombre');
+  let nombre=(inp.value||'').trim() || nombreSugerido();
+  const lista=leerTrabajos();
+  const data=snapshot();
+  const i=lista.findIndex(t=>(t.nombre||'').toUpperCase()===nombre.toUpperCase());
+  if(i>=0){
+    if(!confirm('Ya existe un trabajo llamado “'+nombre+'”. ¿Reemplazarlo con el estado actual?')) return;
+    lista[i]={id:lista[i].id, nombre, ts:Date.now(), data};
+  } else {
+    lista.unshift({id:'t'+Date.now(), nombre, ts:Date.now(), data});
+  }
+  if(guardarTrabajos(lista.slice(0,60))){ inp.value=''; renderTrabajos(); msgTr('✓ Trabajo guardado: '+nombre, true); }
+  else { msgTr('⚠ No se pudo guardar (almacenamiento del navegador lleno). Elimina trabajos viejos.', false); }
+}
+function abrirTrabajo(id){
+  const t=leerTrabajos().find(x=>x.id===id); if(!t){ return; }
+  saveReady=true; draftMostrado=true; pendingDraft=null;
+  const b=document.getElementById('draftBar'); if(b) b.style.display='none';
+  restore(t.data||{});
+  guardarYa();
+  irA(tabDeTrabajo(t.data||{}));
+  window.scrollTo(0,0);
+}
+function borrarTrabajo(id){
+  const lista=leerTrabajos(); const t=lista.find(x=>x.id===id);
+  if(t && !confirm('¿Eliminar el trabajo “'+(t.nombre||'')+'”? No se puede deshacer.')) return;
+  guardarTrabajos(lista.filter(x=>x.id!==id));
+  renderTrabajos();
+}
+document.getElementById('tr-guardar').addEventListener('click', guardarTrabajoActual);
+document.getElementById('tr-lista').addEventListener('click', (e)=>{
+  const ab=e.target.closest('.tr-abrir'); const bo=e.target.closest('.tr-borrar');
+  if(ab) abrirTrabajo(ab.dataset.id);
+  else if(bo) borrarTrabajo(bo.dataset.id);
 });
 
 // Todo lo que se ingresa (texto) se convierte a MAYÚSCULAS. En fase de captura
