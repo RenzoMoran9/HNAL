@@ -1056,7 +1056,8 @@ async function generarCuadroComparativo(datos){
       setv(F(30),b,ccFecha(p.fecha_solicitud)); ws.getRow(F(30)).getCell(b).numFmt='dd/mm/yyyy';
       setv(F(31),b,ccNum(p.veces_reiterado));
       setv(F(32),b,ccFecha(p.fecha_recepcion)); ws.getRow(F(32)).getCell(b).numFmt='dd/mm/yyyy';
-      setv(F(33),b,'SI'); setv(F(34),b,'SI');
+      setv(F(33),b,(String(p.se_dedica||'').trim())||null);
+      setv(F(34),b,(String(p.verifica||'').trim())||null);
       setv(F(35),b,(String(p.cumple_rtm||'').trim())||null);
       setv(F(36),b,(String(p.se_tomo||'').trim())||null);
       for(let r=33;r<=36;r++) ws.getRow(F(r)).getCell(b).dataValidation={type:'list',allowBlank:true,formulae:['"SI,NO"']};
@@ -1138,7 +1139,7 @@ function ccTextoPunto1(){
   return '1)SE REALIZO LA INDAGACIÓN DE MERCADO,INVITANDO A POSIBLES PROVEEDORES DEDICADOS AL OBJETO DE LA CONTRATACIÓN,TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: '+nombres;
 }
 function syncPunto1(){ if(ccP1Auto){ const el=document.getElementById('cc-p1'); if(el) el.value=ccTextoPunto1(); } }
-function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',veces_reiterado:'',fecha_recepcion:'',cumple_rtm:'',se_tomo:''};}
+function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',veces_reiterado:'',fecha_recepcion:'',se_dedica:'SI',verifica:'SI',cumple_rtm:'',se_tomo:''};}
 function nuevoItemCC(){return{descripcion:'',medida:'UNIDAD',cantidad:'',precios:ccPostores?ccPostores.map(()=> ''):['',''],marcas:ccPostores?ccPostores.map(()=> ''):['','']};}
 
 function renderCC(){
@@ -1162,6 +1163,10 @@ function renderCC(){
         <div class="field" style="margin:0"><label>Fecha de solicitud</label><input type="date" class="c-fsol"></div>
         <div class="field" style="margin:0"><label>Veces que se reiteró</label><input type="number" min="0" class="c-veces"></div>
         <div class="field" style="margin:0"><label>Fecha de recepción</label><input type="date" class="c-frec"></div>
+        <div class="field" style="margin:0"><label>¿Proveedor se dedica al objeto?</label>
+          <select class="c-dedica"><option value="SI">SI</option><option value="NO">NO</option><option value="">(en blanco)</option></select></div>
+        <div class="field" style="margin:0"><label>¿Dependencia usuaria verificó?</label>
+          <select class="c-verifica"><option value="SI">SI</option><option value="NO">NO</option><option value="">(en blanco)</option></select></div>
         <div class="field" style="margin:0"><label>¿Cumple con los RTM?</label>
           <select class="c-rtm"><option value="">(en blanco)</option><option value="SI">SI</option><option value="NO">NO</option></select></div>
         <div class="field" style="margin:0"><label>¿Se tomó en cuenta para el V. referencial?</label>
@@ -1171,7 +1176,7 @@ function renderCC(){
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
     set('.c-email','email'); set('.c-garantia','garantia');
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-veces','veces_reiterado'); set('.c-frec','fecha_recepcion');
-    set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
+    set('.c-dedica','se_dedica'); set('.c-verifica','verifica'); set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
     // al cambiar el nombre, refresca las etiquetas de postor en los ítems
     card.querySelector('.c-nombre').addEventListener('input', actualizarNombresItemsCC);
     card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{ ccGanador=i; });
@@ -1677,6 +1682,15 @@ document.getElementById('draftDiscard').addEventListener('click', ()=>{
   document.getElementById('draftBar').style.display='none';
 });
 
+// Todo lo que se ingresa (texto) se convierte a MAYÚSCULAS. En fase de captura
+// para que el valor ya esté en mayúscula cuando los campos guardan su estado.
+document.addEventListener('input', (e)=>{
+  const t=e.target;
+  if(t && t.matches && t.matches('#app input[type=text], #app textarea')){
+    const s=t.selectionStart, en=t.selectionEnd, up=t.value.toUpperCase();
+    if(up!==t.value){ t.value=up; try{ t.setSelectionRange(s,en); }catch(_){} }
+  }
+}, true);
 document.addEventListener('input', (e)=>{
   if(e.target && e.target.classList) e.target.classList.remove('campo-error');
   if(e.target && e.target.closest && e.target.closest('#app')){
