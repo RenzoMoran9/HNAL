@@ -251,6 +251,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .btn-nota:hover{filter:brightness(1.07);}
 .aviso-nota{background:#f1ecfb;border:1px solid #d8caf3;color:#4a2b86;border-radius:10px;
   padding:13px 15px;margin-bottom:16px;font-size:.9rem;line-height:1.45;}
+.nota-fila{background:var(--gris);border:1px solid var(--borde);border-radius:10px;padding:13px;margin-bottom:10px;}
+.nota-fila .nf-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.nota-fila .nf-head .t{font-weight:700;color:var(--azul);font-size:.9rem;}
+.nota-grid{display:grid;grid-template-columns:88px 88px 1fr 78px 108px 108px 128px;gap:8px;align-items:end;}
+@media (max-width:900px){.nota-grid{grid-template-columns:1fr 1fr;}}
 </style>
 </head>
 <body>
@@ -385,19 +390,17 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
     </div>
 
     <div class="card">
-      <h2>2. Bien a cotizar</h2>
-      <div class="field"><label>Descripción</label><input type="text" id="cc-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"></div>
-      <div class="grid">
-        <div class="field"><label>Medida</label><input type="text" id="cc-medida" value="UNIDAD"></div>
-        <div class="field"><label>Cantidad</label><input type="number" id="cc-cant" min="0" placeholder="Ej: 1200"></div>
-      </div>
+      <h2>2. Postores (cotizaciones)</h2>
+      <p class="hint" style="margin:-8px 0 12px">Marca cuál es el <b>ganador</b> ✅ — se sombreará en gris y su precio será el Valor Estimado. (Hasta 4 postores.)</p>
+      <div id="cc-postores"></div>
+      <button type="button" class="btn btn-sec" id="cc-agregar">＋ Agregar postor</button>
     </div>
 
     <div class="card">
-      <h2>3. Postores (cotizaciones)</h2>
-      <p class="hint" style="margin:-8px 0 12px">Marca cuál es el <b>ganador</b> ✅ — se sombreará en gris y su precio unitario será el Valor Estimado. (Hasta 4 postores.)</p>
-      <div id="cc-postores"></div>
-      <button type="button" class="btn btn-sec" id="cc-agregar">＋ Agregar postor</button>
+      <h2>3. Ítems a cotizar</h2>
+      <p class="hint" style="margin:-8px 0 12px">Cada ítem es una fila del cuadro. Ingresa el <b>precio y marca de cada postor</b> por ítem; el valor estimado sale del ganador × cantidad.</p>
+      <div id="cc-items"></div>
+      <button type="button" class="btn btn-sec" id="cc-agregar-item">＋ Agregar ítem</button>
     </div>
 
     <div class="card">
@@ -514,21 +517,9 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 
     <div class="card">
       <h2>2. Cuadro de crédito presupuestario</h2>
-      <div class="grid2">
-        <div class="field"><label>CCMN</label><input type="text" id="n-ccmn" placeholder="Ej: 4996"></div>
-        <div class="field"><label>CCP SIAF</label><input type="text" id="n-ccpsiaf" placeholder="Ej: 3171"></div>
-      </div>
-      <div class="field"><label>Descripción <span class="hint">— sale del cuadro comparativo</span></label><input type="text" id="n-desc" placeholder="Ej: MICROCUBETA DESCARTABLE PARA HEMOGLOBINOMETRO"></div>
-      <div class="grid3">
-        <div class="field"><label>Meta</label><input type="text" id="n-meta" placeholder="Ej: 0083"></div>
-        <div class="field"><label>Específica de Gasto</label><input type="text" id="n-especifica" placeholder="Ej: 23.18.21"></div>
-        <div class="field"><label>F.F.</label>
-          <select id="n-ff">
-            <option value="DyT 4-13">DyT 4-13</option>
-            <option value="RO 1-00">RO 1-00</option>
-          </select></div>
-      </div>
-      <div class="field" style="max-width:280px"><label>Monto <span class="hint">— sale del cuadro comparativo</span></label><input type="text" id="n-monto" placeholder="Ej: S/ 2,100.00"></div>
+      <p class="hint" style="margin:-8px 0 12px">Una fila por ítem. La <b>descripción</b> y el <b>monto</b> salen del cuadro comparativo; completa CCMN, CCP SIAF, Meta, Específica y F.F.</p>
+      <div id="nota-filas"></div>
+      <button type="button" class="btn btn-sec" id="n-agregar-fila">＋ Agregar fila</button>
     </div>
 
     <div class="card">
@@ -977,103 +968,124 @@ async function generarCuadroComparativo(datos){
   const N=postores.length;
   if(N<1) throw new Error('Agrega al menos un postor con nombre.');
   if(N>4) throw new Error('El cuadro comparativo admite hasta 4 postores.');
+  const items=(datos.items||[]).filter(it=>(it.descripcion||'').trim()!=='' || (it.precios||[]).some(x=>String(x).trim()!==''));
+  if(items.length<1) throw new Error('Agrega al menos un item.');
+  const nI=items.length, OFF=nI-1;
+  const ITEM=20, FOOT_TOP=21, FOOT_BOT=45, WMAX=25;
   const setv=(r,c,v)=>{ ws.getRow(r).getCell(c).value=v; };
-  // clona el estilo antes de pintar (evita el bug de estilo compartido de ExcelJS)
   const setFill=(r,c,argb)=>{ const cell=ws.getRow(r).getCell(c); cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:argb}}; };
   const baseCol=i=>6+3*i;
+  const F=r=>r+OFF;
 
+  // Cabecera
   setv(3,1,'DOCUMENTO DE SOLICITUD : '+String(datos.documento_solicitud||'').trim());
   setv(4,1,'AREA USUARIA: '+String(datos.area_usuaria||'').trim());
   setv(7,4,'ADQ. DE '+String(datos.denominacion||'').trim().toUpperCase());
-  setv(20,1,1);
-  setv(20,2,String(datos.descripcion||'').trim());
-  const medida=(String(datos.medida||'UNIDAD').trim().toUpperCase())||'UNIDAD';
-  setv(20,3,medida); setv(20,4,medida);
-  setv(20,5,ccNum(datos.cantidad));
 
+  // Prototipo de la fila de item (fila 20) y del pie (21..45)
+  const clone=(r,c)=>{ const cell=ws.getRow(r).getCell(c); return {c, value:cell.value, style:JSON.parse(JSON.stringify(cell.style||{})), numFmt:cell.numFmt}; };
+  const itemProto=[]; for(let c=1;c<=WMAX;c++) itemProto.push(clone(ITEM,c));
+  const itemH=ws.getRow(ITEM).height;
+  const foot=[]; for(let r=FOOT_TOP;r<=FOOT_BOT;r++){ const cells=[]; for(let c=1;c<=WMAX;c++) cells.push(clone(r,c)); foot.push({r,h:ws.getRow(r).height,hidden:ws.getRow(r).hidden,cells}); }
+
+  // Merges del pie (>=21): guardar, desmarcar (se reconstruyen desplazados)
+  const footMerges=[];
+  ((ws.model&&ws.model.merges)||[]).slice().forEach(rng=>{
+    const m=String(rng).match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/);
+    if(m && parseInt(m[2],10)>=FOOT_TOP){ footMerges.push([m[1],parseInt(m[2],10),m[3],parseInt(m[4],10)]); try{ ws.unMergeCells(rng); }catch(e){} }
+  });
+
+  // Limpiar zona dinamica y reubicar el pie +OFF
+  for(let r=ITEM;r<=FOOT_BOT+OFF;r++) for(let c=1;c<=WMAX;c++) ws.getRow(r).getCell(c).value=null;
+  foot.forEach(fr=>{ const row=ws.getRow(fr.r+OFF); if(fr.h) row.height=fr.h; row.hidden=!!fr.hidden;
+    fr.cells.forEach(cc=>{ const cell=row.getCell(cc.c); cell.style=JSON.parse(JSON.stringify(cc.style)); if(cc.numFmt) cell.numFmt=cc.numFmt; cell.value=cc.value; }); });
+
+  // Filas de items
+  const g=Math.min(Math.max(parseInt(datos.ganador,10)||0,0),N-1); const gb=baseCol(g);
+  items.forEach((it,k)=>{
+    const r=ITEM+k;
+    if(itemH) ws.getRow(r).height=itemH; ws.getRow(r).hidden=false;
+    itemProto.forEach(pr=>{ const cell=ws.getRow(r).getCell(pr.c); cell.style=JSON.parse(JSON.stringify(pr.style)); if(pr.numFmt) cell.numFmt=pr.numFmt; cell.value=pr.value; });
+    setv(r,1,k+1);
+    setv(r,2,String(it.descripcion||'').trim());
+    const medida=(String(it.medida||'UNIDAD').trim().toUpperCase())||'UNIDAD';
+    setv(r,3,medida); setv(r,4,medida);
+    setv(r,5,ccNum(it.cantidad));
+    for(let i=0;i<4;i++){ const b=baseCol(i);
+      if(i<N){ setv(r,b,ccNum((it.precios||[])[i])); setv(r,b+1,{formula:'E'+r+'*'+colLetter(b)+r}); setv(r,b+2,String((it.marcas||[])[i]||'').trim()); }
+      else { setv(r,b,null); setv(r,b+1,null); setv(r,b+2,null); }
+    }
+    setv(r,18,null); setv(r,19,null); setv(r,20,null); // FUENTE 2 no se usa
+    setv(r,22,{formula:colLetter(gb)+r}); setv(r,23,{formula:'V'+r+'*E'+r}); // valor unit/estimado del item
+  });
+
+  // Encabezado de postores (11-19) + detalle (pie desplazado)
   for(let i=0;i<4;i++){
     const b=baseCol(i), cols=[b,b+1,b+2];
     if(i<N){
       const p=postores[i];
-      setv(12,b,i+1);
-      setv(13,b,String(p.nombre||'').trim());
-      setv(15,b+1,ccNum(p.ruc));
-      setv(16,b+1,String(p.contacto||'').trim());
-      setv(17,b+1,ccNum(p.telefono));
-      setv(18,b+1,String(p.email||'').trim());
-      setv(20,b,ccNum(p.precio_unitario));
-      setv(20,b+1,{formula:'E20*'+colLetter(b)+'20'});
-      setv(20,b+2,String(p.marca||'').trim());
-      setv(21,b,{formula:colLetter(b+1)+'20'});
-      // reset a blanco (se pinta de gris solo al ganador mas abajo)
-      cols.forEach(c=>{ setFill(20,c,'FFFFFFFF'); setFill(21,c,'FFFFFFFF'); });
-      for(let r=22;r<=25;r++) setv(r,b,null);
-      setv(26,b,String(p.garantia||'').trim());
-      setv(27,b,String(p.plazo_entrega||'').trim());
-      setv(28,b,'CREDITO COMERCIAL');
-      setv(29,b,'SOLES');
-      setv(30,b,ccFecha(p.fecha_solicitud));
-      ws.getRow(30).getCell(b).numFmt='dd/mm/yyyy';
-      setv(31,b,ccNum(p.veces_reiterado));
-      setv(32,b,ccFecha(p.fecha_recepcion));
-      ws.getRow(32).getCell(b).numFmt='dd/mm/yyyy';
-      setv(33,b,'SI');   // PROVEEDOR SE DEDICA AL OBJETO
-      setv(34,b,'SI');   // LA DEPENDENCIA USUARIA PARTICIPÓ
-      setv(35,b,(String(p.cumple_rtm||'').trim())||null);  // CUMPLE CON LOS RTM
-      setv(36,b,(String(p.se_tomo||'').trim())||null);      // SE TOMO EN CUENTA
-      // desplegable SI/NO en las 4 acciones (seleccion rapida en Excel)
-      for(let r=33;r<=36;r++)
-        ws.getRow(r).getCell(b).dataValidation={type:'list',allowBlank:true,formulae:['"SI,NO"']};
+      setv(12,b,i+1); setv(13,b,String(p.nombre||'').trim());
+      setv(15,b+1,ccNum(p.ruc)); setv(16,b+1,String(p.contacto||'').trim());
+      setv(17,b+1,ccNum(p.telefono)); setv(18,b+1,String(p.email||'').trim());
+      for(let r=22;r<=25;r++) setv(F(r),b,null);
+      setv(F(26),b,String(p.garantia||'').trim());
+      setv(F(27),b,String(p.plazo_entrega||'').trim());
+      setv(F(28),b,'CREDITO COMERCIAL'); setv(F(29),b,'SOLES');
+      setv(F(30),b,ccFecha(p.fecha_solicitud)); ws.getRow(F(30)).getCell(b).numFmt='dd/mm/yyyy';
+      setv(F(31),b,ccNum(p.veces_reiterado));
+      setv(F(32),b,ccFecha(p.fecha_recepcion)); ws.getRow(F(32)).getCell(b).numFmt='dd/mm/yyyy';
+      setv(F(33),b,'SI'); setv(F(34),b,'SI');
+      setv(F(35),b,(String(p.cumple_rtm||'').trim())||null);
+      setv(F(36),b,(String(p.se_tomo||'').trim())||null);
+      for(let r=33;r<=36;r++) ws.getRow(F(r)).getCell(b).dataValidation={type:'list',allowBlank:true,formulae:['"SI,NO"']};
       cols.forEach(c=>{ ws.getColumn(c).hidden=false; });
     }else{
-      for(let r=12;r<=36;r++) for(const c of cols) setv(r,c,null);
+      for(let r=12;r<=19;r++) for(const c of cols) setv(r,c,null);
+      for(let r=22;r<=36;r++) for(const c of cols) setv(F(r),c,null);
       cols.forEach(c=>{ ws.getColumn(c).hidden=true; });
     }
   }
 
-  const g=Math.min(Math.max(parseInt(datos.ganador,10)||0,0),N-1);
-  const gb=baseCol(g);
-  [gb,gb+1,gb+2].forEach(c=>{ setFill(20,c,GRIS); setFill(21,c,GRIS); });
-  setv(20,22,{formula:colLetter(gb)+'20'});
-  setv(20,23,{formula:'V20*E20'});
-  setv(21,23,{formula:'W20'});
+  // Fila TOTAL (era 21)
+  const totalRow=F(21);
+  for(let i=0;i<4;i++){ const b=baseCol(i);
+    if(i<N) setv(totalRow,b,{formula:'SUM('+colLetter(b+1)+ITEM+':'+colLetter(b+1)+(ITEM+OFF)+')'});
+    else setv(totalRow,b,null);
+  }
+  setv(totalRow,18,null);
+  setv(totalRow,23,{formula:'SUM(W'+ITEM+':W'+(ITEM+OFF)+')'});
 
-  [[15,19],[16,19],[18,19],[20,18],[20,19],[20,20],[21,18]].forEach(a=> setv(a[0],a[1],null));
+  // Ganador: sombrear sus columnas en cada fila de item (reset blanco primero)
+  items.forEach((it,k)=>{ const r=ITEM+k;
+    for(let i=0;i<N;i++){ const b=baseCol(i); [b,b+1,b+2].forEach(c=>setFill(r,c,'FFFFFFFF')); }
+    [gb,gb+1,gb+2].forEach(c=>setFill(r,c,GRIS));
+  });
 
+  // Limpiar datos de FUENTE 2 en la cabecera
+  [[15,19],[16,19],[18,19]].forEach(a=> setv(a[0],a[1],null));
+
+  // Reconstruir merges del pie (desplazados)
+  footMerges.forEach(a=>{ try{ ws.mergeCells(a[0]+(a[1]+OFF)+':'+a[2]+(a[3]+OFF)); }catch(e){} });
+
+  // Puntos 1)2)3)
   const nombres=postores.map(p=>String(p.nombre||'').trim()).filter(Boolean).join(', ');
   const p1=(datos.punto1&&datos.punto1.trim())?datos.punto1.trim():
     '1)SE REALIZO LA INDAGACIÓN DE MERCADO,INVITANDO A POSIBLES PROVEEDORES DEDICADOS AL OBJETO DE LA CONTRATACIÓN,TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: '+nombres;
   const p2=(datos.punto2&&datos.punto2.trim())?datos.punto2.trim():'2)CON MEMORANDUM N°';
   const p3=(datos.punto3&&datos.punto3.trim())?datos.punto3.trim():'';
-  setv(37,1,[p1,p2,p3].filter(Boolean).join('\n'));
+  setv(F(37),1,[p1,p2,p3].filter(Boolean).join('\n'));
 
-  // ---- Quitar el sombreado melon (naranja / accent6) de los encabezados;
-  //      solo debe quedar el gris del ganador ----
+  // Quitar sombreado melon (theme9) salvo el gris del ganador
   const quitarRelleno=(cell)=>{ cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.fill={type:'pattern',pattern:'none'}; };
-  for(let r=1;r<=45;r++) for(let c=1;c<=40;c++){
-    const cell=ws.getRow(r).getCell(c);
-    const fg=cell.fill && cell.fill.fgColor;
-    if(fg && fg.theme===9) quitarRelleno(cell);
-  }
-  for(let c=1;c<=5;c++) quitarRelleno(ws.getRow(20).getCell(c)); // gris sobrante fila item
+  for(let r=1;r<=FOOT_BOT+OFF;r++) for(let c=1;c<=40;c++){ const cell=ws.getRow(r).getCell(c); const fg=cell.fill&&cell.fill.fgColor; if(fg&&fg.theme===9) quitarRelleno(cell); }
+  // Cabecera limpia: quitar marcos apilados filas 2-9
+  for(let r=2;r<=9;r++) for(let c=1;c<=30;c++){ const cell=ws.getRow(r).getCell(c); cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.border={}; }
 
-  // Cabecera limpia: quitar los marcos apilados de las filas 2-9
-  // (cada linea DOCUMENTO/AREA/TIPO venia con su propio recuadro)
-  for(let r=2;r<=9;r++) for(let c=1;c<=30;c++){
-    const cell=ws.getRow(r).getCell(c);
-    cell.style=JSON.parse(JSON.stringify(cell.style||{}));
-    cell.border={};
-  }
-
-  // ---- FECHA + firma del especialista ----
-  setv(39,5,ccFecha(datos.fecha));
-  ws.getRow(39).getCell(5).numFmt='dd/mm/yyyy';
+  // FECHA + firma del especialista (fila 31 desplazada)
+  setv(F(39),5,ccFecha(datos.fecha)); ws.getRow(F(39)).getCell(5).numFmt='dd/mm/yyyy';
   const cargo=(String(datos.cargo||'').trim()||'Especialista en Contrataciones Públicas');
   const nomEsp=String(datos.especialista||'').trim().toUpperCase();
-  // Bloque compacto (linea + nombre + cargo juntos) en UNA celda con saltos
-  // de linea, centrado en el espacio en blanco de la columna B. Arriba queda
-  // libre para el sello y la firma al imprimir.
-  const cF=ws.getRow(31).getCell(2);
+  const cF=ws.getRow(F(31)).getCell(2);
   cF.style=JSON.parse(JSON.stringify(cF.style||{}));
   cF.value={richText:[
     {font:{size:22,name:'Calibri'},text:'_______________________________\n'},
@@ -1082,16 +1094,12 @@ async function generarCuadroComparativo(datos){
   ]};
   cF.alignment={horizontal:'center',vertical:'center',wrapText:true};
 
-  // ---- Estetica: sin cuadriculas, abre arriba y hoja con nombre claro ----
   ws.views=[{showGridLines:false, topLeftCell:'A1', zoomScale:30, zoomScaleNormal:30, workbookViewId:0}];
   try{ ws.name='CUADRO COMPARATIVO'; }catch(e){}
-
-  // Impresion profesional: horizontal, ajustado al ancho (las columnas
-  // ocultas no se imprimen -> el PDF sale limpio)
   ws.pageSetup = Object.assign({}, ws.pageSetup, {
     orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0,
     margins:{left:0.3,right:0.3,top:0.4,bottom:0.4,header:0.2,footer:0.2},
-    printArea:'A1:W45',
+    printArea:'A1:W'+(FOOT_BOT+OFF),
   });
   return await wb.xlsx.writeBuffer();
 }
@@ -1099,7 +1107,9 @@ async function generarCuadroComparativo(datos){
 // ---- Formulario CC ----
 let ccPostores=[nuevoPostorCC(),nuevoPostorCC()];
 let ccGanador=0;
-function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',precio_unitario:'',marca:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',veces_reiterado:'',fecha_recepcion:'',cumple_rtm:'',se_tomo:''};}
+let ccItems=[nuevoItemCC()];
+function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',veces_reiterado:'',fecha_recepcion:'',cumple_rtm:'',se_tomo:''};}
+function nuevoItemCC(){return{descripcion:'',medida:'UNIDAD',cantidad:'',precios:ccPostores?ccPostores.map(()=> ''):['',''],marcas:ccPostores?ccPostores.map(()=> ''):['','']};}
 
 function renderCC(){
   const cont=document.getElementById('cc-postores'); cont.innerHTML='';
@@ -1117,8 +1127,6 @@ function renderCC(){
         <div class="field" style="margin:0"><label>Contacto</label><input type="text" class="c-contacto"></div>
         <div class="field" style="margin:0"><label>Teléfono</label><input type="text" class="c-telefono"></div>
         <div class="field" style="margin:0"><label>E-mail</label><input type="text" class="c-email"></div>
-        <div class="field" style="margin:0"><label>Precio unitario (S/)</label><input type="number" step="any" min="0" class="c-precio"></div>
-        <div class="field" style="margin:0"><label>Marca</label><input type="text" class="c-marca"></div>
         <div class="field" style="margin:0"><label>Garantía / vigencia</label><input type="text" class="c-garantia" placeholder="Ej: 12 MESES"></div>
         <div class="field" style="margin:0"><label>Plazo de entrega</label><input type="text" class="c-plazo" placeholder="Ej: 05 DÍAS"></div>
         <div class="field" style="margin:0"><label>Fecha de solicitud</label><input type="date" class="c-fsol"></div>
@@ -1131,22 +1139,66 @@ function renderCC(){
       </div>`;
     const set=(sel,key)=>{ const el=card.querySelector(sel); el.value=p[key]; el.addEventListener('input',()=>p[key]=el.value); };
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
-    set('.c-email','email'); set('.c-precio','precio_unitario'); set('.c-marca','marca'); set('.c-garantia','garantia');
+    set('.c-email','email'); set('.c-garantia','garantia');
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-veces','veces_reiterado'); set('.c-frec','fecha_recepcion');
     set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
+    // al cambiar el nombre, refresca las etiquetas de postor en los ítems
+    card.querySelector('.c-nombre').addEventListener('input', actualizarNombresItemsCC);
     card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{ ccGanador=i; });
     card.querySelector('.cc-quitar').addEventListener('click',()=>{
       if(ccPostores.length<=1) return;
       ccPostores.splice(i,1);
+      ccItems.forEach(it=>{ it.precios.splice(i,1); it.marcas.splice(i,1); });
       if(ccGanador>=ccPostores.length) ccGanador=ccPostores.length-1;
-      renderCC();
+      renderCC(); renderCCItems();
     });
     cont.appendChild(card);
   });
   document.getElementById('cc-agregar').style.display = ccPostores.length>=4 ? 'none':'';
 }
-document.getElementById('cc-agregar').addEventListener('click',()=>{ if(ccPostores.length<4){ ccPostores.push(nuevoPostorCC()); renderCC(); }});
-renderCC();
+document.getElementById('cc-agregar').addEventListener('click',()=>{
+  if(ccPostores.length<4){ ccPostores.push(nuevoPostorCC()); ccItems.forEach(it=>{ it.precios.push(''); it.marcas.push(''); }); renderCC(); renderCCItems(); }
+});
+
+// ---- Ítems del CC (precio + marca por postor) ----
+function nombrePostorCC(i){ const n=(ccPostores[i]&&ccPostores[i].nombre||'').trim(); return 'Postor '+(i+1)+(n?' — '+n:''); }
+function renderCCItems(){
+  const cont=document.getElementById('cc-items'); cont.innerHTML='';
+  ccItems.forEach((it,k)=>{
+    const card=document.createElement('div'); card.className='item-card';
+    const cots=ccPostores.map((p,i)=>`
+      <div class="cc-cot" data-i="${i}" style="border:1px solid var(--borde-2);border-radius:8px;padding:10px;background:#fff">
+        <div class="cc-cot-t" style="font-weight:700;color:var(--azul);font-size:.82rem;margin-bottom:6px">${escH(nombrePostorCC(i))}</div>
+        <div class="grid2">
+          <div class="field" style="margin:0"><label>Precio unit. (S/)</label><input type="number" step="any" min="0" class="ci-precio" data-i="${i}"></div>
+          <div class="field" style="margin:0"><label>Marca</label><input type="text" class="ci-marca" data-i="${i}"></div>
+        </div>
+      </div>`).join('');
+    card.innerHTML=`
+      <div class="item-head">
+        <div class="t">Ítem ${k+1}</div>
+        <button type="button" class="btn-quitar ci-quitar" title="Quitar">✕</button>
+      </div>
+      <div class="grid3">
+        <div class="field" style="margin:0"><label>Descripción</label><input type="text" class="ci-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"></div>
+        <div class="field" style="margin:0"><label>Medida</label><input type="text" class="ci-medida" value="UNIDAD"></div>
+        <div class="field" style="margin:0"><label>Cantidad</label><input type="number" min="0" class="ci-cant" placeholder="Ej: 1200"></div>
+      </div>
+      <div class="marcas-title">Cotización por postor:</div>
+      <div class="marcas-grid">${cots}</div>`;
+    const q=s=>card.querySelector(s);
+    q('.ci-desc').value=it.descripcion; q('.ci-desc').addEventListener('input',e=>it.descripcion=e.target.value);
+    q('.ci-medida').value=it.medida; q('.ci-medida').addEventListener('input',e=>it.medida=e.target.value);
+    q('.ci-cant').value=it.cantidad; q('.ci-cant').addEventListener('input',e=>it.cantidad=e.target.value);
+    card.querySelectorAll('.ci-precio').forEach(inp=>{ const i=+inp.dataset.i; inp.value=it.precios[i]||''; inp.addEventListener('input',()=>it.precios[i]=inp.value); });
+    card.querySelectorAll('.ci-marca').forEach(inp=>{ const i=+inp.dataset.i; inp.value=it.marcas[i]||''; inp.addEventListener('input',()=>it.marcas[i]=inp.value); });
+    card.querySelector('.ci-quitar').addEventListener('click',()=>{ if(ccItems.length<=1) return; ccItems.splice(k,1); renderCCItems(); });
+    cont.appendChild(card);
+  });
+}
+function actualizarNombresItemsCC(){ document.querySelectorAll('#cc-items .cc-cot').forEach(el=>{ const t=el.querySelector('.cc-cot-t'); if(t) t.textContent=nombrePostorCC(+el.dataset.i); }); }
+document.getElementById('cc-agregar-item').addEventListener('click',()=>{ ccItems.push(nuevoItemCC()); renderCCItems(); });
+renderCC(); renderCCItems();
 
 function mostrarErrorCC(t){ const m=document.getElementById('msg-cc'); m.className='msg-error'; m.textContent='⚠ '+t; }
 document.getElementById('form-cc').addEventListener('submit', (e)=>{
@@ -1154,25 +1206,31 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
   const msg=document.getElementById('msg-cc'); msg.className=''; msg.textContent='';
   const val=id=>document.getElementById(id).value;
   if(!validarReq(['cc-denom'])){ mostrarErrorCC('Completa los campos marcados en rojo.'); return; }
-  const postores=ccPostores.filter(p=>(p.nombre||'').trim()!=='');
-  if(postores.length===0){ mostrarErrorCC('Agrega al menos un postor con nombre.'); return; }
+  const usedIdx = ccPostores.map((p,i)=>i).filter(i=>(ccPostores[i].nombre||'').trim()!=='');
+  if(usedIdx.length===0){ mostrarErrorCC('Agrega al menos un postor con nombre.'); return; }
+  const itemsUsed = ccItems.filter(it=>(it.descripcion||'').trim()!=='' || it.precios.some(x=>String(x).trim()!==''));
+  if(itemsUsed.length===0){ mostrarErrorCC('Agrega al menos un ítem con descripción o precio.'); return; }
+  const postoresUsed = usedIdx.map(i=>({...ccPostores[i]}));
+  const itemsData = itemsUsed.map(it=>({
+    descripcion:it.descripcion, medida:it.medida, cantidad:it.cantidad,
+    precios: usedIdx.map(i=>it.precios[i]), marcas: usedIdx.map(i=>it.marcas[i]),
+  }));
+  const ganadorRemap = Math.max(0, usedIdx.indexOf(ccGanador));
   const datos={
     documento_solicitud:val('cc-doc'), area_usuaria:val('cc-area'), denominacion:val('cc-denom'),
-    descripcion:val('cc-desc'), medida:val('cc-medida'), cantidad:val('cc-cant'),
-    postores:ccPostores.map(p=>({...p})), ganador:ccGanador,
+    items:itemsData, postores:postoresUsed, ganador:ganadorRemap,
     punto1:val('cc-p1'), punto2:val('cc-p2'), punto3:val('cc-p3'),
     especialista:val('cc-esp'), cargo:val('cc-cargo'), fecha:val('cc-fecha'),
   };
-  const gName=(ccPostores[ccGanador]||{}).nombre||'—';
+  const gName=(postoresUsed[ganadorRemap]||{}).nombre||'—';
   const resumen = pvDL([
     ['Adquisición', val('cc-denom')],
     ['Área usuaria', val('cc-area')],
-    ['Descripción', val('cc-desc')],
-    ['Cantidad', val('cc-cant')],
+    ['N° de ítems', String(itemsData.length)],
     ['Ganador (Valor Estimado)', gName],
-  ]) + '<div class="pv-sub">Postores</div>' + pvTabla(
-    ['#','Postor','P. unitario','Marca'],
-    postores.map((p,i)=>[i+1, p.nombre, p.precio_unitario, p.marca]));
+  ]) + '<div class="pv-sub">Ítems</div>' + pvTabla(
+    ['#','Descripción','Medida','Cant','P. ganador'],
+    itemsData.map((it,i)=>[i+1, it.descripcion, it.medida, it.cantidad, it.precios[ganadorRemap]]));
 
   abrirPreview('Cuadro Comparativo', resumen, async ()=>{
     msg.className=''; msg.textContent='Generando…';
@@ -1340,21 +1398,55 @@ function montoSoles(n){
   return 'S/ '+num.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
-// "Emitir Nota Informativa": trae descripción y monto del cuadro comparativo
+function parseMonto(s){ const t=String(s||'').replace(/[^0-9.,-]/g,'').replace(/,/g,''); const n=Number(t); return isFinite(n)?n:0; }
+
+// ---- Filas de la Nota (una por item: CCMN/CCP SIAF/Descripción/Meta/Específica/F.F./Monto) ----
+let notaFilas=[nuevaFilaNota()];
+function nuevaFilaNota(){ return {ccmn:'',ccpsiaf:'',descripcion:'',meta:'',especifica:'',ff:'DyT 4-13',monto:''}; }
+function renderNotaFilas(){
+  const cont=document.getElementById('nota-filas'); cont.innerHTML='';
+  notaFilas.forEach((f,k)=>{
+    const div=document.createElement('div'); div.className='nota-fila';
+    div.innerHTML=`
+      <div class="nf-head"><div class="t">Ítem ${k+1}</div><button type="button" class="btn-quitar nf-quitar" title="Quitar">✕</button></div>
+      <div class="nota-grid">
+        <div class="field" style="margin:0"><label>CCMN</label><input type="text" class="nf-ccmn" placeholder="Ej: 4996"></div>
+        <div class="field" style="margin:0"><label>CCP SIAF</label><input type="text" class="nf-ccpsiaf" placeholder="Ej: 3171"></div>
+        <div class="field" style="margin:0"><label>Descripción</label><input type="text" class="nf-desc" placeholder="Ej: MICROCUBETA…"></div>
+        <div class="field" style="margin:0"><label>Meta</label><input type="text" class="nf-meta" placeholder="Ej: 0083"></div>
+        <div class="field" style="margin:0"><label>Específica</label><input type="text" class="nf-especifica" placeholder="Ej: 23.18.21"></div>
+        <div class="field" style="margin:0"><label>F.F.</label><select class="nf-ff"><option value="DyT 4-13">DyT 4-13</option><option value="RO 1-00">RO 1-00</option></select></div>
+        <div class="field" style="margin:0"><label>Monto</label><input type="text" class="nf-monto" placeholder="S/ 0.00"></div>
+      </div>`;
+    const q=s=>div.querySelector(s);
+    q('.nf-ccmn').value=f.ccmn; q('.nf-ccmn').addEventListener('input',e=>f.ccmn=e.target.value);
+    q('.nf-ccpsiaf').value=f.ccpsiaf; q('.nf-ccpsiaf').addEventListener('input',e=>f.ccpsiaf=e.target.value);
+    q('.nf-desc').value=f.descripcion; q('.nf-desc').addEventListener('input',e=>f.descripcion=e.target.value);
+    q('.nf-meta').value=f.meta; q('.nf-meta').addEventListener('input',e=>f.meta=e.target.value);
+    q('.nf-especifica').value=f.especifica; q('.nf-especifica').addEventListener('input',e=>f.especifica=e.target.value);
+    q('.nf-ff').value=f.ff||'DyT 4-13'; q('.nf-ff').addEventListener('change',e=>f.ff=e.target.value);
+    q('.nf-monto').value=f.monto; q('.nf-monto').addEventListener('input',e=>f.monto=e.target.value);
+    q('.nf-quitar').addEventListener('click',()=>{ if(notaFilas.length<=1) return; notaFilas.splice(k,1); renderNotaFilas(); });
+    cont.appendChild(div);
+  });
+}
+document.getElementById('n-agregar-fila').addEventListener('click',()=>{ notaFilas.push(nuevaFilaNota()); renderNotaFilas(); });
+renderNotaFilas();
+
+// "Emitir Nota Informativa": trae una fila por item del cuadro comparativo (descripción + monto del ganador)
 document.getElementById('btn-emitir-nota').addEventListener('click',()=>{
-  const v=id=>document.getElementById(id).value;
-  const desc = (v('cc-desc')||'').trim() || (v('cc-denom')||'').trim();
-  document.getElementById('n-desc').value = desc.toUpperCase();
-  // Monto = valor estimado (precio unitario del ganador × cantidad)
-  const g = ccPostores[ccGanador] || ccPostores[0];
-  const pu = g ? Number(String(g.precio_unitario||'').replace(',','.')) : NaN;
-  const cant = Number(String(v('cc-cant')||'').replace(',','.'));
-  if(isFinite(pu) && isFinite(cant) && pu>0 && cant>0){
-    document.getElementById('n-monto').value = montoSoles(pu*cant);
+  const gw=ccGanador;
+  const itemsUsed=ccItems.filter(it=>(it.descripcion||'').trim()!=='' || (it.precios||[]).some(x=>String(x).trim()!==''));
+  if(itemsUsed.length){
+    notaFilas=itemsUsed.map(it=>{
+      const pu=Number(String((it.precios||[])[gw]||'').replace(',','.'));
+      const cant=Number(String(it.cantidad||'').replace(',','.'));
+      const monto=(isFinite(pu)&&isFinite(cant)&&pu>0&&cant>0)?montoSoles(pu*cant):'';
+      return {ccmn:'',ccpsiaf:'',descripcion:(it.descripcion||'').trim().toUpperCase(),meta:'',especifica:'',ff:'DyT 4-13',monto};
+    });
+    renderNotaFilas();
   }
-  if(!document.getElementById('n-fecha').value){
-    document.getElementById('n-fecha').value = new Date().toISOString().slice(0,10);
-  }
+  if(!document.getElementById('n-fecha').value){ document.getElementById('n-fecha').value=new Date().toISOString().slice(0,10); }
   irA('nota');
   window.scrollTo(0,0);
 });
@@ -1364,7 +1456,10 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
   e.preventDefault();
   const msg=document.getElementById('msg-nota'); msg.className=''; msg.textContent='';
   const val=id=>document.getElementById(id).value;
-  if(!validarReq(['n-dest-nombre','n-desc','n-ref','n-monto','n-fecha'])){ mostrarErrorNota('Completa los campos marcados en rojo.'); return; }
+  if(!validarReq(['n-dest-nombre','n-ref','n-fecha'])){ mostrarErrorNota('Completa los campos marcados en rojo.'); return; }
+  const filas=notaFilas.filter(f=>(f.descripcion||'').trim()!=='');
+  if(filas.length===0){ mostrarErrorNota('Agrega al menos un ítem con descripción.'); return; }
+  let total=0; filas.forEach(f=> total+=parseMonto(f.monto));
   const datos = {
     anio: val('n-anio').trim() || '2026',
     destNombre: val('n-dest-nombre').trim(),
@@ -1374,13 +1469,8 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
     asuntoNum: val('n-asunto-num').trim(),
     referencia: val('n-ref').trim(),
     fecha: fechaLimaDe(val('n-fecha')),
-    ccmn: val('n-ccmn').trim(),
-    ccpSiaf: val('n-ccpsiaf').trim(),
-    descripcion: val('n-desc').trim(),
-    meta: val('n-meta').trim(),
-    especifica: val('n-especifica').trim(),
-    ff: val('n-ff'),
-    monto: val('n-monto').trim(),
+    filas: filas.map(f=>({ccmn:(f.ccmn||'').trim(), ccpSiaf:(f.ccpsiaf||'').trim(), descripcion:(f.descripcion||'').trim(), meta:(f.meta||'').trim(), especifica:(f.especifica||'').trim(), ff:f.ff||'', monto:(f.monto||'').trim()})),
+    montoTotal: montoSoles(total),
     expDir: val('n-expdir').trim(),
     expLog: val('n-explog').trim(),
     folios: val('n-folios').trim(),
@@ -1392,9 +1482,10 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
     ['Asunto (N° Certificación)', 'N°'+val('n-asunto-num')],
     ['Referencia', val('n-ref')],
     ['Fecha', datos.fecha],
+    ['Monto total', datos.montoTotal],
   ]) + '<div class="pv-sub">Crédito presupuestario</div>' + pvTabla(
     ['CCMN','CCP SIAF','Descripción','Meta','Específica','F.F.','Monto'],
-    [[val('n-ccmn'), val('n-ccpsiaf'), val('n-desc'), val('n-meta'), val('n-especifica'), val('n-ff'), val('n-monto')]]);
+    filas.map(f=>[f.ccmn, f.ccpsiaf, f.descripcion, f.meta, f.especifica, f.ff, f.monto]));
 
   abrirPreview('Nota Informativa', resumen, ()=>{
     msg.className=''; msg.textContent='Generando…';
@@ -1405,7 +1496,7 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
       doc.render(datos);
       const blob = doc.getZip().generate({type:'blob',
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-      const baseN = datos.descripcion.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'NOTA';
+      const baseN = (filas[0].descripcion||'NOTA').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'NOTA';
       descargarBlob(blob, 'NOTA_INFORMATIVA_'+baseN+'.docx', msg);
     }catch(err){ mostrarErrorNota(err.message||'Ocurrió un error al generar la nota.'); console.error(err); }
   });
@@ -1501,7 +1592,7 @@ let saveReady=false, pendingDraft=null, draftMostrado=false, saveTimer=null;
 function snapshot(){
   const inputs={};
   document.querySelectorAll('#app input[id], #app select[id], #app textarea[id]').forEach(el=>{ inputs[el.id]=el.value; });
-  return { v:2, ts:Date.now(), tipo, postores, items, ccPostores, ccGanador, memoFilas, inputs };
+  return { v:3, ts:Date.now(), tipo, postores, items, ccPostores, ccGanador, ccItems, memoFilas, notaFilas, inputs };
 }
 function guardarYa(){ if(!saveReady) return; try{ localStorage.setItem('hnal_borrador', JSON.stringify(snapshot())); }catch(e){} }
 function scheduleSave(){ if(!saveReady) return; clearTimeout(saveTimer); saveTimer=setTimeout(guardarYa, 500); }
@@ -1513,8 +1604,11 @@ function restore(d){
     items.forEach(it=>{ while(it.marcas.length<postores.length) it.marcas.push(''); it.marcas.length=postores.length; });
     if(Array.isArray(d.ccPostores)&&d.ccPostores.length) ccPostores=d.ccPostores.map(p=>Object.assign(nuevoPostorCC(),p));
     if(typeof d.ccGanador==='number') ccGanador=Math.min(Math.max(d.ccGanador,0),ccPostores.length-1);
+    if(Array.isArray(d.ccItems)&&d.ccItems.length) ccItems=d.ccItems.map(it=>({descripcion:it.descripcion||'',medida:it.medida||'UNIDAD',cantidad:it.cantidad||'',precios:(it.precios||[]).slice(),marcas:(it.marcas||[]).slice()}));
+    ccItems.forEach(it=>{ while(it.precios.length<ccPostores.length) it.precios.push(''); it.precios.length=ccPostores.length; while(it.marcas.length<ccPostores.length) it.marcas.push(''); it.marcas.length=ccPostores.length; });
     if(Array.isArray(d.memoFilas)&&d.memoFilas.length) memoFilas=d.memoFilas.map(f=>({empresa:f.empresa||'',ruc:f.ruc||'',obs:f.obs||'NINGUNA OBSERVACION'}));
-    renderPostores(); renderItems(); renderCC(); renderMemoFilas();
+    if(Array.isArray(d.notaFilas)&&d.notaFilas.length) notaFilas=d.notaFilas.map(f=>({ccmn:f.ccmn||'',ccpsiaf:f.ccpsiaf||'',descripcion:f.descripcion||'',meta:f.meta||'',especifica:f.especifica||'',ff:f.ff||'DyT 4-13',monto:f.monto||''}));
+    renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas();
     if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(el) el.value=d.inputs[id]; }); }
   }catch(e){ console.error('restore', e); }
 }

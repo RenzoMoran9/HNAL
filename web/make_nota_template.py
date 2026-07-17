@@ -141,12 +141,16 @@ def tabla_datos():
 
     header = "<w:tr>%s</w:tr>" % "".join(
         celda(cols[i], hdrs[i]) for i in range(7))
+    # Fila de datos: bucle de docxtemplater (una fila por item)
+    campos_loop = list(campos)
+    campos_loop[0] = "{#filas}" + campos[0]
+    campos_loop[6] = campos[6] + "{/filas}"
     datos = "<w:tr>%s</w:tr>" % "".join(
-        celda(cols[i], campos[i]) for i in range(7))
-    # Fila TOTAL: "TOTAL" abarca las 6 primeras columnas + Monto
+        celda(cols[i], campos_loop[i]) for i in range(7))
+    # Fila TOTAL: "TOTAL" abarca las 6 primeras columnas + Monto total
     total = "<w:tr>%s%s</w:tr>" % (
         celda(sum(cols[:6]), "TOTAL", sz=18, span=6),
-        celda(cols[6], "{monto}"))
+        celda(cols[6], "{montoTotal}"))
 
     tblpr = ('<w:tblPr><w:tblW w:w="8784" w:type="dxa"/><w:jc w:val="center"/>'
              '<w:tblBorders>'
