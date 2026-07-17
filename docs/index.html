@@ -400,17 +400,17 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
     </div>
 
     <div class="card">
-      <h2>2. Postores (cotizaciones)</h2>
-      <p class="hint" style="margin:-8px 0 12px">Marca cuál es el <b>ganador</b> ✅ — se sombreará en gris y su precio será el Valor Estimado. (Hasta 4 postores.)</p>
-      <div id="cc-postores"></div>
-      <button type="button" class="btn btn-sec" id="cc-agregar">＋ Agregar postor</button>
+      <h2>2. Ítems a cotizar</h2>
+      <p class="hint" style="margin:-8px 0 12px">Define qué se cotiza (descripción, medida y cantidad). El <b>precio y la marca</b> de cada ítem se ingresan dentro de cada postor.</p>
+      <div id="cc-items"></div>
+      <button type="button" class="btn btn-sec" id="cc-agregar-item">＋ Agregar ítem</button>
     </div>
 
     <div class="card">
-      <h2>3. Ítems a cotizar</h2>
-      <p class="hint" style="margin:-8px 0 12px">Cada ítem es una fila del cuadro. Ingresa el <b>precio y marca de cada postor</b> por ítem; el valor estimado sale del ganador × cantidad.</p>
-      <div id="cc-items"></div>
-      <button type="button" class="btn btn-sec" id="cc-agregar-item">＋ Agregar ítem</button>
+      <h2>3. Postores (cotizaciones)</h2>
+      <p class="hint" style="margin:-8px 0 12px">Ingresa cada postor con su <b>precio y marca por ítem</b> (todo junto). Marca el <b>ganador</b> ✅ — se sombrea en gris y su precio es el Valor Estimado. (Hasta 4 postores.)</p>
+      <div id="cc-postores"></div>
+      <button type="button" class="btn btn-sec" id="cc-agregar">＋ Agregar postor</button>
     </div>
 
     <div class="card">
@@ -1187,10 +1187,19 @@ function syncPunto1(){ if(ccP1Auto){ const el=document.getElementById('cc-p1'); 
 function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',veces_reiterado:'',fecha_recepcion:'',se_dedica:'SI',verifica:'SI',cumple_rtm:'',se_tomo:''};}
 function nuevoItemCC(){return{descripcion:'',medida:'UNIDAD',cantidad:'',precios:ccPostores?ccPostores.map(()=> ''):['',''],marcas:ccPostores?ccPostores.map(()=> ''):['','']};}
 
+function nombreItemCC(k){ const d=(ccItems[k]&&ccItems[k].descripcion||'').trim(); return 'Ítem '+(k+1)+(d?' — '+d:''); }
 function renderCC(){
   const cont=document.getElementById('cc-postores'); cont.innerHTML='';
   ccPostores.forEach((p,i)=>{
     const card=document.createElement('div'); card.className='cc-postor';
+    const cots=ccItems.map((it,k)=>`
+      <div class="cc-cot" data-k="${k}" style="border:1px solid var(--borde-2);border-radius:8px;padding:10px;background:#fff;margin-bottom:8px">
+        <div class="cc-cot-t" style="font-weight:700;color:var(--azul);font-size:.82rem;margin-bottom:6px">${escH(nombreItemCC(k))}</div>
+        <div class="grid2">
+          <div class="field" style="margin:0"><label>Precio unit. (S/)</label><input type="number" step="any" min="0" class="ci-precio" data-k="${k}"></div>
+          <div class="field" style="margin:0"><label>Marca</label><input type="text" class="ci-marca" data-k="${k}"></div>
+        </div>
+      </div>`).join('');
     card.innerHTML=`
       <div class="cc-head">
         <div class="t">Postor ${i+1}</div>
@@ -1216,71 +1225,62 @@ function renderCC(){
           <select class="c-rtm"><option value="">(en blanco)</option><option value="SI">SI</option><option value="NO">NO</option></select></div>
         <div class="field" style="margin:0"><label>¿Se tomó en cuenta para el V. referencial?</label>
           <select class="c-vr"><option value="">(en blanco)</option><option value="SI">SI</option><option value="NO">NO</option></select></div>
-      </div>`;
+      </div>
+      <div class="marcas-title">Precio y marca por ítem:</div>
+      <div class="cc-cots">${cots}</div>`;
     const set=(sel,key)=>{ const el=card.querySelector(sel); el.value=p[key]; el.addEventListener('input',()=>p[key]=el.value); };
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
     set('.c-email','email'); set('.c-garantia','garantia');
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-veces','veces_reiterado'); set('.c-frec','fecha_recepcion');
     set('.c-dedica','se_dedica'); set('.c-verifica','verifica'); set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
-    // al cambiar el nombre, refresca las etiquetas de postor en los ítems
-    card.querySelector('.c-nombre').addEventListener('input', actualizarNombresItemsCC);
+    card.querySelector('.c-nombre').addEventListener('input', syncPunto1);
     card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{ ccGanador=i; });
+    // precio + marca de cada ítem, guardados en ccItems[k] para este postor (i)
+    card.querySelectorAll('.ci-precio').forEach(inp=>{ const k=+inp.dataset.k; inp.value=(ccItems[k].precios[i]||''); inp.addEventListener('input',()=>ccItems[k].precios[i]=inp.value); });
+    card.querySelectorAll('.ci-marca').forEach(inp=>{ const k=+inp.dataset.k; inp.value=(ccItems[k].marcas[i]||''); inp.addEventListener('input',()=>ccItems[k].marcas[i]=inp.value); });
     card.querySelector('.cc-quitar').addEventListener('click',()=>{
       if(ccPostores.length<=1) return;
       ccPostores.splice(i,1);
       ccItems.forEach(it=>{ it.precios.splice(i,1); it.marcas.splice(i,1); });
       if(ccGanador>=ccPostores.length) ccGanador=ccPostores.length-1;
-      renderCC(); renderCCItems(); syncPunto1();
+      renderCC(); syncPunto1();
     });
     cont.appendChild(card);
   });
   document.getElementById('cc-agregar').style.display = ccPostores.length>=4 ? 'none':'';
 }
 document.getElementById('cc-agregar').addEventListener('click',()=>{
-  if(ccPostores.length<4){ ccPostores.push(nuevoPostorCC()); ccItems.forEach(it=>{ it.precios.push(''); it.marcas.push(''); }); renderCC(); renderCCItems(); syncPunto1(); }
+  if(ccPostores.length<4){ ccPostores.push(nuevoPostorCC()); ccItems.forEach(it=>{ it.precios.push(''); it.marcas.push(''); }); renderCC(); syncPunto1(); }
 });
 
-// ---- Ítems del CC (precio + marca por postor) ----
-function nombrePostorCC(i){ const n=(ccPostores[i]&&ccPostores[i].nombre||'').trim(); return 'Postor '+(i+1)+(n?' — '+n:''); }
+// ---- Ítems del CC (solo descripción / medida / cantidad; el precio va con cada postor) ----
 function renderCCItems(){
   const cont=document.getElementById('cc-items'); cont.innerHTML='';
   ccItems.forEach((it,k)=>{
     const card=document.createElement('div'); card.className='item-card';
-    const cots=ccPostores.map((p,i)=>`
-      <div class="cc-cot" data-i="${i}" style="border:1px solid var(--borde-2);border-radius:8px;padding:10px;background:#fff">
-        <div class="cc-cot-t" style="font-weight:700;color:var(--azul);font-size:.82rem;margin-bottom:6px">${escH(nombrePostorCC(i))}</div>
-        <div class="grid2">
-          <div class="field" style="margin:0"><label>Precio unit. (S/)</label><input type="number" step="any" min="0" class="ci-precio" data-i="${i}"></div>
-          <div class="field" style="margin:0"><label>Marca</label><input type="text" class="ci-marca" data-i="${i}"></div>
-        </div>
-      </div>`).join('');
     card.innerHTML=`
       <div class="item-head">
         <div class="t">Ítem ${k+1}</div>
-        <button type="button" class="btn-quitar ci-quitar" title="Quitar">✕</button>
+        <button type="button" class="btn-quitar cii-quitar" title="Quitar">✕</button>
       </div>
       <div class="grid3">
-        <div class="field" style="margin:0"><label>Descripción</label><input type="text" class="ci-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"></div>
-        <div class="field" style="margin:0"><label>Medida</label><input type="text" class="ci-medida" value="UNIDAD"></div>
-        <div class="field" style="margin:0"><label>Cantidad</label><input type="number" min="0" class="ci-cant" placeholder="Ej: 1200"></div>
-      </div>
-      <div class="marcas-title">Cotización por postor:</div>
-      <div class="marcas-grid">${cots}</div>`;
+        <div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cii-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"></div>
+        <div class="field" style="margin:0"><label>Medida</label><input type="text" class="cii-medida" value="UNIDAD"></div>
+        <div class="field" style="margin:0"><label>Cantidad</label><input type="number" min="0" class="cii-cant" placeholder="Ej: 1200"></div>
+      </div>`;
     const q=s=>card.querySelector(s);
-    q('.ci-desc').value=it.descripcion; q('.ci-desc').addEventListener('input',e=>it.descripcion=e.target.value);
-    q('.ci-medida').value=it.medida; q('.ci-medida').addEventListener('input',e=>it.medida=e.target.value);
-    q('.ci-cant').value=it.cantidad; q('.ci-cant').addEventListener('input',e=>it.cantidad=e.target.value);
-    card.querySelectorAll('.ci-precio').forEach(inp=>{ const i=+inp.dataset.i; inp.value=it.precios[i]||''; inp.addEventListener('input',()=>it.precios[i]=inp.value); });
-    card.querySelectorAll('.ci-marca').forEach(inp=>{ const i=+inp.dataset.i; inp.value=it.marcas[i]||''; inp.addEventListener('input',()=>it.marcas[i]=inp.value); });
-    card.querySelector('.ci-quitar').addEventListener('click',()=>{ if(ccItems.length<=1) return; ccItems.splice(k,1); renderCCItems(); });
+    q('.cii-desc').value=it.descripcion; q('.cii-desc').addEventListener('input',e=>{ it.descripcion=e.target.value; actualizarLabelsItemsEnPostores(); });
+    q('.cii-medida').value=it.medida; q('.cii-medida').addEventListener('input',e=>it.medida=e.target.value);
+    q('.cii-cant').value=it.cantidad; q('.cii-cant').addEventListener('input',e=>it.cantidad=e.target.value);
+    card.querySelector('.cii-quitar').addEventListener('click',()=>{ if(ccItems.length<=1) return; ccItems.splice(k,1); renderCCItems(); renderCC(); });
     cont.appendChild(card);
   });
 }
-function actualizarNombresItemsCC(){ document.querySelectorAll('#cc-items .cc-cot').forEach(el=>{ const t=el.querySelector('.cc-cot-t'); if(t) t.textContent=nombrePostorCC(+el.dataset.i); }); syncPunto1(); }
-document.getElementById('cc-agregar-item').addEventListener('click',()=>{ ccItems.push(nuevoItemCC()); renderCCItems(); });
+function actualizarLabelsItemsEnPostores(){ document.querySelectorAll('#cc-postores .cc-cot').forEach(el=>{ const t=el.querySelector('.cc-cot-t'); if(t) t.textContent=nombreItemCC(+el.dataset.k); }); }
+document.getElementById('cc-agregar-item').addEventListener('click',()=>{ ccItems.push(nuevoItemCC()); renderCCItems(); renderCC(); });
 // Punto 1): al escribir manualmente deja de autocompletarse (si se vacía, vuelve a auto)
 document.getElementById('cc-p1').addEventListener('input', function(){ ccP1Auto = (this.value.trim()===''); });
-renderCC(); renderCCItems(); syncPunto1();
+renderCCItems(); renderCC(); syncPunto1();
 
 function mostrarErrorCC(t){ const m=document.getElementById('msg-cc'); m.className='msg-error'; m.textContent='⚠ '+t; }
 document.getElementById('form-cc').addEventListener('submit', (e)=>{
