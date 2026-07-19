@@ -155,6 +155,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .ruc-bad:focus{box-shadow:0 0 0 3px rgba(200,16,46,.15);}
 .ruc-msg{color:var(--rojo);font-size:.74rem;font-weight:600;margin-top:4px;}
 .ruc-msg:empty{display:none;}
+.sunat-hint{color:var(--verde);font-size:.74rem;font-weight:600;margin-top:4px;line-height:1.4;}
 .ruc-row{display:flex;gap:6px;align-items:stretch;}
 .ruc-row input{flex:1;min-width:0;}
 .ruc-row .btn-mini{padding:6px 10px;font-size:.74rem;}
@@ -1380,7 +1381,8 @@ function renderCC(){
       <div class="cc-grid">
         <div class="field" style="margin:0"><label>RUC</label>
           <div class="ruc-row"><input type="text" class="c-ruc" placeholder="11 dígitos" inputmode="numeric"><button type="button" class="btn-mini c-sunat" title="Copia el RUC y abre la consulta oficial de SUNAT">SUNAT ↗</button></div>
-          <div class="ruc-msg c-ruc-msg"></div></div>
+          <div class="ruc-msg c-ruc-msg"></div>
+          <div class="sunat-hint c-sunat-hint" style="display:none"></div></div>
         <div class="field" style="margin:0"><label>Contacto</label><input type="text" class="c-contacto"></div>
         <div class="field" style="margin:0"><label>Teléfono</label><input type="text" class="c-telefono"></div>
         <div class="field" style="margin:0"><label>E-mail</label><input type="text" class="c-email"></div>
@@ -1403,7 +1405,7 @@ function renderCC(){
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
     set('.c-email','email'); set('.c-garantia','garantia');
     wireRuc(card.querySelector('.c-ruc'), card.querySelector('.c-ruc-msg'));
-    card.querySelector('.c-sunat').addEventListener('click',()=> abrirSunat(card.querySelector('.c-ruc').value, card.querySelector('.c-sunat')));
+    card.querySelector('.c-sunat').addEventListener('click',()=> abrirSunat(card.querySelector('.c-ruc').value, card.querySelector('.c-sunat'), card.querySelector('.c-sunat-hint')));
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-frec','fecha_recepcion');
     set('.c-dedica','se_dedica'); set('.c-verifica','verifica'); set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
     card.querySelector('.c-nombre').addEventListener('input', syncPunto1);
@@ -1830,11 +1832,18 @@ function wireRuc(inp, msgEl){
   inp.addEventListener('input', upd);
   upd(); // validar también lo que venga precargado (borrador / directorio)
 }
-// Abre la consulta RUC oficial de SUNAT en otra pestaña y copia el RUC para pegarlo
-function abrirSunat(ruc, btn){
+// Abre la consulta RUC oficial de SUNAT en otra pestaña y copia el RUC para pegarlo.
+// (No se puede llegar con el RUC ya puesto en su buscador: SUNAT protege su
+// formulario con un token anti-robots y el navegador impide llenarlo desde fuera.)
+function abrirSunat(ruc, btn, hintEl){
   const t=String(ruc||'').trim();
   if(t && navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).catch(()=>{}); }
   if(btn){ const o=btn.textContent; btn.textContent=t?'✓ RUC copiado':'↗ abierta'; setTimeout(()=>{ btn.textContent=o; },1500); }
+  if(hintEl && t){
+    hintEl.textContent='✓ RUC copiado. En la página de SUNAT: clic en el buscador, pega con Ctrl+V y pulsa Buscar.';
+    hintEl.style.display='';
+    clearTimeout(abrirSunat._t); abrirSunat._t=setTimeout(()=>{ hintEl.style.display='none'; }, 9000);
+  }
   window.open('https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/FrameCriterioBusquedaWeb.jsp','_blank','noopener');
 }
 function pvDL(rows){
