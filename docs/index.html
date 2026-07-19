@@ -169,6 +169,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .tr-row .tr-meta{font-size:.8rem;color:var(--muted);margin-top:2px;}
 .tr-row .btn-mini{flex-shrink:0;}
 .tr-vacio{color:var(--muted);font-size:.9rem;padding:6px 2px;}
+.tr-chip{display:inline-block;background:#e8f6f0;border:1px solid #b9e2d2;color:#0a5c46;border-radius:999px;
+  padding:2px 10px;font-size:.66rem;font-weight:700;margin-left:8px;vertical-align:middle;white-space:nowrap;}
 
 /* Destinatarios guardados */
 .dest-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
@@ -587,7 +589,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   <div id="panel-trabajos" class="panel oculto">
     <div class="card">
       <h2>💼 Mis trabajos guardados</h2>
-      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">Guarda aquí el trabajo completo (validación, memo, cuadro comparativo y nota) para <b>consultarlo o seguir editándolo después</b>, aunque cierres la app. Se guardan en <b>esta computadora y navegador</b>.</p>
+      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">Guarda aquí el trabajo completo (validación, memo, cuadro comparativo y nota) para <b>consultarlo o seguir editándolo después</b>, aunque cierres la app. Al <b>abrir</b> un trabajo queda <b>enlazado</b>: todo lo que edites se <b>actualiza solo</b> en ese trabajo (también con <b>Ctrl+S</b>). Se guardan en <b>esta computadora y navegador</b>.</p>
       <div class="field"><label>Nombre para guardar el trabajo actual</label>
         <div class="tr-guardar-row">
           <input type="text" id="tr-nombre" placeholder="Ej: ADQUISICIÓN DE PRODUCTOS FARMACÉUTICOS - JULIO">
@@ -595,6 +597,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         </div>
         <div id="msg-tr"></div>
       </div>
+      <button type="button" class="btn btn-sec" id="tr-nuevo" style="margin-top:4px">✨ Empezar trabajo nuevo (limpiar formularios)</button>
     </div>
     <div class="card">
       <h2>Trabajos guardados</h2>
@@ -972,12 +975,15 @@ document.getElementById('form').addEventListener('submit', (e)=>{
   if (postValid.length===0){ mostrarError('Agrega al menos un postor con nombre.'); return; }
   if (itemsValid.length===0){ mostrarError('Agrega al menos un bien/servicio con datos.'); return; }
 
+  // Re-mapear marcas a los postores CON nombre (si dejan un postor vacío en medio,
+  // las marcas de los demás no deben correrse de columna)
+  const usedIdxV = postores.map((p,i)=>i).filter(i=>(postores[i].nombre||'').trim()!=='');
   const datos = {
     tipo, adquisicion,
-    postores: postores.map(p=>({nombre:p.nombre})),
-    items: items.map(it=>({
+    postores: usedIdxV.map(i=>({nombre:postores[i].nombre})),
+    items: itemsValid.map(it=>({
       codigo_siga: it.codigo, denominacion: it.denom, unidad: it.unidad,
-      cantidad: it.cantidad, marcas: it.marcas.slice(),
+      cantidad: it.cantidad, marcas: usedIdxV.map(i=>(it.marcas[i]||'')),
     })),
   };
   const resumen = pvDL([
@@ -1054,6 +1060,10 @@ document.querySelectorAll('.f-tile').forEach(t=>{
   t.addEventListener('click', ()=> entrar(t.dataset.go));
 });
 btnInicio.addEventListener('click', volverInicio);
+
+// Reingreso directo tras "Empezar trabajo nuevo" (sin pasar otra vez por la portada)
+try{ const sk=sessionStorage.getItem('hnal_skip_landing');
+  if(sk){ sessionStorage.removeItem('hnal_skip_landing'); entrar(sk); } }catch(e){}
 
 
 // ====================== CUADRO COMPARATIVO ======================
@@ -1147,7 +1157,10 @@ async function generarCuadroComparativo(datos){
       const p=postores[i];
       setv(12,b,i+1); setv(13,b,String(p.nombre||'').trim());
       setv(15,b+1,ccNum(p.ruc)); setv(16,b+1,String(p.contacto||'').trim());
-      setv(17,b+1,ccNum(p.telefono)); setv(18,b+1,String(p.email||'').trim());
+      // telefono: si empieza con 0 (fijo de Lima) se conserva como texto para no perder el cero
+      const tel=String(p.telefono||'').trim();
+      setv(17,b+1, tel && tel[0]==='0' ? tel : ccNum(tel));
+      setv(18,b+1,String(p.email||'').trim());
       for(let r=22;r<=25;r++) setv(F(r),b,null);
       setv(F(26),b,String(p.garantia||'').trim());
       setv(F(27),b,String(p.plazo_entrega||'').trim());
@@ -1330,7 +1343,10 @@ function renderCC(){
       if(ccPostores.length<=1) return;
       ccPostores.splice(i,1);
       ccItems.forEach(it=>{ it.precios.splice(i,1); it.marcas.splice(i,1); });
-      if(ccGanador>=ccPostores.length) ccGanador=ccPostores.length-1;
+      // mantener el check "Ganador" sobre el MISMO postor tras eliminar otro
+      if(i===ccGanador) ccGanador=0;
+      else if(i<ccGanador) ccGanador--;
+      if(ccGanador>=ccPostores.length) ccGanador=Math.max(0,ccPostores.length-1);
       renderCC(); syncPunto1();
     });
     cont.appendChild(card);
@@ -1709,7 +1725,8 @@ function pvTabla(headers, rows){
 }
 function descargarBlob(blob, nombre, msgEl){
   const url=URL.createObjectURL(blob); const a=document.createElement('a');
-  a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000); // dar tiempo al navegador a tomar el blob
   if(msgEl){ msgEl.className='msg-ok'; msgEl.textContent='✅ ¡Listo! Se descargó: '+nombre; }
 }
 function validarReq(ids){
@@ -1785,15 +1802,33 @@ renderDestSelects();
 
 // ====================== AUTOGUARDADO (borrador) ======================
 let saveReady=false, pendingDraft=null, draftMostrado=false, saveTimer=null;
+// Trabajo "abierto" (de Mis trabajos): mientras esté enlazado, cada autoguardado
+// también actualiza ese trabajo — así lo que editas no se pierde al cerrar.
+let trabajoActivo=null, trabajoActivoNombre='';
+function setTrabajoActivo(id,nombre){
+  trabajoActivo=id||null; trabajoActivoNombre=nombre||'';
+  try{ if(id) localStorage.setItem('hnal_trabajo_activo', JSON.stringify({id,nombre:nombre||''}));
+       else localStorage.removeItem('hnal_trabajo_activo'); }catch(e){}
+}
 function snapshot(){
   const inputs={};
   document.querySelectorAll('#app input[id], #app select[id], #app textarea[id]').forEach(el=>{ inputs[el.id]=el.value; });
   return { v:3, ts:Date.now(), tipo, postores, items, ccPostores, ccGanador, ccItems, memoFilas, notaFilas, inputs };
 }
-function guardarYa(){ if(!saveReady) return; try{ localStorage.setItem('hnal_borrador', JSON.stringify(snapshot())); marcarGuardado(); }catch(e){} }
+function guardarYa(){ if(!saveReady) return; try{
+  const snap=snapshot();
+  localStorage.setItem('hnal_borrador', JSON.stringify(snap));
+  if(trabajoActivo){
+    const lista=leerTrabajos(); const i=lista.findIndex(t=>t.id===trabajoActivo);
+    if(i>=0){ lista[i]=Object.assign({},lista[i],{ts:Date.now(),data:snap}); guardarTrabajos(lista); }
+    else setTrabajoActivo(null);
+  }
+  marcarGuardado();
+}catch(e){} }
 function marcarGuardado(){ const el=document.getElementById('tbSave'); if(!el) return;
   const h=new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
-  el.textContent='💾 Guardado '+h; el.style.opacity='1';
+  const nom=trabajoActivoNombre?(' · '+(trabajoActivoNombre.length>24?trabajoActivoNombre.slice(0,24)+'…':trabajoActivoNombre)):'';
+  el.textContent='💾 Guardado '+h+nom; el.style.opacity='1';
   clearTimeout(marcarGuardado._t); marcarGuardado._t=setTimeout(()=>{ el.style.opacity='.55'; }, 1500);
 }
 function scheduleSave(){ if(!saveReady) return; clearTimeout(saveTimer); saveTimer=setTimeout(guardarYa, 500); }
@@ -1830,18 +1865,25 @@ function revisarDraft(){
     document.getElementById('draftBar').style.display=''; draftMostrado=true;
   } else { pendingDraft=null; saveReady=true; }
 }
-function descartarDraftSilencio(){ pendingDraft=null; saveReady=true; const b=document.getElementById('draftBar'); if(b) b.style.display='none'; }
+function descartarDraftSilencio(){ pendingDraft=null; trabajoActivoPend=null; setTrabajoActivo(null); saveReady=true; const b=document.getElementById('draftBar'); if(b) b.style.display='none'; }
 try{ pendingDraft=JSON.parse(localStorage.getItem('hnal_borrador')||'null'); }catch(e){ pendingDraft=null; }
+// Trabajo activo persistido de la sesión anterior: solo se reactiva si el usuario RETOMA el borrador
+let trabajoActivoPend=null;
+try{ const ta=JSON.parse(localStorage.getItem('hnal_trabajo_activo')||'null');
+  if(ta&&ta.id&&leerTrabajos().some(t=>t.id===ta.id)) trabajoActivoPend=ta;
+  else localStorage.removeItem('hnal_trabajo_activo');
+}catch(e){}
 if(!draftTieneContenido(pendingDraft)){ pendingDraft=null; saveReady=true; }
 
 document.getElementById('draftRestore').addEventListener('click', ()=>{
   if(pendingDraft) restore(pendingDraft);
+  if(trabajoActivoPend){ setTrabajoActivo(trabajoActivoPend.id, trabajoActivoPend.nombre); trabajoActivoPend=null; }
   pendingDraft=null; saveReady=true; draftMostrado=true;
   document.getElementById('draftBar').style.display='none';
   guardarYa();
 });
 document.getElementById('draftDiscard').addEventListener('click', ()=>{
-  pendingDraft=null; saveReady=true; draftMostrado=true;
+  pendingDraft=null; trabajoActivoPend=null; setTrabajoActivo(null); saveReady=true; draftMostrado=true;
   try{ localStorage.removeItem('hnal_borrador'); }catch(e){}
   document.getElementById('draftBar').style.display='none';
 });
@@ -1874,8 +1916,9 @@ function renderTrabajos(){
   if(!lista.length){ cont.innerHTML='<div class="tr-vacio">Todavía no has guardado ningún trabajo. Escribe un nombre arriba y pulsa “Guardar trabajo”.</div>'; return; }
   cont.innerHTML=lista.map(t=>{
     const meta=fechaTrabajo(t.ts);
+    const chip=(t.id===trabajoActivo)?' <span class="tr-chip">ABIERTO · se actualiza solo</span>':'';
     return '<div class="tr-row" data-id="'+escH(t.id)+'">'
-      +'<div class="tr-info"><div class="tr-nom">'+escH(t.nombre||'(sin nombre)')+'</div><div class="tr-meta">Guardado: '+escH(meta)+'</div></div>'
+      +'<div class="tr-info"><div class="tr-nom">'+escH(t.nombre||'(sin nombre)')+chip+'</div><div class="tr-meta">Guardado: '+escH(meta)+'</div></div>'
       +'<button type="button" class="btn-mini tr-abrir" data-id="'+escH(t.id)+'">📂 Abrir</button>'
       +'<button type="button" class="btn-mini danger tr-borrar" data-id="'+escH(t.id)+'">🗑 Eliminar</button>'
       +'</div>';
@@ -1887,19 +1930,25 @@ function guardarTrabajoActual(){
   const lista=leerTrabajos();
   const data=snapshot();
   const i=lista.findIndex(t=>(t.nombre||'').toUpperCase()===nombre.toUpperCase());
+  let id;
   if(i>=0){
     if(!confirm('Ya existe un trabajo llamado “'+nombre+'”. ¿Reemplazarlo con el estado actual?')) return;
-    lista[i]={id:lista[i].id, nombre, ts:Date.now(), data};
+    id=lista[i].id; lista[i]={id, nombre, ts:Date.now(), data};
   } else {
-    lista.unshift({id:'t'+Date.now(), nombre, ts:Date.now(), data});
+    id='t'+Date.now(); lista.unshift({id, nombre, ts:Date.now(), data});
   }
-  if(guardarTrabajos(lista.slice(0,60))){ inp.value=''; renderTrabajos(); msgTr('✓ Trabajo guardado: '+nombre, true); }
+  if(guardarTrabajos(lista.slice(0,60))){
+    setTrabajoActivo(id, nombre);   // queda enlazado: se seguira actualizando solo
+    inp.value=''; renderTrabajos(); marcarGuardado();
+    msgTr('✓ Trabajo guardado: '+nombre+' (quedó abierto: se actualizará solo mientras edites)', true);
+  }
   else { msgTr('⚠ No se pudo guardar (almacenamiento del navegador lleno). Elimina trabajos viejos.', false); }
 }
 function abrirTrabajo(id){
   const t=leerTrabajos().find(x=>x.id===id); if(!t){ return; }
   saveReady=true; draftMostrado=true; pendingDraft=null;
   const b=document.getElementById('draftBar'); if(b) b.style.display='none';
+  setTrabajoActivo(t.id, t.nombre||'');
   restore(t.data||{});
   guardarYa();
   irA(tabDeTrabajo(t.data||{}));
@@ -1909,9 +1958,18 @@ function borrarTrabajo(id){
   const lista=leerTrabajos(); const t=lista.find(x=>x.id===id);
   if(t && !confirm('¿Eliminar el trabajo “'+(t.nombre||'')+'”? No se puede deshacer.')) return;
   guardarTrabajos(lista.filter(x=>x.id!==id));
+  if(id===trabajoActivo) setTrabajoActivo(null);
   renderTrabajos();
 }
 document.getElementById('tr-guardar').addEventListener('click', guardarTrabajoActual);
+// "Empezar trabajo nuevo": desenlaza el trabajo abierto y limpia todos los formularios
+document.getElementById('tr-nuevo').addEventListener('click', ()=>{
+  if(!confirm('¿Limpiar todos los formularios para empezar un trabajo nuevo?\n(Tus trabajos guardados NO se tocan.)')) return;
+  setTrabajoActivo(null);
+  try{ localStorage.removeItem('hnal_borrador'); }catch(e){}
+  try{ sessionStorage.setItem('hnal_skip_landing','val'); }catch(e){}
+  location.reload();
+});
 document.getElementById('tr-lista').addEventListener('click', (e)=>{
   const ab=e.target.closest('.tr-abrir'); const bo=e.target.closest('.tr-borrar');
   if(ab) abrirTrabajo(ab.dataset.id);
@@ -1943,6 +2001,20 @@ document.addEventListener('change', (e)=>{
 document.addEventListener('click', (e)=>{
   if(saveReady && e.target && e.target.closest && e.target.closest('#app') && e.target.closest('button')) scheduleSave();
 });
+
+// Ctrl+S / Cmd+S: guardar al instante (borrador + trabajo abierto) sin el diálogo del navegador
+document.addEventListener('keydown',(e)=>{
+  if((e.ctrlKey||e.metaKey) && (e.key==='s'||e.key==='S')){
+    e.preventDefault();
+    if(!saveReady) descartarDraftSilencio();
+    guardarYa();
+  }
+});
+
+// Año actual por defecto en Memo y Nota (deja de estar fijo en un año)
+(function(){ const y=String(new Date().getFullYear());
+  ['m-anio','n-anio'].forEach(id=>{ const el=document.getElementById(id); if(el&&el.value) el.value=y; });
+})();
 </script>
 </body>
 </html>
