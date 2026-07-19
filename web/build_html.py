@@ -21,6 +21,13 @@ PLANTILLA = BASE / "plantilla" / "FORMATO_VALIDACIONES_DE_BIENES.xlsx"
 PLANTILLA_CC = BASE / "plantilla" / "CUADRO_COMPARATIVO.xlsx"
 PLANTILLA_MEMO = BASE / "plantilla" / "MEMO_VALIDACION.docx"
 PLANTILLA_NOTA = BASE / "plantilla" / "NOTA_INFORMATIVA.docx"
+FONTS = BASE / "web" / "fonts"
+FUENTES = {
+    "__FONT_SS700__": "source-serif-4-latin-700-normal.woff2",
+    "__FONT_LF400__": "libre-franklin-latin-400-normal.woff2",
+    "__FONT_LF600__": "libre-franklin-latin-600-normal.woff2",
+    "__FONT_LF700__": "libre-franklin-latin-700-normal.woff2",
+}
 SALIDA = BASE / "docs" / "index.html"
 
 
@@ -41,6 +48,9 @@ def main():
     html = html.replace("__TEMPLATE_CC_B64__", b64cc)
     html = html.replace("__TEMPLATE_MEMO_B64__", b64memo)
     html = html.replace("__TEMPLATE_NOTA_B64__", b64nota)
+    for token, nombre in FUENTES.items():
+        b64f = base64.b64encode((FONTS / nombre).read_bytes()).decode("ascii")
+        html = html.replace(token, b64f)
 
     SALIDA.parent.mkdir(parents=True, exist_ok=True)
     SALIDA.write_text(html, encoding="utf-8")
