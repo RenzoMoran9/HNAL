@@ -150,6 +150,15 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .campo-error{border-color:var(--rojo)!important;background:#fff5f4;}
 .campo-error:focus{box-shadow:0 0 0 3px rgba(200,16,46,.15);}
 
+/* Validación de RUC */
+.ruc-bad{border-color:var(--rojo)!important;background:#fff5f4;}
+.ruc-bad:focus{box-shadow:0 0 0 3px rgba(200,16,46,.15);}
+.ruc-msg{color:var(--rojo);font-size:.74rem;font-weight:600;margin-top:4px;}
+.ruc-msg:empty{display:none;}
+.ruc-row{display:flex;gap:6px;align-items:stretch;}
+.ruc-row input{flex:1;min-width:0;}
+.ruc-row .btn-mini{padding:6px 10px;font-size:.74rem;}
+
 /* Barra de pasos del flujo */
 .flowbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 30px 0;}
 .fb-step{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--borde);background:#fff;
@@ -1369,7 +1378,9 @@ function renderCC(){
       </div>
       <div class="field" style="margin:0 0 12px"><label>Nombre de la empresa</label><input type="text" class="c-nombre" placeholder="Ej: LABMEDIC SAFE SAC"></div>
       <div class="cc-grid">
-        <div class="field" style="margin:0"><label>RUC</label><input type="text" class="c-ruc" placeholder="11 dígitos"></div>
+        <div class="field" style="margin:0"><label>RUC</label>
+          <div class="ruc-row"><input type="text" class="c-ruc" placeholder="11 dígitos" inputmode="numeric"><button type="button" class="btn-mini c-sunat" title="Copia el RUC y abre la consulta oficial de SUNAT">SUNAT ↗</button></div>
+          <div class="ruc-msg c-ruc-msg"></div></div>
         <div class="field" style="margin:0"><label>Contacto</label><input type="text" class="c-contacto"></div>
         <div class="field" style="margin:0"><label>Teléfono</label><input type="text" class="c-telefono"></div>
         <div class="field" style="margin:0"><label>E-mail</label><input type="text" class="c-email"></div>
@@ -1391,6 +1402,8 @@ function renderCC(){
     const set=(sel,key)=>{ const el=card.querySelector(sel); el.value=p[key]; el.addEventListener('input',()=>p[key]=el.value); };
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
     set('.c-email','email'); set('.c-garantia','garantia');
+    wireRuc(card.querySelector('.c-ruc'), card.querySelector('.c-ruc-msg'));
+    card.querySelector('.c-sunat').addEventListener('click',()=> abrirSunat(card.querySelector('.c-ruc').value, card.querySelector('.c-sunat')));
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-frec','fecha_recepcion');
     set('.c-dedica','se_dedica'); set('.c-verifica','verifica'); set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
     card.querySelector('.c-nombre').addEventListener('input', syncPunto1);
@@ -1400,7 +1413,7 @@ function renderCC(){
     nomInp.addEventListener('input',()=>{
       const prov=provPorNombre(nomInp.value); if(!prov) return;
       [['ruc','.c-ruc'],['contacto','.c-contacto'],['telefono','.c-telefono'],['email','.c-email']].forEach(([k,sel])=>{
-        if(prov[k] && !String(p[k]||'').trim()){ p[k]=prov[k]; card.querySelector(sel).value=prov[k]; }
+        if(prov[k] && !String(p[k]||'').trim()){ p[k]=prov[k]; const el=card.querySelector(sel); el.value=prov[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }
       });
     });
     card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{ ccGanador=i; });
@@ -1488,7 +1501,9 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
     especialista:val('cc-esp'), cargo:val('cc-cargo'), fecha:val('cc-fecha'),
   };
   const gName=(postoresUsed[ganadorRemap]||{}).nombre||'—';
-  const resumen = pvDL([
+  const rucMalCC = postoresUsed.some(p=>String(p.ruc||'').trim() && !rucValido(p.ruc));
+  const avisoCC = rucMalCC ? '<p class="pv-note" style="color:#c0392b">⚠ Hay RUC no válidos (11 dígitos y verificador). Revisa los postores marcados en rojo antes de descargar.</p>' : '';
+  const resumen = avisoCC + pvDL([
     ['Adquisición', val('cc-denom')],
     ['Área usuaria', val('cc-area')],
     ['N° de ítems', String(itemsData.length)],
@@ -1543,7 +1558,7 @@ function renderMemoFilas(){
     div.innerHTML = `
       <div class="num">${('0'+(i+1)).slice(-2)}</div>
       <div class="field" style="margin:0"><label>Empresa</label><input type="text" class="mf-empresa" placeholder="Ej: EGUSQFARMA EIRL"></div>
-      <div class="field" style="margin:0"><label>RUC</label><input type="text" class="mf-ruc" placeholder="Ej: 20604200131"></div>
+      <div class="field" style="margin:0"><label>RUC</label><input type="text" class="mf-ruc" placeholder="Ej: 20604200131" inputmode="numeric"><div class="ruc-msg mf-ruc-msg"></div></div>
       <div class="field" style="margin:0"><label>Observación</label>
         <select class="mf-obs">
           <option value="NINGUNA OBSERVACION">NINGUNA OBSERVACION</option>
@@ -1556,9 +1571,10 @@ function renderMemoFilas(){
     emp.addEventListener('input',()=>{
       f.empresa=emp.value;
       const prov=provPorNombre(emp.value);
-      if(prov && prov.ruc && !String(f.ruc||'').trim()){ f.ruc=prov.ruc; ruc.value=prov.ruc; }
+      if(prov && prov.ruc && !String(f.ruc||'').trim()){ f.ruc=prov.ruc; ruc.value=prov.ruc; ruc.dispatchEvent(new Event('input',{bubbles:true})); }
     });
     ruc.addEventListener('input',()=>f.ruc=ruc.value);
+    wireRuc(ruc, div.querySelector('.mf-ruc-msg'));
     obs.addEventListener('change',()=>f.obs=obs.value);
     div.querySelector('.btn-quitar').addEventListener('click',()=>{
       if(memoFilas.length<=1) return;
@@ -1623,8 +1639,8 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
     elaborado: val('m-elaborado').trim(),
     iniciales: val('m-iniciales').trim().toUpperCase(),
   };
-  const rucMal = filas.some(f=>f.ruc && !/^\d{11}$/.test(f.ruc.trim()));
-  const aviso = rucMal ? '<p class="pv-note" style="color:#c0392b">⚠ Revisa los RUC: deben tener 11 dígitos.</p>' : '';
+  const rucMal = filas.some(f=>f.ruc && !rucValido(f.ruc));
+  const aviso = rucMal ? '<p class="pv-note" style="color:#c0392b">⚠ Hay RUC no válidos (11 dígitos y verificador). Revisa las filas marcadas en rojo antes de descargar.</p>' : '';
   const resumen = aviso + pvDL([
     ['Dirigido a', val('m-dest-nombre')+(val('m-dest-cargo')?' — '+val('m-dest-cargo'):'')],
     ['Asunto', 'Cumplimiento de '+(esET?'Especificaciones Técnicas.':'Términos de Referencia.')],
@@ -1791,6 +1807,36 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
 
 // ====================== UTILIDADES (previa, validación, descarga) ======================
 function escH(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ---- Validación de RUC (11 dígitos + dígito verificador oficial) ----
+function rucValido(r){
+  const t=String(r||'').trim();
+  if(!/^\d{11}$/.test(t)) return false;
+  const w=[5,4,3,2,7,6,5,4,3,2];
+  let s=0; for(let i=0;i<10;i++) s+=(+t[i])*w[i];
+  let c=11-(s%11); if(c===10) c=0; if(c===11) c=1;
+  return c===+t[10];
+}
+function msgRuc(r){
+  const t=String(r||'').trim();
+  if(t==='') return '';
+  if(!/^\d+$/.test(t)) return 'El RUC solo debe tener números';
+  if(t.length!==11) return 'El RUC debe tener 11 dígitos (tiene '+t.length+')';
+  if(!rucValido(t)) return 'RUC no válido: hay un dígito mal escrito (el verificador no coincide)';
+  return '';
+}
+function wireRuc(inp, msgEl){
+  const upd=()=>{ const m=msgRuc(inp.value); if(msgEl) msgEl.textContent=m; inp.classList.toggle('ruc-bad', !!m); };
+  inp.addEventListener('input', upd);
+  upd(); // validar también lo que venga precargado (borrador / directorio)
+}
+// Abre la consulta RUC oficial de SUNAT en otra pestaña y copia el RUC para pegarlo
+function abrirSunat(ruc, btn){
+  const t=String(ruc||'').trim();
+  if(t && navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).catch(()=>{}); }
+  if(btn){ const o=btn.textContent; btn.textContent=t?'✓ RUC copiado':'↗ abierta'; setTimeout(()=>{ btn.textContent=o; },1500); }
+  window.open('https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/FrameCriterioBusquedaWeb.jsp','_blank','noopener');
+}
 function pvDL(rows){
   return '<dl class="pv-dl">'+rows.filter(Boolean).map(r=>'<dt>'+escH(r[0])+'</dt><dd>'+escH((r[1]==null||r[1]==='')?'—':r[1])+'</dd>').join('')+'</dl>';
 }
