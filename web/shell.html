@@ -150,6 +150,21 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .campo-error{border-color:var(--rojo)!important;background:#fff5f4;}
 .campo-error:focus{box-shadow:0 0 0 3px rgba(200,16,46,.15);}
 
+/* Barra de pasos del flujo */
+.flowbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 30px 0;}
+.fb-step{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--borde);background:#fff;
+  border-radius:999px;padding:7px 14px 7px 8px;cursor:pointer;font-family:inherit;font-size:.82rem;
+  font-weight:600;color:var(--muted);transition:all .15s;}
+.fb-step .n{width:22px;height:22px;border-radius:50%;background:var(--gris);color:var(--muted);
+  display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;}
+.fb-step:hover{border-color:var(--azul-bd);}
+.fb-step.current{border-color:var(--azul);color:var(--azul);background:var(--azul-suave);}
+.fb-step.current .n{background:var(--azul);color:#fff;}
+.fb-step.done{color:var(--verde);border-color:#b9e2d2;background:#f2faf7;}
+.fb-step.done .n{background:var(--verde);color:#fff;}
+.fb-arrow{color:var(--muted-2);font-weight:700;}
+@media (max-width:820px){.flowbar{padding:10px 16px 0;}}
+
 /* Barra de borrador */
 .draft-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--oro-bg);
   border:1px solid var(--oro-bd);border-radius:10px;padding:12px 16px;margin:18px 30px 0;font-size:.9rem;}
@@ -361,6 +376,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       <button type="button" class="db-si" id="draftRestore">Retomar</button>
       <button type="button" class="db-no" id="draftDiscard">Empezar de cero</button>
     </div>
+
+    <div class="flowbar" id="flowbar" style="display:none"></div>
 
 <main>
   <div id="panel-val" class="panel">
@@ -597,11 +614,21 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         </div>
         <div id="msg-tr"></div>
       </div>
-      <button type="button" class="btn btn-sec" id="tr-nuevo" style="margin-top:4px">✨ Empezar trabajo nuevo (limpiar formularios)</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
+        <button type="button" class="btn btn-sec" id="tr-nuevo">✨ Empezar trabajo nuevo (limpiar formularios)</button>
+        <button type="button" class="btn btn-sec" id="tr-importar">📂 Importar trabajo (.json)</button>
+        <input type="file" id="tr-import-file" accept=".json,application/json" style="display:none">
+      </div>
     </div>
     <div class="card">
       <h2>Trabajos guardados</h2>
+      <div class="field" style="margin-bottom:14px"><input type="text" id="tr-buscar" placeholder="🔎 Buscar trabajo por nombre…"></div>
       <div id="tr-lista"></div>
+    </div>
+    <div class="card">
+      <h2>📇 Directorio de proveedores</h2>
+      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">Se llena <b>solo</b> cada vez que generas un cuadro comparativo o un memo. Después, al escribir el <b>nombre de la empresa</b> en el cuadro comparativo (o memo), el <b>RUC, contacto, teléfono y e-mail</b> se completan automáticamente.</p>
+      <div id="prov-lista"></div>
     </div>
   </div>
 </main>
@@ -967,14 +994,46 @@ const META_TAB = {
   nota: {title:'Nota Informativa',      sub:'Solicita la aprobación de la Certificación de Crédito Presupuestario.',    flow:'Flujo 2 · Indagación'},
   trabajos: {title:'Mis trabajos',      sub:'Guarda y vuelve a abrir tus trabajos cuando quieras.',                    flow:'Archivo'},
 };
+// ---- Barra de pasos del flujo (① → ②) ----
+let tabActual='val';
+const FLUJOS={ val:['val','memo'], memo:['val','memo'], cc:['cc','nota'], nota:['cc','nota'] };
+const PASO_NOMBRE={ val:'Cuadro de Validación', memo:'Memo de Validación', cc:'Cuadro Comparativo', nota:'Nota Informativa' };
+// "✓" = tiene lo minimo para generar el documento
+function pasoCompleto(t){
+  const v=id=>{ const el=document.getElementById(id); return el?String(el.value||'').trim():''; };
+  if(t==='val')  return !!v('adquisicion') && postores.some(p=>(p.nombre||'').trim()) && items.some(it=>(it.denom||'').trim()||(it.codigo||'').trim());
+  if(t==='memo') return !!v('m-dest-nombre') && !!v('m-titulo') && memoFilas.some(f=>(f.empresa||'').trim());
+  if(t==='cc')   return !!v('cc-denom') && ccPostores.some(p=>(p.nombre||'').trim()) && ccItems.some(it=>(it.descripcion||'').trim());
+  if(t==='nota') return !!v('n-dest-nombre') && !!v('n-ref') && notaFilas.some(f=>(f.descripcion||'').trim());
+  return false;
+}
+function renderFlowbar(){
+  const bar=document.getElementById('flowbar'); if(!bar) return;
+  const pasos=FLUJOS[tabActual];
+  if(!pasos){ bar.style.display='none'; return; }
+  bar.style.display='';
+  bar.innerHTML=pasos.map((t,i)=>{
+    const done=pasoCompleto(t), cur=(t===tabActual);
+    const cls='fb-step'+(cur?' current':'')+(done&&!cur?' done':'');
+    return (i?'<span class="fb-arrow">→</span>':'')
+      +'<button type="button" class="'+cls+'" data-tab="'+t+'" title="'+(done?'Listo para generar':'Aún incompleto')+'">'
+      +'<span class="n">'+(done?'✓':(i+1))+'</span>'+PASO_NOMBRE[t]+'</button>';
+  }).join('');
+}
+document.getElementById('flowbar').addEventListener('click',(e)=>{
+  const b=e.target.closest('.fb-step'); if(b) irA(b.dataset.tab);
+});
+
 function irA(t){
+  tabActual=t;
   document.querySelectorAll('.side-item').forEach(b=> b.classList.toggle('active', b.dataset.tab===t));
   document.getElementById('panel-val').classList.toggle('oculto', t!=='val');
   document.getElementById('panel-cc').classList.toggle('oculto', t!=='cc');
   document.getElementById('panel-memo').classList.toggle('oculto', t!=='memo');
   document.getElementById('panel-nota').classList.toggle('oculto', t!=='nota');
   document.getElementById('panel-trabajos').classList.toggle('oculto', t!=='trabajos');
-  if(t==='trabajos' && typeof renderTrabajos==='function') renderTrabajos();
+  if(t==='trabajos' && typeof renderTrabajos==='function'){ renderTrabajos(); if(typeof renderProvLista==='function') renderProvLista(); }
+  renderFlowbar();
   const m = META_TAB[t] || META_TAB.val;
   document.getElementById('tb-title').textContent = m.title;
   document.getElementById('tb-sub').textContent = m.sub;
@@ -1290,6 +1349,15 @@ function renderCC(){
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-frec','fecha_recepcion');
     set('.c-dedica','se_dedica'); set('.c-verifica','verifica'); set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
     card.querySelector('.c-nombre').addEventListener('input', syncPunto1);
+    // Directorio de proveedores: sugerencias + autocompletar RUC/contacto/telefono/email
+    const nomInp=card.querySelector('.c-nombre');
+    nomInp.setAttribute('list','dl-proveedores');
+    nomInp.addEventListener('input',()=>{
+      const prov=provPorNombre(nomInp.value); if(!prov) return;
+      [['ruc','.c-ruc'],['contacto','.c-contacto'],['telefono','.c-telefono'],['email','.c-email']].forEach(([k,sel])=>{
+        if(prov[k] && !String(p[k]||'').trim()){ p[k]=prov[k]; card.querySelector(sel).value=prov[k]; }
+      });
+    });
     card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{ ccGanador=i; });
     // precio + marca de cada ítem, guardados en ccItems[k] para este postor (i)
     card.querySelectorAll('.ci-precio').forEach(inp=>{ const k=+inp.dataset.k; inp.value=(ccItems[k].precios[i]||''); inp.addEventListener('input',()=>ccItems[k].precios[i]=inp.value); });
@@ -1391,6 +1459,7 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
       const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
       const baseN=val('cc-denom').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'CUADRO';
       descargarBlob(blob, 'CUADRO_COMPARATIVO_'+baseN+'.xlsx', msg);
+      datos.postores.forEach(p=>upsertProveedor(p)); // alimentar el directorio de proveedores
     }catch(err){ mostrarErrorCC(err.message||'Ocurrió un error al generar.'); console.error(err); }
   });
 });
@@ -1438,7 +1507,12 @@ function renderMemoFilas(){
       <button type="button" class="btn-quitar" title="Quitar">✕</button>`;
     const emp=div.querySelector('.mf-empresa'), ruc=div.querySelector('.mf-ruc'), obs=div.querySelector('.mf-obs');
     emp.value=f.empresa; ruc.value=f.ruc; obs.value=f.obs;
-    emp.addEventListener('input',()=>f.empresa=emp.value);
+    emp.setAttribute('list','dl-proveedores');
+    emp.addEventListener('input',()=>{
+      f.empresa=emp.value;
+      const prov=provPorNombre(emp.value);
+      if(prov && prov.ruc && !String(f.ruc||'').trim()){ f.ruc=prov.ruc; ruc.value=prov.ruc; }
+    });
     ruc.addEventListener('input',()=>f.ruc=ruc.value);
     obs.addEventListener('change',()=>f.obs=obs.value);
     div.querySelector('.btn-quitar').addEventListener('click',()=>{
@@ -1529,6 +1603,7 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       const baseN = datos.titulo.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'MEMO';
       descargarBlob(blob, 'MEMO_'+baseN+'.docx', msg);
+      datos.filas.forEach(f=>upsertProveedor({nombre:f.empresa, ruc:f.ruc})); // alimentar el directorio
     }catch(err){ mostrarErrorMemo(err.message||'Ocurrió un error al generar el memo.'); console.error(err); }
   });
 });
@@ -1712,6 +1787,42 @@ document.getElementById('pv-ok').addEventListener('click', ()=>{ const a=pvActio
 document.getElementById('preview').addEventListener('click', (e)=>{ if(e.target.id==='preview') cerrarPreview(); });
 document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') cerrarPreview(); });
 
+// ====================== DIRECTORIO DE PROVEEDORES ======================
+// Se llena solo al generar CC/memo; autocompleta RUC/contacto/telefono/email al escribir el nombre.
+let proveedores=[];
+try{ proveedores=JSON.parse(localStorage.getItem('hnal_proveedores')||'[]')||[]; }catch(e){ proveedores=[]; }
+function guardarProvStore(){ try{ localStorage.setItem('hnal_proveedores', JSON.stringify(proveedores.slice(0,200))); }catch(e){} }
+function provPorNombre(n){ const q=String(n||'').trim().toUpperCase(); if(!q) return null; return proveedores.find(p=>(p.nombre||'').toUpperCase()===q)||null; }
+function upsertProveedor(d){
+  const nombre=String(d.nombre||'').trim(); if(!nombre) return;
+  let p=provPorNombre(nombre);
+  if(!p){ p={nombre:nombre.toUpperCase(),ruc:'',contacto:'',telefono:'',email:''}; proveedores.unshift(p); }
+  ['ruc','contacto','telefono','email'].forEach(k=>{ const v=String(d[k]||'').trim(); if(v) p[k]=v; });
+  guardarProvStore(); renderDatalistProv(); renderProvLista();
+}
+function renderDatalistProv(){
+  let dl=document.getElementById('dl-proveedores');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='dl-proveedores'; document.body.appendChild(dl); }
+  dl.innerHTML=proveedores.map(p=>'<option value="'+escH(p.nombre)+'">').join('');
+}
+function renderProvLista(){
+  const cont=document.getElementById('prov-lista'); if(!cont) return;
+  if(!proveedores.length){ cont.innerHTML='<div class="tr-vacio">Aún no hay proveedores guardados. Se agregan solos al generar un cuadro comparativo o un memo.</div>'; return; }
+  cont.innerHTML=proveedores.map((p,i)=>{
+    const det=[p.ruc?('RUC '+p.ruc):'',p.contacto,p.telefono,p.email].filter(Boolean).join(' · ')||'—';
+    return '<div class="tr-row"><div class="tr-info"><div class="tr-nom">'+escH(p.nombre)+'</div><div class="tr-meta">'+escH(det)+'</div></div>'
+      +'<button type="button" class="btn-mini danger prov-del" data-i="'+i+'">🗑 Quitar</button></div>';
+  }).join('');
+}
+document.getElementById('prov-lista').addEventListener('click',(e)=>{
+  const b=e.target.closest('.prov-del'); if(!b) return;
+  const p=proveedores[+b.dataset.i];
+  if(p && confirm('¿Quitar a “'+p.nombre+'” del directorio de proveedores?')){
+    proveedores.splice(+b.dataset.i,1); guardarProvStore(); renderDatalistProv(); renderProvLista();
+  }
+});
+renderDatalistProv();
+
 // ====================== DESTINATARIOS FRECUENTES ======================
 let destinatarios=[];
 try{ destinatarios=JSON.parse(localStorage.getItem('hnal_destinatarios')||'[]')||[]; }catch(e){ destinatarios=[]; }
@@ -1779,6 +1890,7 @@ function guardarYa(){ if(!saveReady) return; try{
     else setTrabajoActivo(null);
   }
   marcarGuardado();
+  if(typeof renderFlowbar==='function') renderFlowbar();
 }catch(e){} }
 function marcarGuardado(){ const el=document.getElementById('tbSave'); if(!el) return;
   const h=new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
@@ -1867,14 +1979,18 @@ function tabDeTrabajo(d){
 function msgTr(txt,ok){ const m=document.getElementById('msg-tr'); if(!m) return; m.className=ok?'msg-ok':'msg-error'; m.textContent=txt; setTimeout(()=>{ if(m.textContent===txt){ m.textContent=''; m.className=''; } }, 3500); }
 function renderTrabajos(){
   const cont=document.getElementById('tr-lista'); if(!cont) return;
-  const lista=leerTrabajos();
-  if(!lista.length){ cont.innerHTML='<div class="tr-vacio">Todavía no has guardado ningún trabajo. Escribe un nombre arriba y pulsa “Guardar trabajo”.</div>'; return; }
+  const todos=leerTrabajos();
+  const q=String((document.getElementById('tr-buscar')||{}).value||'').trim().toUpperCase();
+  const lista=q?todos.filter(t=>(t.nombre||'').toUpperCase().includes(q)):todos;
+  if(!todos.length){ cont.innerHTML='<div class="tr-vacio">Todavía no has guardado ningún trabajo. Escribe un nombre arriba y pulsa “Guardar trabajo”.</div>'; return; }
+  if(!lista.length){ cont.innerHTML='<div class="tr-vacio">Ningún trabajo coincide con “'+escH(q)+'”.</div>'; return; }
   cont.innerHTML=lista.map(t=>{
     const meta=fechaTrabajo(t.ts);
     const chip=(t.id===trabajoActivo)?' <span class="tr-chip">ABIERTO · se actualiza solo</span>':'';
     return '<div class="tr-row" data-id="'+escH(t.id)+'">'
       +'<div class="tr-info"><div class="tr-nom">'+escH(t.nombre||'(sin nombre)')+chip+'</div><div class="tr-meta">Guardado: '+escH(meta)+'</div></div>'
       +'<button type="button" class="btn-mini tr-abrir" data-id="'+escH(t.id)+'">📂 Abrir</button>'
+      +'<button type="button" class="btn-mini tr-exportar" data-id="'+escH(t.id)+'">⬇ Exportar</button>'
       +'<button type="button" class="btn-mini danger tr-borrar" data-id="'+escH(t.id)+'">🗑 Eliminar</button>'
       +'</div>';
   }).join('');
@@ -1926,9 +2042,49 @@ document.getElementById('tr-nuevo').addEventListener('click', ()=>{
   location.reload();
 });
 document.getElementById('tr-lista').addEventListener('click', (e)=>{
-  const ab=e.target.closest('.tr-abrir'); const bo=e.target.closest('.tr-borrar');
+  const ab=e.target.closest('.tr-abrir'); const bo=e.target.closest('.tr-borrar'); const ex=e.target.closest('.tr-exportar');
   if(ab) abrirTrabajo(ab.dataset.id);
+  else if(ex) exportarTrabajo(ex.dataset.id);
   else if(bo) borrarTrabajo(bo.dataset.id);
+});
+// Buscador de trabajos
+document.getElementById('tr-buscar').addEventListener('input', ()=> renderTrabajos());
+
+// ---- Exportar / Importar trabajo (.json): respaldo o traslado a otra PC ----
+function exportarTrabajo(id){
+  const t=leerTrabajos().find(x=>x.id===id); if(!t) return;
+  const payload={formato:'hnal-trabajo', v:1, nombre:t.nombre||'', ts:t.ts, data:t.data||{}};
+  const base=String(t.nombre||'HNAL').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,40)||'TRABAJO';
+  descargarBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}), 'TRABAJO_'+base+'.json', null);
+  msgTr('✓ Exportado. Guarda el archivo .json como respaldo o llévalo a otra computadora.', true);
+}
+document.getElementById('tr-importar').addEventListener('click', ()=> document.getElementById('tr-import-file').click());
+document.getElementById('tr-import-file').addEventListener('change', (e)=>{
+  const f=e.target.files && e.target.files[0]; e.target.value='';
+  if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const obj=JSON.parse(rd.result);
+      if(!obj || obj.formato!=='hnal-trabajo' || !obj.data) throw new Error('formato');
+      let nombre=String(obj.nombre||'').trim()||('TRABAJO IMPORTADO '+new Date().toLocaleDateString('es-PE'));
+      const lista=leerTrabajos();
+      const i=lista.findIndex(t=>(t.nombre||'').toUpperCase()===nombre.toUpperCase());
+      if(i>=0){
+        if(confirm('Ya existe un trabajo llamado “'+nombre+'”. ¿Reemplazarlo con el importado?\n(Cancelar lo agrega como copia.)')){
+          lista[i]={id:lista[i].id, nombre, ts:Date.now(), data:obj.data};
+        } else {
+          nombre=nombre+' (COPIA)';
+          lista.unshift({id:'t'+Date.now(), nombre, ts:Date.now(), data:obj.data});
+        }
+      } else {
+        lista.unshift({id:'t'+Date.now(), nombre, ts:Date.now(), data:obj.data});
+      }
+      if(guardarTrabajos(lista.slice(0,60))){ renderTrabajos(); msgTr('✓ Trabajo importado: '+nombre+'. Pulsa “Abrir” para continuar con él.', true); }
+      else msgTr('⚠ No se pudo guardar el trabajo importado (almacenamiento lleno).', false);
+    }catch(err){ msgTr('⚠ Ese archivo no es un trabajo exportado de esta app (.json).', false); }
+  };
+  rd.readAsText(f);
 });
 
 // Todo lo que se ingresa (texto) se convierte a MAYÚSCULAS. En fase de captura
