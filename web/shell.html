@@ -1682,14 +1682,35 @@ function renderNotaFilas(){
     cont.appendChild(div);
   });
 }
-document.getElementById('n-agregar-fila').addEventListener('click',()=>{ notaFilas.push(nuevaFilaNota()); renderNotaFilas(); });
+document.getElementById('n-agregar-fila').addEventListener('click',()=>{ notaFilas.push(nuevaFilaNota()); aplicarCcpDesdeAsunto(false); renderNotaFilas(); });
 renderNotaFilas();
+
+// CCP SIAF se completa solo con el N° del Asunto (Certificación de Crédito Presupuestario).
+// Rellena las filas cuyo CCP SIAF esté vacío o siga igual al último valor puesto solo,
+// así no pisa lo que el usuario haya escrito a mano en una fila.
+let notaCcpAuto='';
+function aplicarCcpDesdeAsunto(render){
+  const num=(document.getElementById('n-asunto-num').value||'').trim();
+  notaFilas.forEach(f=>{
+    const cur=(f.ccpsiaf||'').trim();
+    if(cur==='' || cur===notaCcpAuto) f.ccpsiaf=num;
+  });
+  notaCcpAuto=num;
+  if(render!==false) renderNotaFilas();
+}
+document.getElementById('n-asunto-num').addEventListener('input', ()=>aplicarCcpDesdeAsunto(true));
 
 // "Emitir Nota Informativa": trae una fila por item del cuadro comparativo (descripción + monto del ganador)
 // Jala descripción + monto (precio del ganador × cantidad) del cuadro comparativo
 // a las filas de la Nota. Conserva lo que ya escribiste (CCMN, CCP SIAF, Meta,
 // Específica, F.F.) por posición y solo actualiza descripción y monto.
 function jalarNotaDesdeCC(){
+  // Referencia: jala el "Documento de solicitud" del cuadro comparativo,
+  // salvo que la nota ya tenga una referencia escrita (hecha directamente).
+  const ccDoc=(document.getElementById('cc-doc').value||'').trim();
+  const refEl=document.getElementById('n-ref');
+  if(ccDoc && !refEl.value.trim()) refEl.value=ccDoc;
+
   const gw=ccGanador;
   const itemsUsed=ccItems.filter(it=>(it.descripcion||'').trim()!=='' || (it.precios||[]).some(x=>String(x).trim()!==''));
   if(!itemsUsed.length) return 0;
@@ -1700,6 +1721,7 @@ function jalarNotaDesdeCC(){
     const monto=(isFinite(pu)&&isFinite(cant)&&pu>0&&cant>0)?montoSoles(pu*cant):'';
     return {ccmn:prev.ccmn||'',ccpsiaf:prev.ccpsiaf||'',descripcion:(it.descripcion||'').trim().toUpperCase(),meta:prev.meta||'',especifica:prev.especifica||'',ff:prev.ff||'DyT 4-13',monto};
   });
+  aplicarCcpDesdeAsunto(false);   // completa el CCP SIAF de las filas nuevas con el N° del Asunto
   renderNotaFilas();
   return itemsUsed.length;
 }
@@ -1974,6 +1996,7 @@ function restore(d){
     renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas();
     if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(el) el.value=d.inputs[id]; }); }
     if(typeof aplicarModeloCC==='function') aplicarModeloCC();
+    const asEl=document.getElementById('n-asunto-num'); if(asEl) notaCcpAuto=(asEl.value||'').trim();
     const p1el=document.getElementById('cc-p1'); if(p1el) ccP1Auto=(p1el.value.trim()===''||p1el.value===ccTextoPunto1());
   }catch(e){ console.error('restore', e); }
 }
