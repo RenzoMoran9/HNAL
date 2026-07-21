@@ -1177,6 +1177,9 @@ async function generarCuadroComparativo(datos){
   setv(4,1,'AREA USUARIA: '+String(datos.area_usuaria||'').trim());
   setv(5,1,'TIPO DE PROCESO DE SELECCIÓN:'+(String(datos.tipo_proceso||'CONTRATO MENOR').trim().toUpperCase()));
   setv(7,4,'ADQ. DE '+String(datos.denominacion||'').trim().toUpperCase());
+  // Denominación de la contratación: siempre centrada (horizontal y vertical)
+  (function(){ const d7=ws.getRow(7).getCell(4); d7.style=JSON.parse(JSON.stringify(d7.style||{}));
+    d7.alignment=Object.assign({},d7.alignment,{horizontal:'center',vertical:'middle',wrapText:true}); })();
 
   // Prototipo de la fila de item (fila 20) y del pie (21..45)
   const clone=(r,c)=>{ const cell=ws.getRow(r).getCell(c); return {c, value:cell.value, style:JSON.parse(JSON.stringify(cell.style||{})), numFmt:cell.numFmt}; };
@@ -1694,6 +1697,8 @@ function montoSoles(n){
 }
 
 function parseMonto(s){ const t=String(s||'').replace(/[^0-9.,-]/g,'').replace(/,/g,''); const n=Number(t); return isFinite(n)?n:0; }
+// F.F. en el Word: las letras van arriba del número (ej: "RO 1-00" -> "RO"/"1-00")
+function ffDosLineas(s){ return String(s||'').trim().replace(/\s+/, '\n'); }
 // Normaliza el monto para que siempre salga "S/ #,##0.00" (venga escrito o jalado)
 function fmtMontoNota(m){ const n=parseMonto(m); return n>0?montoSoles(n):String(m||'').trim(); }
 
@@ -1712,7 +1717,7 @@ function renderNotaFilas(){
         <div class="field" style="margin:0"><label>Descripción</label><input type="text" class="nf-desc" placeholder="Ej: MICROCUBETA…"></div>
         <div class="field" style="margin:0"><label>Meta</label><input type="text" class="nf-meta" placeholder="Ej: 0083"></div>
         <div class="field" style="margin:0"><label>Específica</label><input type="text" class="nf-especifica" placeholder="Ej: 23.18.21"></div>
-        <div class="field" style="margin:0"><label>F.F.</label><select class="nf-ff"><option value="DyT 4-13">DyT 4-13</option><option value="RO 1-00">RO 1-00</option></select></div>
+        <div class="field" style="margin:0"><label>F.F.</label><select class="nf-ff"><option value="DyT 4-13">DyT 4-13</option><option value="RO 1-00">RO 1-00</option><option value="RDR 2-09">RDR 2-09</option></select></div>
         <div class="field" style="margin:0"><label>Monto</label><input type="text" class="nf-monto" placeholder="S/ 0.00"></div>
       </div>`;
     const q=s=>div.querySelector(s);
@@ -1801,7 +1806,7 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
     asuntoNum: val('n-asunto-num').trim(),
     referencia: val('n-ref').trim(),
     fecha: fechaLimaDe(val('n-fecha')),
-    filas: filas.map(f=>({ccmn:(f.ccmn||'').trim(), ccpSiaf:(f.ccpsiaf||'').trim(), descripcion:(f.descripcion||'').trim(), meta:(f.meta||'').trim(), especifica:(f.especifica||'').trim(), ff:f.ff||'', monto:fmtMontoNota(f.monto)})),
+    filas: filas.map(f=>({ccmn:(f.ccmn||'').trim(), ccpSiaf:(f.ccpsiaf||'').trim(), descripcion:(f.descripcion||'').trim(), meta:(f.meta||'').trim(), especifica:(f.especifica||'').trim(), ff:ffDosLineas(f.ff), monto:fmtMontoNota(f.monto)})),
     montoTotal: montoSoles(total),
     expDir: val('n-expdir').trim(),
     expLog: val('n-explog').trim(),
