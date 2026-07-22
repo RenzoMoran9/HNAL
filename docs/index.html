@@ -442,9 +442,14 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
           <option value="1">Modelo 1 — con puntos 1)2)3) y firma del especialista</option>
           <option value="2">Modelo 2 — pie automático (documento + denominación), sin firma</option>
         </select></div>
+      <div class="field"><label>¿Qué se contrata?</label>
+        <select id="cc-objeto">
+          <option value="bien">Bien (adquisición) — sale "ADQ. DE" y lleva marca</option>
+          <option value="servicio">Servicio — sale "SERVICIO DE" y sin marca</option>
+        </select></div>
       <div class="field"><label>Documento de solicitud</label><input type="text" id="cc-doc" placeholder="Ej: NOTA INFORMATIVA N°1096-DF-HNAL-2026"></div>
       <div class="field"><label>Área usuaria</label><input type="text" id="cc-area" placeholder="Ej: CIRUGIA GENERAL - APARATO DIGESTIVO"></div>
-      <div class="field"><label>Adquisición <span class="hint">— va después de "ADQ. DE"</span></label><input type="text" id="cc-denom" placeholder="Ej: DISPOSITIVOS MEDICOS PARA 01 AÑO"></div>
+      <div class="field"><label id="cc-lbl-denom">Adquisición <span class="hint" id="cc-hint-denom">— va después de "ADQ. DE"</span></label><input type="text" id="cc-denom" placeholder="Ej: DISPOSITIVOS MEDICOS PARA 01 AÑO"></div>
       <div class="field"><label>Tipo de proceso de selección</label>
         <select id="cc-tipo">
           <option value="CONTRATO MENOR">CONTRATO MENOR</option>
@@ -1165,6 +1170,7 @@ async function generarCuadroComparativo(datos){
   if(N>4) throw new Error('El cuadro comparativo admite hasta 4 postores.');
   const items=(datos.items||[]).filter(it=>(it.descripcion||'').trim()!=='' || (it.precios||[]).some(x=>String(x).trim()!==''));
   if(items.length<1) throw new Error('Agrega al menos un item.');
+  const esServicio = String(datos.objeto||'bien')==='servicio';
   const nI=items.length, OFF=nI-1;
   const ITEM=20, FOOT_TOP=21, FOOT_BOT=45, WMAX=25;
   const setv=(r,c,v)=>{ ws.getRow(r).getCell(c).value=v; };
@@ -1182,7 +1188,7 @@ async function generarCuadroComparativo(datos){
     ['A7:B7','D7:U7','A7:U7'].forEach(rng=>{ try{ ws.unMergeCells(rng); }catch(e){} });
     ws.getRow(7).getCell(4).value=null;   // limpiar el "ADQ. DE " que iba suelto en D7
     const a7=ws.getRow(7).getCell(1);
-    a7.value='DENOMINACIÓN DE LA CONTRATACIÓN: ADQ. DE '+den;
+    a7.value='DENOMINACIÓN DE LA CONTRATACIÓN: '+(esServicio?'SERVICIO DE ':'ADQ. DE ')+den;
     a7.alignment=Object.assign({},a7.alignment,{horizontal:'left',vertical:'middle',wrapText:true});
     try{ ws.mergeCells('A7:U7'); }catch(e){}
   })();
@@ -1222,7 +1228,8 @@ async function generarCuadroComparativo(datos){
     const fmtUnit=ccMontoFmt(dec), fmtTot=ccMontoFmt(2);
     for(let i=0;i<4;i++){ const b=baseCol(i);
       if(i<N){
-        setv(r,b,ccNum((it.precios||[])[i])); setv(r,b+1,{formula:'E'+r+'*'+colLetter(b)+r}); setv(r,b+2,String((it.marcas||[])[i]||'').trim());
+        setv(r,b,ccNum((it.precios||[])[i])); setv(r,b+1,{formula:'E'+r+'*'+colLetter(b)+r});
+        setv(r,b+2, esServicio?null:String((it.marcas||[])[i]||'').trim());   // servicios no llevan marca
         ws.getRow(r).getCell(b).numFmt=fmtUnit; ws.getRow(r).getCell(b+1).numFmt=fmtTot;
       } else { setv(r,b,null); setv(r,b+1,null); setv(r,b+2,null); }
     }
@@ -1256,6 +1263,10 @@ async function generarCuadroComparativo(datos){
       setv(F(35),b,(String(p.cumple_rtm||'').trim())||null);
       setv(F(36),b,(String(p.se_tomo||'').trim())||null);
       for(let r=33;r<=36;r++) ws.getRow(F(r)).getCell(b).dataValidation={type:'list',allowBlank:true,formulae:['"SI,NO"']};
+      if(esServicio) setv(19,b+2,null);   // servicios: sin encabezado "MARCA" por postor
+      // Ensanchar columnas de montos para que no salgan como ### con importes grandes
+      ws.getColumn(b).width=52;     // PRECIO UNITARIO
+      ws.getColumn(b+1).width=44;   // PRECIO TOTAL
       cols.forEach(c=>{ ws.getColumn(c).hidden=false; });
     }else{
       for(let r=12;r<=19;r++) for(const c of cols) setv(r,c,null);
@@ -1263,6 +1274,7 @@ async function generarCuadroComparativo(datos){
       cols.forEach(c=>{ ws.getColumn(c).hidden=true; });
     }
   }
+  ws.getColumn(22).width=40;   // VALOR UNITARIO también ancho
 
   // Fila TOTAL (era 21) — total normal (2 decimales)
   const gFmt=ccMontoFmt(2);
@@ -1301,12 +1313,13 @@ async function generarCuadroComparativo(datos){
     const t3='-CUADRO DE VALIDACION DE ESPECIFICACIONES TECNICAS PARA LA '+den;
     setv(F(37),1,[t1,t2,t3].join('\n'));
   }else{
-    // Modelo 1: puntos 1)2)3)
+    // Modelo 1: puntos 1)2)3) — se antepone el número si el usuario no lo escribió
+    const conNum=(txt,n)=>{ const t=String(txt||'').trim(); if(!t) return ''; return /^\s*\d+\)/.test(t)?t:(n+')'+t); };
     const nombres=postores.map(p=>String(p.nombre||'').trim()).filter(Boolean).join(', ');
-    const p1=(datos.punto1&&datos.punto1.trim())?datos.punto1.trim():
-      '1)SE REALIZO LA INDAGACIÓN DE MERCADO,INVITANDO A POSIBLES PROVEEDORES DEDICADOS AL OBJETO DE LA CONTRATACIÓN,TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: '+nombres;
-    const p2=(datos.punto2&&datos.punto2.trim())?datos.punto2.trim():'2)CON MEMORANDUM N°';
-    const p3=(datos.punto3&&datos.punto3.trim())?datos.punto3.trim():'';
+    const p1=conNum((datos.punto1&&datos.punto1.trim())?datos.punto1.trim():
+      '1)SE REALIZO LA INDAGACIÓN DE MERCADO,INVITANDO A POSIBLES PROVEEDORES DEDICADOS AL OBJETO DE LA CONTRATACIÓN,TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: '+nombres, '1');
+    const p2=conNum((datos.punto2&&datos.punto2.trim())?datos.punto2.trim():'2)CON MEMORANDUM N°', '2');
+    const p3=conNum((datos.punto3&&datos.punto3.trim())?datos.punto3.trim():'', '3');
     setv(F(37),1,[p1,p2,p3].filter(Boolean).join('\n'));
   }
 
@@ -1373,16 +1386,18 @@ function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'
 function nuevoItemCC(){return{descripcion:'',medida:'UNIDAD',cantidad:'',precios:ccPostores?ccPostores.map(()=> ''):['',''],marcas:ccPostores?ccPostores.map(()=> ''):['','']};}
 
 function nombreItemCC(k){ const d=(ccItems[k]&&ccItems[k].descripcion||'').trim(); return 'Ítem '+(k+1)+(d?' — '+d:''); }
+function esServicioCC(){ return ((document.getElementById('cc-objeto')||{}).value||'bien')==='servicio'; }
 function renderCC(){
   const cont=document.getElementById('cc-postores'); cont.innerHTML='';
+  const servicio=esServicioCC();
   ccPostores.forEach((p,i)=>{
     const card=document.createElement('div'); card.className='cc-postor';
     const cots=ccItems.map((it,k)=>`
       <div class="cc-cot" data-k="${k}" style="border:1px solid var(--borde-2);border-radius:8px;padding:10px;background:#fff;margin-bottom:8px">
         <div class="cc-cot-t" style="font-weight:700;color:var(--azul);font-size:.82rem;margin-bottom:6px">${escH(nombreItemCC(k))}</div>
-        <div class="grid2">
+        <div class="${servicio?'':'grid2'}">
           <div class="field" style="margin:0"><label>Precio unit. (S/)</label><input type="number" step="any" min="0" class="ci-precio" data-k="${k}"></div>
-          <div class="field" style="margin:0"><label>Marca</label><input type="text" class="ci-marca" data-k="${k}"></div>
+          ${servicio?'':`<div class="field" style="margin:0"><label>Marca</label><input type="text" class="ci-marca" data-k="${k}"></div>`}
         </div>
       </div>`).join('');
     card.innerHTML=`
@@ -1413,7 +1428,7 @@ function renderCC(){
         <div class="field" style="margin:0"><label>¿Se tomó en cuenta para el V. referencial?</label>
           <select class="c-vr"><option value="">(en blanco)</option><option value="SI">SI</option><option value="NO">NO</option></select></div>
       </div>
-      <div class="marcas-title">Precio y marca por ítem:</div>
+      <div class="marcas-title">${servicio?'Precio por ítem:':'Precio y marca por ítem:'}</div>
       <div class="cc-cots">${cots}</div>`;
     const set=(sel,key)=>{ const el=card.querySelector(sel); el.value=p[key]; el.addEventListener('input',()=>p[key]=el.value); };
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
@@ -1489,6 +1504,16 @@ function aplicarModeloCC(){
 }
 document.getElementById('cc-modelo').addEventListener('change', aplicarModeloCC);
 aplicarModeloCC();
+// Bien / Servicio: cambia el prefijo ("ADQ. DE"/"SERVICIO DE") y muestra u oculta la marca
+function aplicarObjetoCC(){
+  const serv=esServicioCC();
+  const lbl=document.getElementById('cc-lbl-denom'), hint=document.getElementById('cc-hint-denom');
+  if(lbl) lbl.childNodes[0].nodeValue = serv?'Servicio ':'Adquisición ';
+  if(hint) hint.textContent = serv?'— va después de "SERVICIO DE"':'— va después de "ADQ. DE"';
+  renderCC();
+}
+document.getElementById('cc-objeto').addEventListener('change', aplicarObjetoCC);
+aplicarObjetoCC();
 renderCCItems(); renderCC(); syncPunto1();
 
 function mostrarErrorCC(t){ const m=document.getElementById('msg-cc'); m.className='msg-error'; m.textContent='⚠ '+t; }
@@ -1511,7 +1536,7 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
   const ganadorRemap = Math.max(0, usedIdx.indexOf(ccGanador));
   const datos={
     documento_solicitud:val('cc-doc'), area_usuaria:val('cc-area'), denominacion:val('cc-denom'),
-    tipo_proceso:val('cc-tipo'), veces:val('cc-veces'), modelo:modelo,
+    tipo_proceso:val('cc-tipo'), veces:val('cc-veces'), modelo:modelo, objeto:val('cc-objeto'),
     items:itemsData, postores:postoresUsed, ganador:ganadorRemap,
     punto1:val('cc-p1'), punto2:val('cc-p2'), punto3:val('cc-p3'),
     especialista:val('cc-esp'), cargo:val('cc-cargo'), fecha:val('cc-fecha'),
@@ -2052,6 +2077,7 @@ function restore(d){
     renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas();
     if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(el) el.value=d.inputs[id]; }); }
     if(typeof aplicarModeloCC==='function') aplicarModeloCC();
+    if(typeof aplicarObjetoCC==='function') aplicarObjetoCC();
     const asEl=document.getElementById('n-asunto-num'); if(asEl) notaCcpAuto=(asEl.value||'').trim();
     const p1el=document.getElementById('cc-p1'); if(p1el) ccP1Auto=(p1el.value.trim()===''||p1el.value===ccTextoPunto1());
   }catch(e){ console.error('restore', e); }
