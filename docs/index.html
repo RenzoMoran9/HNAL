@@ -1156,6 +1156,8 @@ function ccFecha(v){
   return t;
 }
 function ccNum(v){ const t=String(v==null?'':v).trim(); if(t==='') return null; const n=Number(t.replace(',','.')); return isNaN(n)?t:n; }
+// Plazo de entrega: si el usuario puso solo el número, se le agrega "DIAS CALENDARIO"
+function fmtPlazo(v){ const t=String(v||'').trim(); if(!t) return ''; return /[a-zA-ZÁÉÍÓÚ]/.test(t)?t:(t+' DIAS CALENDARIO'); }
 // decimales que escribió el usuario (para que el monto salga igualito en el Excel)
 function ccDec(v){ const t=String(v==null?'':v).trim(); const m=t.match(/[.,](\d+)$/); return m?m[1].length:0; }
 function ccMontoFmt(dec){ const z='0'.repeat(Math.max(2,dec)); return '_-"S/"\\ * #,##0.'+z+'_-;\\-"S/"\\ * #,##0.'+z+'_-;_-"S/"\\ * "-"??_-;_-@_-'; }
@@ -1253,7 +1255,7 @@ async function generarCuadroComparativo(datos){
       setv(18,b+1,String(p.email||'').trim());
       for(let r=22;r<=25;r++) setv(F(r),b,null);
       setv(F(26),b,String(p.garantia||'').trim());
-      setv(F(27),b,String(p.plazo_entrega||'').trim());
+      setv(F(27),b,fmtPlazo(p.plazo_entrega));
       setv(F(28),b,'CREDITO COMERCIAL'); setv(F(29),b,'SOLES');
       setv(F(30),b,ccFecha(p.fecha_solicitud)); ws.getRow(F(30)).getCell(b).numFmt='dd/mm/yyyy';
       setv(F(31),b,ccNum(datos.veces));
@@ -1275,6 +1277,7 @@ async function generarCuadroComparativo(datos){
     }
   }
   ws.getColumn(22).width=40;   // VALOR UNITARIO también ancho
+  ws.getRow(F(36)).height=163.5;   // "SE TOMO EN CUENTA PARA... VALOR REFERENCIAL": alto para que se vea completo
 
   // Fila TOTAL (era 21) — total normal (2 decimales)
   const gFmt=ccMontoFmt(2);
@@ -1416,7 +1419,7 @@ function renderCC(){
         <div class="field" style="margin:0"><label>Teléfono</label><input type="text" class="c-telefono"></div>
         <div class="field" style="margin:0"><label>E-mail</label><input type="text" class="c-email"></div>
         <div class="field" style="margin:0"><label>Garantía / vigencia</label><input type="text" class="c-garantia" placeholder="Ej: 12 MESES"></div>
-        <div class="field" style="margin:0"><label>Plazo de entrega</label><input type="text" class="c-plazo" placeholder="Ej: 05 DÍAS"></div>
+        <div class="field" style="margin:0"><label>Plazo de entrega <span class="hint">— solo el número; sale "DIAS CALENDARIO"</span></label><input type="text" class="c-plazo" inputmode="numeric" placeholder="Ej: 21"></div>
         <div class="field" style="margin:0"><label>Fecha de solicitud</label><input type="date" class="c-fsol"></div>
         <div class="field" style="margin:0"><label>Fecha de recepción</label><input type="date" class="c-frec"></div>
         <div class="field" style="margin:0"><label>¿Proveedor se dedica al objeto?</label>
