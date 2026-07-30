@@ -655,6 +655,25 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   </div><!-- /content -->
 </div><!-- /app -->
 
+<!-- Modal: al volver al inicio, ofrecer empezar un trabajo nuevo -->
+<div class="pv-overlay" id="nuevoModal">
+  <div class="pv-card" style="width:min(560px,96vw)">
+    <div class="pv-head">
+      <h3>¿Empezar un trabajo nuevo?</h3>
+      <button type="button" id="nm-x" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="pv-body">
+      <p style="margin:0 0 10px">Estás volviendo al inicio con un trabajo en curso. ¿Quieres <b>limpiar los formularios</b> para empezar otro documento desde cero?</p>
+      <p class="pv-note" style="margin:0">Tus trabajos guardados en <b>💼 Mis trabajos</b> no se tocan.</p>
+    </div>
+    <div class="pv-foot">
+      <button type="button" class="btn btn-sec" id="nm-seguir">← Seguir editando</button>
+      <button type="button" class="btn btn-sec" id="nm-guardar">💾 Guardar y empezar nuevo</button>
+      <button type="button" class="btn btn-azul" id="nm-nuevo">✨ Empezar nuevo</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: vista previa antes de descargar -->
 <div class="pv-overlay" id="preview">
   <div class="pv-card">
@@ -1081,13 +1100,59 @@ function entrar(tab){
   window.scrollTo(0,0);
   if(typeof revisarDraft==='function') revisarDraft();
 }
-function volverInicio(){
+function mostrarLanding(){
   landing.style.display='';
   void landing.offsetWidth;
   landing.classList.remove('lp-out');
   appEl.style.display='none';
   window.scrollTo(0,0);
 }
+// ¿Hay algo escrito de verdad? (ignora los valores por defecto del formulario)
+function hayTrabajoEnCurso(){
+  const v=id=>{ const el=document.getElementById(id); return el?String(el.value||'').trim():''; };
+  const campos=['adquisicion','cc-denom','cc-doc','cc-area','m-dest-nombre','m-titulo','m-ref',
+                'n-dest-nombre','n-ref','n-asunto-num','n-expdir','n-explog','m-expdir','m-explog'];
+  if(campos.some(v)) return true;
+  if((postores||[]).some(p=>(p.nombre||'').trim())) return true;
+  if((items||[]).some(it=>((it.denom||'')+(it.codigo||'')+(it.cantidad||'')).trim())) return true;
+  if((ccPostores||[]).some(p=>(p.nombre||'').trim())) return true;
+  if((ccItems||[]).some(it=>((it.descripcion||'')+(it.cantidad||'')).trim() || (it.precios||[]).some(x=>String(x||'').trim()))) return true;
+  if((memoFilas||[]).some(f=>(f.empresa||'').trim())) return true;
+  if((notaFilas||[]).some(f=>(f.descripcion||'').trim()||(f.monto||'').trim())) return true;
+  return false;
+}
+// Limpia TODO recargando la app (garantiza los valores por defecto originales)
+function limpiarYReiniciar(tabDestino){
+  try{ setTrabajoActivo(null); }catch(e){}
+  try{ localStorage.removeItem('hnal_borrador'); }catch(e){}
+  try{ if(tabDestino) sessionStorage.setItem('hnal_skip_landing', tabDestino);
+       else sessionStorage.removeItem('hnal_skip_landing'); }catch(e){}
+  location.reload();
+}
+function volverInicio(){
+  if(!hayTrabajoEnCurso()){ mostrarLanding(); return; }
+  document.getElementById('nuevoModal').classList.add('open');
+}
+// Botones del modal "empezar trabajo nuevo"
+(function(){
+  const modal=document.getElementById('nuevoModal');
+  const cerrar=()=>modal.classList.remove('open');
+  document.getElementById('nm-x').addEventListener('click', cerrar);
+  document.getElementById('nm-seguir').addEventListener('click', cerrar);
+  modal.addEventListener('click', e=>{ if(e.target===modal) cerrar(); });
+  document.getElementById('nm-nuevo').addEventListener('click', ()=>{ cerrar(); limpiarYReiniciar(null); });
+  document.getElementById('nm-guardar').addEventListener('click', ()=>{
+    try{
+      const nombre=nombreSugerido();
+      const lista=leerTrabajos();
+      const i=lista.findIndex(t=>(t.nombre||'').toUpperCase()===nombre.toUpperCase());
+      const reg={id:(i>=0?lista[i].id:'t'+Date.now()), nombre, ts:Date.now(), data:snapshot()};
+      if(i>=0) lista[i]=reg; else lista.unshift(reg);
+      guardarTrabajos(lista.slice(0,60));
+    }catch(e){}
+    cerrar(); limpiarYReiniciar(null);
+  });
+})();
 
 document.getElementById('btnIniciar').addEventListener('click', ()=> entrar('val'));
 document.querySelectorAll('.f-tile').forEach(t=>{
@@ -2159,10 +2224,7 @@ document.getElementById('tr-guardar').addEventListener('click', guardarTrabajoAc
 // "Empezar trabajo nuevo": desenlaza el trabajo abierto y limpia todos los formularios
 document.getElementById('tr-nuevo').addEventListener('click', ()=>{
   if(!confirm('¿Limpiar todos los formularios para empezar un trabajo nuevo?\n(Tus trabajos guardados NO se tocan.)')) return;
-  setTrabajoActivo(null);
-  try{ localStorage.removeItem('hnal_borrador'); }catch(e){}
-  try{ sessionStorage.setItem('hnal_skip_landing','val'); }catch(e){}
-  location.reload();
+  limpiarYReiniciar('val');
 });
 document.getElementById('tr-lista').addEventListener('click', (e)=>{
   const ab=e.target.closest('.tr-abrir'); const bo=e.target.closest('.tr-borrar'); const ex=e.target.closest('.tr-exportar');
