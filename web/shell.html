@@ -655,6 +655,22 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   </div><!-- /content -->
 </div><!-- /app -->
 
+<!-- Unidades de medida sugeridas (se puede escribir cualquier otra) -->
+<datalist id="dl-medidas">
+  <option value="UNIDAD"><option value="CIENTO"><option value="MILLAR"><option value="CAJA">
+  <option value="FRASCO"><option value="PAQUETE"><option value="BOLSA"><option value="KIT">
+  <option value="JUEGO"><option value="PAR"><option value="DOCENA"><option value="ROLLO">
+  <option value="METRO"><option value="KILOGRAMO"><option value="LITRO"><option value="GALON">
+  <option value="SERVICIO"><option value="GLOBAL">
+</datalist>
+<datalist id="dl-unidades">
+  <option value="UND"><option value="CIENTO"><option value="MILLAR"><option value="CAJA">
+  <option value="FRASCO"><option value="PAQUETE"><option value="BOLSA"><option value="KIT">
+  <option value="JUEGO"><option value="PAR"><option value="DOCENA"><option value="ROLLO">
+  <option value="METRO"><option value="KILOGRAMO"><option value="LITRO"><option value="GALON">
+  <option value="SERVICIO"><option value="GLOBAL">
+</datalist>
+
 <!-- Modal: al volver al inicio, ofrecer empezar un trabajo nuevo -->
 <div class="pv-overlay" id="nuevoModal">
   <div class="pv-card" style="width:min(560px,96vw)">
@@ -944,7 +960,7 @@ function renderItems(){
       </div>
       <div class="grid3">
         <div class="field" style="margin:0"><label>Código SIGA</label><input type="text" class="i-codigo" placeholder="Ej: 805200110001"></div>
-        <div class="field" style="margin:0"><label>Unidad</label><input type="text" class="i-unidad" value="UND"></div>
+        <div class="field" style="margin:0"><label>Unidad <span class="hint">— elige o escribe</span></label><input type="text" class="i-unidad" list="dl-unidades" value="UND"></div>
         <div class="field" style="margin:0"><label>Cantidad</label><input type="number" class="i-cantidad" min="0" placeholder="Ej: 150"></div>
       </div>
       <div class="field" style="margin:12px 0 0"><label>Denominación</label><input type="text" class="i-denom" placeholder="Ej: TOKEN DE SEGURIDAD CON CONECTOR USB"></div>
@@ -1504,7 +1520,7 @@ function renderCCItems(){
       </div>
       <div class="grid3">
         <div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cii-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"></div>
-        <div class="field" style="margin:0"><label>Medida</label><input type="text" class="cii-medida" value="UNIDAD"></div>
+        <div class="field" style="margin:0"><label>Medida <span class="hint">— elige o escribe</span></label><input type="text" class="cii-medida" list="dl-medidas" value="UNIDAD"></div>
         <div class="field" style="margin:0"><label>Cantidad</label><input type="number" min="0" class="cii-cant" placeholder="Ej: 1200"></div>
       </div>`;
     const q=s=>card.querySelector(s);
