@@ -488,7 +488,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
           <input type="text" id="cc-p3" placeholder="Ej: PRIMERA COMPRA DEL AÑO"></div>
         <div class="grid3">
           <div class="field"><label>Nombre del especialista (firma)</label><input type="text" id="cc-esp" placeholder="Nombre de quien firma"></div>
-          <div class="field"><label>Cargo</label><input type="text" id="cc-cargo" value="Especialista en Contrataciones Públicas"></div>
+          <div class="field"><label>Cargo</label><input type="text" class="no-mayus" id="cc-cargo" value="Especialista en Contrataciones Públicas"></div>
           <div class="field"><label>Fecha</label><input type="date" id="cc-fecha"></div>
         </div>
       </div>
@@ -520,11 +520,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
           <button type="button" class="btn-mini danger dest-del" data-target="m" title="Quitar de la lista">🗑</button>
         </div>
         <input type="text" id="m-dest-nombre" placeholder="Ej: ING. JORGE LUIS TAKAMI OBLITAS">
-        <input type="text" id="m-dest-cargo" placeholder="Ej: Jefe de la Oficina de Servicios Generales y Mantenimiento" style="margin-top:8px">
+        <input type="text" class="no-mayus" id="m-dest-cargo" placeholder="Ej: Jefe de la Oficina de Servicios Generales y Mantenimiento" style="margin-top:8px">
       </div>
       <div class="field"><label>Remitente — nombre / cargo</label>
-        <input type="text" id="m-rem-nombre" value="Lic. ARTURO C. ROJAS GONZALES">
-        <input type="text" id="m-rem-cargo" value="Jefe de la Oficina de Logística." style="margin-top:8px">
+        <input type="text" class="no-mayus" id="m-rem-nombre" value="Lic. ARTURO C. ROJAS GONZALES">
+        <input type="text" class="no-mayus" id="m-rem-cargo" value="Jefe de la Oficina de Logística." style="margin-top:8px">
       </div>
       <div class="field"><label>Asunto — Solicitud de Revisión y Evaluación de Cumplimiento de…</label>
         <select id="m-asunto">
@@ -582,11 +582,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
           <button type="button" class="btn-mini danger dest-del" data-target="n" title="Quitar de la lista">🗑</button>
         </div>
         <input type="text" id="n-dest-nombre" placeholder="Ej: M.C. JOSÉ RAÚL CARPIO BARBIERI.">
-        <input type="text" id="n-dest-cargo" placeholder="Ej: Director de la Oficina Ejecutiva de Planeamiento Estratégico." style="margin-top:8px">
+        <input type="text" class="no-mayus" id="n-dest-cargo" placeholder="Ej: Director de la Oficina Ejecutiva de Planeamiento Estratégico." style="margin-top:8px">
       </div>
       <div class="field"><label>Remitente — nombre / cargo</label>
-        <input type="text" id="n-rem-nombre" value="LIC. ARTURO C. ROJAS GONZALES">
-        <input type="text" id="n-rem-cargo" value="Jefe de la Oficina de Logística" style="margin-top:8px">
+        <input type="text" class="no-mayus" id="n-rem-nombre" value="LIC. ARTURO C. ROJAS GONZALES">
+        <input type="text" class="no-mayus" id="n-rem-cargo" value="Jefe de la Oficina de Logística" style="margin-top:8px">
       </div>
       <div class="field"><label>Asunto — Solicito Aprobación de Certificación de Crédito Presupuestario N°</label>
         <input type="text" id="n-asunto-num" placeholder="Ej: 3171"></div>
@@ -2290,9 +2290,11 @@ document.getElementById('tr-import-file').addEventListener('change', (e)=>{
 
 // Todo lo que se ingresa (texto) se convierte a MAYÚSCULAS. En fase de captura
 // para que el valor ya esté en mayúscula cuando los campos guardan su estado.
+// Excepción: los cargos ("Jefe de la Oficina de…") y el nombre del remitente
+// conservan su formato normal, no se pasan a mayúsculas.
 document.addEventListener('input', (e)=>{
   const t=e.target;
-  if(t && t.matches && t.matches('#app input[type=text], #app textarea')){
+  if(t && t.matches && t.matches('#app input[type=text]:not(.no-mayus), #app textarea:not(.no-mayus)')){
     const s=t.selectionStart, en=t.selectionEnd, up=t.value.toUpperCase();
     if(up!==t.value){ t.value=up; try{ t.setSelectionRange(s,en); }catch(_){} }
   }
