@@ -86,7 +86,10 @@ def tcell(width, paras_xml, shd=None, valign="center"):
     tcpr = '<w:tcPr><w:tcW w:w="%d" w:type="dxa"/>' % width
     if shd:
         tcpr += '<w:shd w:val="clear" w:color="auto" w:fill="%s"/>' % shd
-    tcpr += '<w:vAlign w:val="%s"/></w:tcPr>' % valign
+    # valign=None: no se escribe la etiqueta (Word alinea arriba por defecto)
+    if valign:
+        tcpr += '<w:vAlign w:val="%s"/>' % valign
+    tcpr += '</w:tcPr>'
     return "<w:tc>%s%s</w:tc>" % (tcpr, paras_xml)
 
 
@@ -102,31 +105,36 @@ def cell_para(text_or_runs, jc="left", font="Arial", sz=20, bold=False,
 
 
 def tabla_destinatario():
-    W0, W1, W2 = 1124, 418, 6962
+    # Anchos del memo manual: la columna de etiquetas debe caber "Referencia"
+    # en Arial sin partirse en dos lineas.
+    W0, W1, W2 = 1440, 280, 6780
 
+    # Todo el encabezado va en Arial y alineado arriba, como el memo manual:
+    # asi la etiqueta (A / DE) queda pareja con la primera linea del valor.
     def fila(label, cel2_paras):
-        c0 = tcell(W0, cell_para(label, font="Arial Narrow", sz=20))
-        c1 = tcell(W1, cell_para(":", font="Arial Narrow", sz=20))
-        c2 = tcell(W2, cel2_paras)
+        c0 = tcell(W0, cell_para(label, font="Arial", sz=20), valign=None)
+        c1 = tcell(W1, cell_para(":", font="Arial", sz=20), valign=None)
+        c2 = tcell(W2, cel2_paras, valign=None)
         return "<w:tr>%s%s%s</w:tr>" % (c0, c1, c2)
 
     GAP = 150   # espacio despues de cada fila (como el memo manual)
+    # El CARGO va sin negrita (solo el nombre es negrita), igual en "A" y en "DE"
     dest = (para(run("{destNombre}", font="Arial", sz=21, bold=True),
                  jc="left", font="Arial", sz=21, bold=True)
-            + para(run("{destCargo}", font="Arial", sz=21, bold=True),
-                   jc="left", font="Arial", sz=21, bold=True,
+            + para(run("{destCargo}", font="Arial", sz=21),
+                   jc="left", font="Arial", sz=21,
                    spacing_after=GAP))
     rem = (para(run("{remNombre}", font="Arial", sz=21, bold=True),
                 jc="left", font="Arial", sz=21, bold=True)
-           + para(run("{remCargo}", font="Arial Narrow", sz=20),
-                  jc="left", font="Arial Narrow", sz=20, spacing_after=GAP))
+           + para(run("{remCargo}", font="Arial", sz=20),
+                  jc="left", font="Arial", sz=20, spacing_after=GAP))
     asunto = para(
         run("Solicitud de Revisión y Evaluación de Cumplimiento de "
-            "{asunto}", font="Arial Narrow", sz=20),
-        jc="left", font="Arial Narrow", sz=20, spacing_after=GAP)
-    ref = para(run("{referencia}", font="Arial Narrow", sz=20, bold=True),
-               jc="left", font="Arial Narrow", sz=20, spacing_after=GAP)
-    fecha = cell_para("{fecha}", font="Arial Narrow", sz=20)
+            "{asunto}", font="Arial", sz=20),
+        jc="left", font="Arial", sz=20, spacing_after=GAP)
+    ref = para(run("{referencia}", font="Arial", sz=20, bold=True),
+               jc="left", font="Arial", sz=20, spacing_after=GAP)
+    fecha = cell_para("{fecha}", font="Arial", sz=20)
 
     tblpr = ('<w:tblPr><w:tblW w:w="0" w:type="auto"/>'
              '<w:tblBorders>'
