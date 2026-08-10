@@ -2026,8 +2026,35 @@ document.getElementById('prov-lista').addEventListener('click',(e)=>{
 renderDatalistProv();
 
 // ====================== DESTINATARIOS FRECUENTES ======================
+// Los CARGOS van en formato normal ("Jefe de la Oficina de Logística"), no en
+// mayúsculas. Si un cargo viene todo en mayúsculas (guardado antes de este
+// arreglo) se convierte; si ya tiene minúsculas se respeta tal cual.
+const CARGO_MINUS = new Set(['de','del','la','las','los','el','y','e','en','a','al','con','para','por']);
+function normalizarCargo(s){
+  const t=String(s||'').trim();
+  if(!t || t!==t.toUpperCase()) return t;
+  let n=0;
+  return t.toLowerCase().replace(/[^\s]+/g, (w)=>{
+    const base=w.replace(/[^a-záéíóúñü]/g,'');
+    n++;
+    if(n>1 && CARGO_MINUS.has(base)) return w;
+    return w.charAt(0).toUpperCase()+w.slice(1);
+  });
+}
+// Arregla los cargos de los campos del formulario (al restaurar un trabajo)
+function normalizarCargosEnFormulario(){
+  ['m-dest-cargo','m-rem-cargo','n-dest-cargo','n-rem-cargo','cc-cargo'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value=normalizarCargo(el.value);
+  });
+}
 let destinatarios=[];
 try{ destinatarios=JSON.parse(localStorage.getItem('hnal_destinatarios')||'[]')||[]; }catch(e){ destinatarios=[]; }
+// Migración: limpiar de una vez los cargos que quedaron en mayúsculas
+(function(){
+  let cambio=false;
+  destinatarios.forEach(d=>{ const n=normalizarCargo(d.cargo||''); if(n!==(d.cargo||'')){ d.cargo=n; cambio=true; } });
+  if(cambio){ try{ localStorage.setItem('hnal_destinatarios', JSON.stringify(destinatarios)); }catch(e){} }
+})();
 const DEST_MAP={ m:{nombre:'m-dest-nombre',cargo:'m-dest-cargo'}, n:{nombre:'n-dest-nombre',cargo:'n-dest-cargo'} };
 function guardarDest(){ try{ localStorage.setItem('hnal_destinatarios', JSON.stringify(destinatarios)); }catch(e){} }
 function renderDestSelects(){
@@ -2042,7 +2069,7 @@ document.querySelectorAll('.dest-select').forEach(sel=>{
     const d=destinatarios[+sel.value]; if(!d) return;
     const map=DEST_MAP[sel.dataset.target];
     const en=document.getElementById(map.nombre), ec=document.getElementById(map.cargo);
-    en.value=d.nombre; ec.value=d.cargo||'';
+    en.value=d.nombre; ec.value=normalizarCargo(d.cargo||'');
     en.classList.remove('campo-error');
     scheduleSave();
   });
@@ -2051,7 +2078,7 @@ document.querySelectorAll('.dest-save').forEach(btn=>{
   btn.addEventListener('click',()=>{
     const map=DEST_MAP[btn.dataset.target];
     const nombre=document.getElementById(map.nombre).value.trim();
-    const cargo=document.getElementById(map.cargo).value.trim();
+    const cargo=normalizarCargo(document.getElementById(map.cargo).value.trim());
     if(!nombre){ alert('Escribe primero el nombre del destinatario para guardarlo.'); return; }
     if(!destinatarios.some(d=>d.nombre===nombre && d.cargo===cargo)){
       destinatarios.push({nombre,cargo}); guardarDest(); renderDestSelects();
@@ -2115,6 +2142,7 @@ function restore(d){
     if(Array.isArray(d.notaFilas)&&d.notaFilas.length) notaFilas=d.notaFilas.map(f=>({ccmn:f.ccmn||'',ccpsiaf:f.ccpsiaf||'',descripcion:f.descripcion||'',meta:f.meta||'',especifica:f.especifica||'',ff:f.ff||'DyT 4-13',monto:f.monto||''}));
     renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas();
     if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(el) el.value=d.inputs[id]; }); }
+    if(typeof normalizarCargosEnFormulario==='function') normalizarCargosEnFormulario();
     if(typeof aplicarModeloCC==='function') aplicarModeloCC();
     if(typeof aplicarObjetoCC==='function') aplicarObjetoCC();
     const asEl=document.getElementById('n-asunto-num'); if(asEl) notaCcpAuto=(asEl.value||'').trim();
