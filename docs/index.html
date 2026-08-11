@@ -206,6 +206,13 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .tr-row .tr-meta{font-size:.8rem;color:var(--muted);margin-top:2px;}
 .tr-row .btn-mini{flex-shrink:0;}
 .tr-vacio{color:var(--muted);font-size:.9rem;padding:6px 2px;}
+.atajos{margin-top:14px;padding-top:12px;border-top:1px solid var(--gris);font-size:.78rem;color:var(--muted);
+  display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;}
+.atajos b{color:var(--azul);}
+.atajos kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border-radius:5px;
+  padding:1px 6px;font-family:inherit;font-size:.74rem;font-weight:700;color:var(--azul);}
+.hist-hint{font-size:.76rem;color:var(--verde);font-weight:600;margin-top:5px;line-height:1.4;}
+.hist-hint:empty{display:none;}
 .tr-chip{display:inline-block;background:#e8f6f0;border:1px solid #b9e2d2;color:#0a5c46;border-radius:999px;
   padding:2px 10px;font-size:.66rem;font-weight:700;margin-left:8px;vertical-align:middle;white-space:nowrap;}
 
@@ -374,6 +381,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       <div class="side-group">
         <div class="side-group-t">Archivo</div>
         <button type="button" class="side-item" data-tab="trabajos"><span class="si-ico">💼</span> Mis trabajos</button>
+        <button type="button" class="side-item" data-tab="buscar"><span class="si-ico">🔎</span> Buscar / Histórico</button>
       </div>
     </nav>
     <div class="side-foot">
@@ -647,6 +655,32 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       <div id="msg-nota"></div>
     </div>
   </form>
+  </div>
+
+  <!-- ==================== BUSCAR / HISTÓRICO ==================== -->
+  <div id="panel-buscar" class="panel oculto">
+    <div class="card">
+      <h2>🔎 Buscar en todo</h2>
+      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">Busca en tus <b>expedientes guardados</b> y en el <b>histórico de precios</b>. Sirve para responder “¿a cuánto compramos esto la vez pasada?” o “¿en qué expediente estaba tal proveedor?”.</p>
+      <div class="field" style="margin:0"><input type="text" id="bus-q" placeholder="Ej: GASA QUIRURGICA, EGUSQFARMA, 20604200131…"></div>
+      <div class="atajos">
+        <b>Atajos de teclado:</b>
+        <span><kbd>Enter</kbd> siguiente campo</span>
+        <span><kbd>Alt</kbd>+<kbd>I</kbd> agregar ítem</span>
+        <span><kbd>Alt</kbd>+<kbd>P</kbd> agregar postor</span>
+        <span><kbd>Alt</kbd>+<kbd>1..4</kbd> cambiar de documento</span>
+        <span><kbd>Alt</kbd>+<kbd>B</kbd> buscar</span>
+        <span><kbd>Ctrl</kbd>+<kbd>S</kbd> guardar</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Histórico de precios</h2>
+      <div id="bus-hist"></div>
+    </div>
+    <div class="card">
+      <h2>Expedientes</h2>
+      <div id="bus-trab"></div>
+    </div>
   </div>
 
   <!-- ==================== MIS TRABAJOS ==================== -->
@@ -1120,6 +1154,7 @@ const META_TAB = {
   cc:   {title:'Cuadro Comparativo',    sub:'Indagación de mercado: compara cotizaciones y define el valor estimado.', flow:'Flujo 2 · Indagación'},
   nota: {title:'Nota Informativa',      sub:'Solicita la aprobación de la Certificación de Crédito Presupuestario.',    flow:'Flujo 2 · Indagación'},
   trabajos: {title:'Mis trabajos',      sub:'Guarda y vuelve a abrir tus trabajos cuando quieras.',                    flow:'Archivo'},
+  buscar:   {title:'Buscar / Histórico', sub:'Busca en tus expedientes y consulta precios de compras anteriores.',      flow:'Archivo'},
 };
 // ---- Barra de pasos del flujo (① → ②) ----
 let tabActual='val';
@@ -1159,6 +1194,8 @@ function irA(t){
   document.getElementById('panel-memo').classList.toggle('oculto', t!=='memo');
   document.getElementById('panel-nota').classList.toggle('oculto', t!=='nota');
   document.getElementById('panel-trabajos').classList.toggle('oculto', t!=='trabajos');
+  document.getElementById('panel-buscar').classList.toggle('oculto', t!=='buscar');
+  if(t==='buscar' && typeof renderBusqueda==='function') renderBusqueda();
   if(t==='trabajos' && typeof renderTrabajos==='function'){ renderTrabajos(); if(typeof renderProvLista==='function') renderProvLista(); }
   renderFlowbar();
   const m = META_TAB[t] || META_TAB.val;
@@ -1591,17 +1628,30 @@ function renderCCItems(){
         <button type="button" class="btn-quitar cii-quitar" title="Quitar">✕</button>
       </div>
       <div class="grid3">
-        <div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cii-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"></div>
+        <div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cii-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"><div class="hist-hint"></div></div>
         <div class="field" style="margin:0"><label>Medida <span class="hint">— elige o escribe</span></label><input type="text" class="cii-medida" list="dl-medidas" value="UNIDAD"></div>
         <div class="field" style="margin:0"><label>Cantidad</label><input type="number" min="0" class="cii-cant" placeholder="Ej: 1200"></div>
       </div>`;
     const q=s=>card.querySelector(s);
-    q('.cii-desc').value=it.descripcion; q('.cii-desc').addEventListener('input',e=>{ it.descripcion=e.target.value; actualizarLabelsItemsEnPostores(); });
+    q('.cii-desc').value=it.descripcion; q('.cii-desc').addEventListener('input',e=>{ it.descripcion=e.target.value; actualizarLabelsItemsEnPostores(); pistaHistorial(q('.cii-desc'), q('.hist-hint')); });
+    pistaHistorial(q('.cii-desc'), q('.hist-hint'));
     q('.cii-medida').value=it.medida; q('.cii-medida').addEventListener('input',e=>it.medida=e.target.value);
     q('.cii-cant').value=it.cantidad; q('.cii-cant').addEventListener('input',e=>it.cantidad=e.target.value);
     card.querySelector('.cii-quitar').addEventListener('click',()=>{ if(ccItems.length<=1) return; ccItems.splice(k,1); renderCCItems(); renderCC(); });
     cont.appendChild(card);
   });
+}
+// Aviso "última compra" bajo la descripción del ítem (con pequeña espera al escribir)
+function pistaHistorial(input, cont){
+  if(!input||!cont) return;
+  clearTimeout(input._histT);
+  input._histT=setTimeout(async ()=>{
+    const r=await histUltimo(input.value);
+    if(!r){ cont.textContent=''; return; }
+    const u=r.ultimo, f=new Date(u.ts).toLocaleDateString('es-PE',{month:'short',year:'numeric'});
+    cont.textContent='💡 Última compra: '+montoSoles(u.precio)+(u.proveedor?' — '+u.proveedor:'')+' ('+f+')'
+      + (r.veces>1?' · '+r.veces+' registros':'');
+  }, 350);
 }
 function actualizarLabelsItemsEnPostores(){ document.querySelectorAll('#cc-postores .cc-cot').forEach(el=>{ const t=el.querySelector('.cc-cot-t'); if(t) t.textContent=nombreItemCC(+el.dataset.k); }); }
 document.getElementById('cc-agregar-item').addEventListener('click',()=>{ ccItems.push(nuevoItemCC()); renderCCItems(); renderCC(); });
@@ -1672,6 +1722,19 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
       const baseN=val('cc-denom').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'CUADRO';
       descargarBlob(blob, 'CUADRO_COMPARATIVO_'+baseN+'.xlsx', msg, 'cc');
       datos.postores.forEach(p=>upsertProveedor(p)); // alimentar el directorio de proveedores
+      // alimentar el histórico de precios con el precio ganador de cada ítem
+      try{
+        const g=datos.ganador, gan=datos.postores[g]||{}, ts=Date.now();
+        const regs=datos.items.map(it=>{
+          const pu=Number(String((it.precios||[])[g]||'').replace(',','.'));
+          if(!isFinite(pu)||pu<=0) return null;
+          return { descNorm:normTexto(it.descripcion), desc:String(it.descripcion||'').trim(),
+                   precio:pu, medida:it.medida||'', cantidad:it.cantidad||'',
+                   proveedor:String(gan.nombre||'').trim(), ruc:String(gan.ruc||'').trim(),
+                   denominacion:String(datos.denominacion||'').trim(), ts };
+        }).filter(Boolean);
+        histRegistrar(regs);
+      }catch(e){ console.error('historial', e); }
     }catch(err){ mostrarErrorCC(err.message||'Ocurrió un error al generar.'); console.error(err); }
   }, 'cc');
 });
@@ -2035,10 +2098,46 @@ const dirHandles = {};   // 'val' | 'memo' | 'cc' | 'nota'  ->  carpeta vinculad
 
 function idbAbrir(){
   return new Promise((res,rej)=>{
-    const r=indexedDB.open('hnal_fs',1);
-    r.onupgradeneeded=()=>{ r.result.createObjectStore('carpetas'); };
+    const r=indexedDB.open('hnal_fs',2);
+    r.onupgradeneeded=(e)=>{
+      const db=r.result;
+      if(!db.objectStoreNames.contains('carpetas')) db.createObjectStore('carpetas');
+      if(!db.objectStoreNames.contains('historial')){
+        const st=db.createObjectStore('historial',{keyPath:'id',autoIncrement:true});
+        st.createIndex('desc','descNorm',{unique:false});
+      }
+    };
     r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
   });
+}
+// ---------- Histórico de precios ----------
+function normTexto(s){ return String(s||'').trim().toUpperCase().replace(/\s+/g,' '); }
+function histOp(modo, fn){
+  return idbAbrir().then(db=>new Promise((res,rej)=>{
+    const t=db.transaction('historial',modo);
+    let req; try{ req=fn(t.objectStore('historial')); }catch(e){ rej(e); return; }
+    t.oncomplete=()=>res(req?req.result:undefined);
+    t.onerror=()=>rej(t.error);
+  }));
+}
+async function histRegistrar(registros){
+  if(!registros||!registros.length) return;
+  const db=await idbAbrir();
+  return new Promise((res,rej)=>{
+    const t=db.transaction('historial','readwrite'), st=t.objectStore('historial');
+    registros.forEach(r=>st.add(r));
+    t.oncomplete=()=>res(); t.onerror=()=>rej(t.error);
+  });
+}
+async function histTodos(){ try{ return (await histOp('readonly',st=>st.getAll()))||[]; }catch(e){ return []; } }
+// Última compra registrada de un ítem (coincidencia por palabras)
+async function histUltimo(desc){
+  const q=normTexto(desc); if(q.length<4) return null;
+  const todos=await histTodos();
+  const cal=todos.filter(r=> r.descNorm===q || r.descNorm.includes(q) || q.includes(r.descNorm));
+  if(!cal.length) return null;
+  cal.sort((a,b)=> (b.ts||0)-(a.ts||0));
+  return {ultimo:cal[0], veces:cal.length};
 }
 function idbOp(modo, fn){
   return idbAbrir().then(db=>new Promise((res,rej)=>{
@@ -2476,6 +2575,85 @@ document.getElementById('tr-import-file').addEventListener('change', (e)=>{
     }catch(err){ msgTr('⚠ Ese archivo no es un trabajo exportado de esta app (.json).', false); }
   };
   rd.readAsText(f);
+});
+
+// ====================== BUSCADOR GLOBAL ======================
+async function renderBusqueda(){
+  const q=normTexto((document.getElementById('bus-q')||{}).value||'');
+  const ch=document.getElementById('bus-hist'), ct=document.getElementById('bus-trab');
+  if(!ch||!ct) return;
+
+  // --- histórico de precios ---
+  let hist=await histTodos();
+  if(q) hist=hist.filter(r=> normTexto(r.desc).includes(q) || normTexto(r.proveedor).includes(q)
+                          || String(r.ruc||'').includes(q) || normTexto(r.denominacion).includes(q));
+  hist.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(!hist.length){
+    ch.innerHTML='<div class="tr-vacio">'+(q?'Sin resultados en el histórico.'
+      :'Aún no hay precios registrados. Se van guardando solos cada vez que emites un Cuadro Comparativo.')+'</div>';
+  } else {
+    ch.innerHTML='<table class="pv-tab"><thead><tr><th>Ítem</th><th>Precio</th><th>Proveedor</th><th>Fecha</th></tr></thead><tbody>'
+      + hist.slice(0,80).map(r=>'<tr><td>'+escH(r.desc)+'</td><td>'+escH(montoSoles(r.precio))+'</td><td>'+escH(r.proveedor||'—')
+        +'</td><td>'+escH(new Date(r.ts).toLocaleDateString('es-PE'))+'</td></tr>').join('')
+      + '</tbody></table>'
+      + (hist.length>80?'<div class="tr-vacio">Mostrando 80 de '+hist.length+' registros.</div>':'');
+  }
+
+  // --- expedientes guardados ---
+  let tr=leerTrabajos();
+  if(q) tr=tr.filter(t=>{
+    const d=t.data||{}, inp=d.inputs||{};
+    const texto=[t.nombre, inp['cc-denom'], inp['cc-doc'], inp['cc-area'], inp['adquisicion'], inp['n-ref']]
+      .concat((d.ccPostores||[]).map(p=>(p.nombre||'')+' '+(p.ruc||'')))
+      .concat((d.ccItems||[]).map(i=>i.descripcion||''))
+      .concat((d.items||[]).map(i=>i.denom||'')).join(' ');
+    return normTexto(texto).includes(q);
+  });
+  if(!tr.length){
+    ct.innerHTML='<div class="tr-vacio">'+(q?'Ningún expediente coincide.':'No hay expedientes guardados todavía.')+'</div>';
+  } else {
+    ct.innerHTML=tr.map(t=>'<div class="tr-row"><div class="tr-info"><div class="tr-nom">'+escH(t.nombre||'(sin nombre)')
+      +'</div><div class="tr-meta">Guardado: '+escH(fechaTrabajo(t.ts))+'</div></div>'
+      +'<button type="button" class="btn-mini tr-abrir" data-id="'+escH(t.id)+'">📂 Abrir</button></div>').join('');
+  }
+}
+document.getElementById('bus-q').addEventListener('input', ()=>{ clearTimeout(renderBusqueda._t); renderBusqueda._t=setTimeout(renderBusqueda,250); });
+document.getElementById('bus-trab').addEventListener('click',(e)=>{
+  const b=e.target.closest('.tr-abrir'); if(b) abrirTrabajo(b.dataset.id);
+});
+
+// ====================== ATAJOS DE TECLADO ======================
+// Enter avanza al siguiente campo (no envía el formulario); Alt+letra para lo frecuente.
+document.addEventListener('keydown', (e)=>{
+  const t=e.target;
+  // Enter: pasar al siguiente campo en vez de enviar
+  if(e.key==='Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey && t && t.tagName==='INPUT'
+     && ['text','number','date','email'].includes(t.type) && t.closest('#app')){
+    e.preventDefault();
+    const campos=[...document.querySelectorAll('#app .panel:not(.oculto) input:not([type=radio]):not([type=hidden]), #app .panel:not(.oculto) select, #app .panel:not(.oculto) textarea')]
+      .filter(el=>!el.disabled && el.offsetParent!==null);
+    const i=campos.indexOf(t);
+    if(i>=0 && i<campos.length-1){ campos[i+1].focus(); if(campos[i+1].select) try{campos[i+1].select();}catch(_){} }
+    return;
+  }
+  if(!e.altKey || e.ctrlKey || e.metaKey) return;
+  const k=(e.key||'').toLowerCase();
+  const clic=id=>{ const b=document.getElementById(id); if(b){ e.preventDefault(); b.click(); } };
+  if(k==='1'){ e.preventDefault(); irA('val'); }
+  else if(k==='2'){ e.preventDefault(); irA('memo'); }
+  else if(k==='3'){ e.preventDefault(); irA('cc'); }
+  else if(k==='4'){ e.preventDefault(); irA('nota'); }
+  else if(k==='b'){ e.preventDefault(); irA('buscar'); const q=document.getElementById('bus-q'); if(q) q.focus(); }
+  else if(k==='i'){ // agregar ítem según la pestaña activa
+    if(tabActual==='cc') clic('cc-agregar-item');
+    else if(tabActual==='val') clic('agregar-item');
+    else if(tabActual==='nota') clic('n-agregar-fila');
+    else if(tabActual==='memo') clic('m-agregar-fila');
+  }
+  else if(k==='p'){ // agregar postor
+    if(tabActual==='cc') clic('cc-agregar');
+    else if(tabActual==='val') clic('agregar-postor');
+  }
 });
 
 // Todo lo que se ingresa (texto) se convierte a MAYÚSCULAS. En fase de captura
