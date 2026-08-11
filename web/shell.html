@@ -188,6 +188,13 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .db-si{background:var(--azul);color:#fff;} .db-no{background:#f4f6fb;color:var(--azul);border:1px solid var(--borde);}
 @media (max-width:820px){.draft-bar{margin:14px 16px 0;}}
 
+/* Carpeta de destino por documento */
+.carpeta-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--gris);
+  border:1px solid var(--borde);border-radius:10px;padding:10px 14px;margin-top:16px;font-size:.85rem;}
+.carpeta-bar .cb-txt{flex:1;min-width:190px;color:var(--muted);}
+.carpeta-bar .cb-txt b{color:var(--azul);}
+.carpeta-bar .cb-on{color:var(--verde);}
+
 /* Mis trabajos */
 .tr-guardar-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
 .tr-guardar-row input{flex:1;min-width:220px;}
@@ -425,6 +432,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       <div class="nota-sino">💡 La columna <b>SI / NO (cumple)</b> se deja en blanco a propósito: la llena el <b>área usuario</b> después de revisar. Aquí solo se ingresan los datos y la marca de cada postor.</div>
     </div>
 
+    <div class="carpeta-bar" data-doc="val">
+      <span class="cb-txt">📁 <b>Carpeta de destino:</b> <span class="cb-est">sin vincular — se descarga normal</span></span>
+      <button type="button" class="btn-mini cb-link">Vincular carpeta</button>
+      <button type="button" class="btn-mini danger cb-unlink" style="display:none">Quitar</button>
+    </div>
     <div class="barra-final">
       <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Excel</button>
       <button type="button" class="btn btn-memo" id="btn-emitir-memo">📝 Emitir Memo</button>
@@ -497,6 +509,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       </div>
     </div>
 
+    <div class="carpeta-bar" data-doc="cc">
+      <span class="cb-txt">📁 <b>Carpeta de destino:</b> <span class="cb-est">sin vincular — se descarga normal</span></span>
+      <button type="button" class="btn-mini cb-link">Vincular carpeta</button>
+      <button type="button" class="btn-mini danger cb-unlink" style="display:none">Quitar</button>
+    </div>
     <div class="barra-final">
       <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Excel</button>
       <button type="button" class="btn btn-nota" id="btn-emitir-nota">📄 Emitir Nota Informativa</button>
@@ -560,6 +577,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       </div>
     </div>
 
+    <div class="carpeta-bar" data-doc="memo">
+      <span class="cb-txt">📁 <b>Carpeta de destino:</b> <span class="cb-est">sin vincular — se descarga normal</span></span>
+      <button type="button" class="btn-mini cb-link">Vincular carpeta</button>
+      <button type="button" class="btn-mini danger cb-unlink" style="display:none">Quitar</button>
+    </div>
     <div class="barra-final">
       <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Memo (Word)</button>
       <div id="msg-memo"></div>
@@ -615,6 +637,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       </div>
     </div>
 
+    <div class="carpeta-bar" data-doc="nota">
+      <span class="cb-txt">📁 <b>Carpeta de destino:</b> <span class="cb-est">sin vincular — se descarga normal</span></span>
+      <button type="button" class="btn-mini cb-link">Vincular carpeta</button>
+      <button type="button" class="btn-mini danger cb-unlink" style="display:none">Quitar</button>
+    </div>
     <div class="barra-final">
       <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Nota (Word)</button>
       <div id="msg-nota"></div>
@@ -1036,9 +1063,9 @@ document.getElementById('form').addEventListener('submit', (e)=>{
     try{
       const buffer = await generarValidacion(datos);
       const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-      descargarBlob(blob, nombreArchivo(adquisicion), msg);
+      descargarBlob(blob, nombreArchivo(adquisicion), msg, 'val');
     }catch(err){ mostrarError(err.message || 'Ocurrió un error al generar.'); console.error(err); }
-  });
+  }, 'val');
 });
 
 // ====================== NAVEGACIÓN (barra lateral) ======================
@@ -1598,10 +1625,10 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
       const buffer=await generarCuadroComparativo(datos);
       const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
       const baseN=val('cc-denom').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'CUADRO';
-      descargarBlob(blob, 'CUADRO_COMPARATIVO_'+baseN+'.xlsx', msg);
+      descargarBlob(blob, 'CUADRO_COMPARATIVO_'+baseN+'.xlsx', msg, 'cc');
       datos.postores.forEach(p=>upsertProveedor(p)); // alimentar el directorio de proveedores
     }catch(err){ mostrarErrorCC(err.message||'Ocurrió un error al generar.'); console.error(err); }
-  });
+  }, 'cc');
 });
 
 // ====================== MEMO DE VALIDACIÓN ======================
@@ -1743,10 +1770,10 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
       const blob = doc.getZip().generate({type:'blob',
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       const baseN = datos.titulo.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'MEMO';
-      descargarBlob(blob, 'MEMO_'+baseN+'.docx', msg);
+      descargarBlob(blob, 'MEMO_'+baseN+'.docx', msg, 'memo');
       datos.filas.forEach(f=>upsertProveedor({nombre:f.empresa, ruc:f.ruc})); // alimentar el directorio
     }catch(err){ mostrarErrorMemo(err.message||'Ocurrió un error al generar el memo.'); console.error(err); }
-  });
+  }, 'memo');
 });
 
 // ====================== NOTA INFORMATIVA ======================
@@ -1904,9 +1931,9 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
       const blob = doc.getZip().generate({type:'blob',
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       const baseN = (filas[0].descripcion||'NOTA').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'NOTA';
-      descargarBlob(blob, 'NOTA_INFORMATIVA_'+baseN+'.docx', msg);
+      descargarBlob(blob, 'NOTA_INFORMATIVA_'+baseN+'.docx', msg, 'nota');
     }catch(err){ mostrarErrorNota(err.message||'Ocurrió un error al generar la nota.'); console.error(err); }
-  });
+  }, 'nota');
 });
 
 // ====================== UTILIDADES (previa, validación, descarga) ======================
@@ -1955,7 +1982,90 @@ function pvTabla(headers, rows){
   return '<table class="pv-tab"><thead><tr>'+headers.map(h=>'<th>'+escH(h)+'</th>').join('')+'</tr></thead><tbody>'+
     rows.map(r=>'<tr>'+r.map(c=>'<td>'+escH(c==null?'':c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
 }
-function descargarBlob(blob, nombre, msgEl){
+// ============ CARPETA DE DESTINO POR DOCUMENTO ============
+// Con Chrome/Edge se puede vincular una carpeta del equipo por cada documento;
+// al emitir, el archivo se escribe ahí en vez de ir a "Descargas".
+const FS_OK = (typeof window.showDirectoryPicker === 'function');
+const dirHandles = {};   // 'val' | 'memo' | 'cc' | 'nota'  ->  carpeta vinculada
+
+function idbAbrir(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('hnal_fs',1);
+    r.onupgradeneeded=()=>{ r.result.createObjectStore('carpetas'); };
+    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+  });
+}
+function idbOp(modo, fn){
+  return idbAbrir().then(db=>new Promise((res,rej)=>{
+    const t=db.transaction('carpetas',modo);
+    let req; try{ req=fn(t.objectStore('carpetas')); }catch(e){ rej(e); return; }
+    // devolver el resultado real de la consulta (undefined si no existe)
+    t.oncomplete=()=>res(req ? req.result : undefined);
+    t.onerror=()=>rej(t.error);
+  }));
+}
+const idbSet=(k,v)=>idbOp('readwrite',st=>st.put(v,k));
+const idbGet=(k)=>idbOp('readonly',st=>st.get(k));
+const idbDel=(k)=>idbOp('readwrite',st=>st.delete(k));
+
+async function permisoCarpeta(h, pedir){
+  if(!h) return false;
+  const o={mode:'readwrite'};
+  try{
+    if((await h.queryPermission(o))==='granted') return true;
+    if(!pedir) return false;
+    return (await h.requestPermission(o))==='granted';
+  }catch(e){ return false; }
+}
+function pintarCarpetas(){
+  document.querySelectorAll('.carpeta-bar').forEach(bar=>{
+    const doc=bar.dataset.doc, h=dirHandles[doc];
+    const est=bar.querySelector('.cb-est'), link=bar.querySelector('.cb-link'), un=bar.querySelector('.cb-unlink');
+    if(!FS_OK){
+      est.textContent='tu navegador no permite vincular carpetas — se descarga normal';
+      link.style.display='none'; un.style.display='none'; return;
+    }
+    if(h){ est.innerHTML='<span class="cb-on">'+escH(h.name)+'</span>'; link.textContent='Cambiar'; un.style.display=''; }
+    else { est.textContent='sin vincular — se descarga normal'; link.textContent='Vincular carpeta'; un.style.display='none'; }
+  });
+}
+async function cargarCarpetas(){
+  if(!FS_OK) { pintarCarpetas(); return; }
+  for(const doc of ['val','memo','cc','nota']){
+    try{ const h=await idbGet(doc); if(h && typeof h.getFileHandle==='function') dirHandles[doc]=h; }catch(e){}
+  }
+  pintarCarpetas();
+}
+document.addEventListener('click', async (e)=>{
+  const bar=e.target.closest && e.target.closest('.carpeta-bar'); if(!bar) return;
+  const doc=bar.dataset.doc;
+  if(e.target.closest('.cb-link')){
+    try{
+      const h=await window.showDirectoryPicker({mode:'readwrite'});
+      dirHandles[doc]=h; await idbSet(doc,h); pintarCarpetas();
+    }catch(err){ /* el usuario canceló */ }
+  } else if(e.target.closest('.cb-unlink')){
+    delete dirHandles[doc]; try{ await idbDel(doc); }catch(err){} pintarCarpetas();
+  }
+});
+async function guardarEnCarpeta(tipo, blob, nombre){
+  const h=dirHandles[tipo]; if(!h) return false;
+  if(!(await permisoCarpeta(h,false))) return false;
+  const fh=await h.getFileHandle(nombre,{create:true});
+  const w=await fh.createWritable();
+  await w.write(blob); await w.close();
+  return true;
+}
+
+async function descargarBlob(blob, nombre, msgEl, tipo){
+  if(tipo && dirHandles[tipo]){
+    try{
+      if(await guardarEnCarpeta(tipo, blob, nombre)){
+        if(msgEl){ msgEl.className='msg-ok'; msgEl.textContent='✅ Guardado en «'+dirHandles[tipo].name+'»: '+nombre; }
+        return;
+      }
+    }catch(e){ console.error('carpeta', e); }
+  }
   const url=URL.createObjectURL(blob); const a=document.createElement('a');
   a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url), 5000); // dar tiempo al navegador a tomar el blob
@@ -1974,8 +2084,9 @@ function validarReq(ids){
 }
 
 // ----- Modal de vista previa -----
-let pvAction=null;
-function abrirPreview(titulo, html, onConfirm){
+let pvAction=null, pvTipo=null;
+function abrirPreview(titulo, html, onConfirm, tipo){
+  pvTipo=tipo||null;
   document.getElementById('pv-title').textContent=titulo;
   document.getElementById('pv-body').innerHTML=
     '<p class="pv-note">Revisa que los datos estén correctos antes de descargar. Si algo está mal, vuelve a editar.</p>'+html;
@@ -1985,7 +2096,12 @@ function abrirPreview(titulo, html, onConfirm){
 function cerrarPreview(){ document.getElementById('preview').classList.remove('open'); pvAction=null; }
 document.getElementById('pv-close').addEventListener('click', cerrarPreview);
 document.getElementById('pv-cancel').addEventListener('click', cerrarPreview);
-document.getElementById('pv-ok').addEventListener('click', ()=>{ const a=pvAction; cerrarPreview(); if(a) a(); });
+document.getElementById('pv-ok').addEventListener('click', async ()=>{
+  const a=pvAction, t=pvTipo; cerrarPreview();
+  // el permiso de la carpeta debe pedirse dentro del clic del usuario
+  if(t && dirHandles[t]){ try{ await permisoCarpeta(dirHandles[t], true); }catch(e){} }
+  if(a) a();
+});
 document.getElementById('preview').addEventListener('click', (e)=>{ if(e.target.id==='preview') cerrarPreview(); });
 document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') cerrarPreview(); });
 
@@ -2094,6 +2210,7 @@ document.querySelectorAll('.dest-del').forEach(btn=>{
   });
 });
 renderDestSelects();
+cargarCarpetas();   // recuperar las carpetas vinculadas de sesiones anteriores
 
 // ====================== AUTOGUARDADO (borrador) ======================
 let saveReady=false, pendingDraft=null, draftMostrado=false, saveTimer=null;
