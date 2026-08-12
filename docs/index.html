@@ -211,6 +211,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .atajos b{color:var(--azul);}
 .atajos kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border-radius:5px;
   padding:1px 6px;font-family:inherit;font-size:.74rem;font-weight:700;color:var(--azul);}
+.area-hint{font-size:.76rem;color:var(--azul);font-weight:600;margin-top:5px;}
+.area-hint:empty{display:none;}
 .hist-hint{font-size:.76rem;color:var(--verde);font-weight:600;margin-top:5px;line-height:1.4;}
 .hist-hint:empty{display:none;}
 .tr-chip{display:inline-block;background:#e8f6f0;border:1px solid #b9e2d2;color:#0a5c46;border-radius:999px;
@@ -487,7 +489,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
           <option value="servicio">Servicio — sale "SERVICIO DE" y sin marca</option>
         </select></div>
       <div class="field"><label>Documento de solicitud</label><input type="text" id="cc-doc" placeholder="Ej: NOTA INFORMATIVA N°1096-DF-HNAL-2026"></div>
-      <div class="field"><label>Área usuaria</label><input type="text" id="cc-area" placeholder="Ej: CIRUGIA GENERAL - APARATO DIGESTIVO"></div>
+      <div class="field"><label>Área usuaria <span class="hint">— al elegirla se completa su jefe en el memo</span></label><input type="text" id="cc-area" list="dl-areas" placeholder="Ej: CIRUGIA GENERAL - APARATO DIGESTIVO"><div class="area-hint" id="cc-area-hint"></div></div>
       <div class="field"><label id="cc-lbl-denom">Adquisición <span class="hint" id="cc-hint-denom">— va después de "ADQ. DE"</span></label><input type="text" id="cc-denom" placeholder="Ej: DISPOSITIVOS MEDICOS PARA 01 AÑO"></div>
       <div class="field"><label>Tipo de proceso de selección</label>
         <select id="cc-tipo">
@@ -1794,6 +1796,7 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
       const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
       descargarBlob(blob, 'CUADRO_COMPARATIVO_'+abreviarObjeto(val('cc-denom'))+'.xlsx', msg, 'cc');
       datos.postores.forEach(p=>upsertProveedor(p)); // alimentar el directorio de proveedores
+      aprenderAreaJefe();   // recuerda qué jefe corresponde a esa área usuaria
       // alimentar el histórico de precios con el precio ganador de cada ítem
       try{
         const g=datos.ganador, gan=datos.postores[g]||{}, ts=Date.now();
@@ -1950,6 +1953,7 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
       const blob = doc.getZip().generate({type:'blob',
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       descargarBlob(blob, 'MEMO_VALIDACION_'+abreviarObjeto(datos.titulo)+'.docx', msg, 'memo');
+      aprenderAreaJefe();   // recuerda qué jefe corresponde a esa área usuaria
       datos.filas.forEach(f=>upsertProveedor({nombre:f.empresa, ruc:f.ruc})); // alimentar el directorio
     }catch(err){ mostrarErrorMemo(err.message||'Ocurrió un error al generar el memo.'); console.error(err); }
   }, 'memo');
@@ -2391,8 +2395,42 @@ function guardarDest(){ try{ localStorage.setItem('hnal_destinatarios', JSON.str
 function renderDestSelects(){
   document.querySelectorAll('.dest-select').forEach(sel=>{
     sel.innerHTML='<option value="">— Elegir destinatario guardado —</option>'+
-      destinatarios.map((d,i)=>'<option value="'+i+'">'+escH(d.nombre)+(d.cargo?' — '+escH(d.cargo):'')+'</option>').join('');
+      destinatarios.map((d,i)=>'<option value="'+i+'">'+escH(d.nombre)+(d.cargo?' — '+escH(d.cargo):'')
+        +(d.area?'  ['+escH(d.area)+']':'')+'</option>').join('');
   });
+  renderDatalistAreas();
+}
+// ---- Áreas usuarias enlazadas con su jefe ----
+function renderDatalistAreas(){
+  let dl=document.getElementById('dl-areas');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='dl-areas'; document.body.appendChild(dl); }
+  const vistas=[];
+  destinatarios.forEach(d=>{ const a=(d.area||'').trim(); if(a && !vistas.includes(a)) vistas.push(a); });
+  dl.innerHTML=vistas.map(a=>'<option value="'+escH(a)+'">').join('');
+}
+function destPorArea(area){
+  const q=normTexto(area); if(!q) return null;
+  return destinatarios.find(d=> normTexto(d.area||'')===q) || null;
+}
+// Aprende el par área ↔ jefe de los datos que ya llenó el usuario
+function aprenderAreaJefe(){
+  const area=(document.getElementById('cc-area').value||'').trim();
+  const nom=(document.getElementById('m-dest-nombre').value||'').trim();
+  const car=normalizarCargo((document.getElementById('m-dest-cargo').value||'').trim());
+  if(!nom) return;
+  let d=destinatarios.find(x=>normTexto(x.nombre)===normTexto(nom));
+  if(!d){ d={nombre:nom,cargo:car,area:area}; destinatarios.push(d); }
+  else { if(car) d.cargo=car; if(area) d.area=area; }
+  guardarDest(); renderDestSelects();
+}
+// Al escribir/elegir el área usuaria, completa el jefe del memo
+function vincularDesdeArea(){
+  const inp=document.getElementById('cc-area'), hint=document.getElementById('cc-area-hint');
+  const d=destPorArea(inp.value);
+  if(!d){ if(hint) hint.textContent=''; return; }
+  if(hint) hint.textContent='🔗 Jefe: '+d.nombre+(d.cargo?' — '+d.cargo:'');
+  const en=document.getElementById('m-dest-nombre'), ec=document.getElementById('m-dest-cargo');
+  if(en && !en.value.trim()){ en.value=d.nombre; ec.value=normalizarCargo(d.cargo||''); en.classList.remove('campo-error'); }
 }
 document.querySelectorAll('.dest-select').forEach(sel=>{
   sel.addEventListener('change',()=>{
@@ -2402,6 +2440,9 @@ document.querySelectorAll('.dest-select').forEach(sel=>{
     const en=document.getElementById(map.nombre), ec=document.getElementById(map.cargo);
     en.value=d.nombre; ec.value=normalizarCargo(d.cargo||'');
     en.classList.remove('campo-error');
+    // si ese jefe tiene un área usuaria enlazada, se completa sola
+    const ar=document.getElementById('cc-area');
+    if(d.area && ar && !ar.value.trim()){ ar.value=d.area; vincularDesdeArea(); }
     scheduleSave();
   });
 });
@@ -2411,9 +2452,11 @@ document.querySelectorAll('.dest-save').forEach(btn=>{
     const nombre=document.getElementById(map.nombre).value.trim();
     const cargo=normalizarCargo(document.getElementById(map.cargo).value.trim());
     if(!nombre){ alert('Escribe primero el nombre del destinatario para guardarlo.'); return; }
-    if(!destinatarios.some(d=>d.nombre===nombre && d.cargo===cargo)){
-      destinatarios.push({nombre,cargo}); guardarDest(); renderDestSelects();
-    }
+    const area=(document.getElementById('cc-area').value||'').trim();
+    const ya=destinatarios.find(d=>d.nombre===nombre && d.cargo===cargo);
+    if(ya){ if(area) ya.area=area; }
+    else destinatarios.push({nombre,cargo,area});
+    guardarDest(); renderDestSelects();
     btn.textContent='✓ Guardado'; setTimeout(()=>{ btn.textContent='＋ Guardar'; }, 1200);
   });
 });
@@ -2425,6 +2468,8 @@ document.querySelectorAll('.dest-del').forEach(btn=>{
   });
 });
 renderDestSelects();
+document.getElementById('cc-area').addEventListener('input', vincularDesdeArea);
+vincularDesdeArea();
 cargarCarpetas();   // recuperar las carpetas vinculadas de sesiones anteriores
 
 // ====================== AUTOGUARDADO (borrador) ======================
