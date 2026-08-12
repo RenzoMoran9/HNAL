@@ -2339,10 +2339,38 @@ function normalizarCargosEnFormulario(){
 }
 let destinatarios=[];
 try{ destinatarios=JSON.parse(localStorage.getItem('hnal_destinatarios')||'[]')||[]; }catch(e){ destinatarios=[]; }
-// Migración: limpiar de una vez los cargos que quedaron en mayúsculas
+// Deriva el área usuaria a partir del cargo: "Jefe de la Oficina de X" -> "OFICINA DE X"
+function areaDesdeCargo(cargo){
+  let t=String(cargo||'').trim();
+  if(!t) return '';
+  t=t.replace(/^(jef[ea]|director[ao]?|encargad[oa]|responsable|coordinador[ae]?|especialista)\s+(de\s+la|de\s+el|del|de)\s+/i,'');
+  t=t.replace(/[.\s]+$/,'');
+  return t ? t.toUpperCase() : '';
+}
+// Jefes y áreas que ya aparecen en los documentos emitidos (se cargan una sola vez)
+const DEST_INICIALES=[
+  {nombre:'ING. JORGE LUIS TAKAMI OBLITAS', cargo:'Jefe de la Oficina de Servicios Generales y Mantenimiento',
+   area:'OFICINA DE SERVICIOS GENERALES Y MANTENIMIENTO'},
+  {nombre:'RONNY MITCHEL MERCADO LOPEZ', cargo:'Jefe del servicio de Cuidados Intensivos y Cuidados Intermedios',
+   area:'SERVICIO DE CUIDADOS INTENSIVOS Y CUIDADOS INTERMEDIOS'},
+  {nombre:'M.C. JOSÉ RAÚL CARPIO BARBIERI', cargo:'Director de la Oficina Ejecutiva de Planeamiento Estratégico',
+   area:'OFICINA EJECUTIVA DE PLANEAMIENTO ESTRATÉGICO'},
+];
 (function(){
   let cambio=false;
+  // 1) cargos que quedaron en mayúsculas
   destinatarios.forEach(d=>{ const n=normalizarCargo(d.cargo||''); if(n!==(d.cargo||'')){ d.cargo=n; cambio=true; } });
+  // 2) a los que no tienen área, se les deduce del propio cargo
+  destinatarios.forEach(d=>{ if(!(d.area||'').trim()){ const a=areaDesdeCargo(d.cargo); if(a){ d.area=a; cambio=true; } } });
+  // 3) precargar (una sola vez) los jefes que ya salen en los documentos
+  try{
+    if(!localStorage.getItem('hnal_dest_precarga')){
+      DEST_INICIALES.forEach(x=>{
+        if(!destinatarios.some(d=>normTexto(d.nombre)===normTexto(x.nombre))){ destinatarios.push(Object.assign({},x)); cambio=true; }
+      });
+      localStorage.setItem('hnal_dest_precarga','1');
+    }
+  }catch(e){}
   if(cambio){ try{ localStorage.setItem('hnal_destinatarios', JSON.stringify(destinatarios)); }catch(e){} }
 })();
 const DEST_MAP={ m:{nombre:'m-dest-nombre',cargo:'m-dest-cargo'}, n:{nombre:'n-dest-nombre',cargo:'n-dest-cargo'} };
@@ -2364,8 +2392,13 @@ function renderDatalistAreas(){
   dl.innerHTML=vistas.map(a=>'<option value="'+escH(a)+'">').join('');
 }
 function destPorArea(area){
-  const q=normTexto(area); if(!q) return null;
-  return destinatarios.find(d=> normTexto(d.area||'')===q) || null;
+  const q=normTexto(area); if(q.length<4) return null;
+  // coincidencia exacta y, si no, que una contenga a la otra
+  // (así "SERVICIO DE CARDIOLOGIA" engancha con "SERVICIO DE CARDIOLOGIA Y CUIDADOS CORONARIOS")
+  let d=destinatarios.find(x=> normTexto(x.area||'')===q);
+  if(d) return d;
+  return destinatarios.find(x=>{ const a=normTexto(x.area||'');
+    return a.length>=4 && (a.includes(q) || q.includes(a)); }) || null;
 }
 // Aprende el par área ↔ jefe de los datos que ya llenó el usuario
 function aprenderAreaJefe(){
