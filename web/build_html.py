@@ -21,6 +21,7 @@ PLANTILLA = BASE / "plantilla" / "FORMATO_VALIDACIONES_DE_BIENES.xlsx"
 PLANTILLA_CC = BASE / "plantilla" / "CUADRO_COMPARATIVO.xlsx"
 PLANTILLA_MEMO = BASE / "plantilla" / "MEMO_VALIDACION.docx"
 PLANTILLA_NOTA = BASE / "plantilla" / "NOTA_INFORMATIVA.docx"
+DIRECTORIO = BASE / "web" / "directorio.json"
 FONTS = BASE / "web" / "fonts"
 FUENTES = {
     "__FONT_SS700__": "source-serif-4-latin-700-normal.woff2",
@@ -48,6 +49,7 @@ def main():
     html = html.replace("__TEMPLATE_CC_B64__", b64cc)
     html = html.replace("__TEMPLATE_MEMO_B64__", b64memo)
     html = html.replace("__TEMPLATE_NOTA_B64__", b64nota)
+    html = html.replace("__DIRECTORIO__", DIRECTORIO.read_text(encoding="utf-8"))
     for token, nombre in FUENTES.items():
         b64f = base64.b64encode((FONTS / nombre).read_bytes()).decode("ascii")
         html = html.replace(token, b64f)

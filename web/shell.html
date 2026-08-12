@@ -403,6 +403,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         <div class="side-group-t">Archivo</div>
         <button type="button" class="side-item" data-tab="trabajos"><span class="si-ico">💼</span> Mis trabajos</button>
         <button type="button" class="side-item" data-tab="buscar"><span class="si-ico">🔎</span> Buscar / Histórico</button>
+        <button type="button" class="side-item" data-tab="directorio"><span class="si-ico">📇</span> Directorio HNAL</button>
       </div>
     </nav>
     <div class="side-foot">
@@ -676,6 +677,19 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       <div id="msg-nota"></div>
     </div>
   </form>
+  </div>
+
+  <!-- ==================== DIRECTORIO HNAL ==================== -->
+  <div id="panel-directorio" class="panel oculto">
+    <div class="card">
+      <h2>📇 Directorio del hospital</h2>
+      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">Busca por <b>nombre</b> o por <b>área/cargo</b> sin salir de la app. Con <b>➡ Usar</b> el jefe pasa directo al memo como destinatario (y su área al cuadro comparativo).</p>
+      <div class="field" style="margin:0"><input type="text" id="dir-q" placeholder="Ej: FARMACIA, CUIDADOS INTENSIVOS, TAKAMI…"></div>
+      <div class="hint" id="dir-cuenta" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <div id="dir-lista"></div>
+    </div>
   </div>
 
   <!-- ==================== BUSCAR / HISTÓRICO ==================== -->
@@ -1168,6 +1182,7 @@ const META_TAB = {
   nota: {title:'Nota Informativa',      sub:'Solicita la aprobación de la Certificación de Crédito Presupuestario.',    flow:'Flujo 2 · Indagación'},
   trabajos: {title:'Mis trabajos',      sub:'Guarda y vuelve a abrir tus trabajos cuando quieras.',                    flow:'Archivo'},
   buscar:   {title:'Buscar / Histórico', sub:'Busca en tus expedientes y consulta precios de compras anteriores.',      flow:'Archivo'},
+  directorio:{title:'Directorio HNAL',  sub:'Consulta jefes y áreas del hospital sin salir de la app.',               flow:'Archivo'},
 };
 // ---- Barra de pasos del flujo (① → ②) ----
 let tabActual='val';
@@ -1208,6 +1223,8 @@ function irA(t){
   document.getElementById('panel-nota').classList.toggle('oculto', t!=='nota');
   document.getElementById('panel-trabajos').classList.toggle('oculto', t!=='trabajos');
   document.getElementById('panel-buscar').classList.toggle('oculto', t!=='buscar');
+  document.getElementById('panel-directorio').classList.toggle('oculto', t!=='directorio');
+  if(t==='directorio' && typeof renderDirectorio==='function') renderDirectorio();
   if(t==='buscar' && typeof renderBusqueda==='function') renderBusqueda();
   if(t==='trabajos' && typeof renderTrabajos==='function'){ renderTrabajos(); if(typeof renderProvLista==='function') renderProvLista(); }
   renderFlowbar();
@@ -2414,9 +2431,14 @@ function aprenderAreaJefe(){
 // Al escribir/elegir el área usuaria, completa el jefe del memo
 function vincularDesdeArea(){
   const inp=document.getElementById('cc-area'), hint=document.getElementById('cc-area-hint');
-  const d=destPorArea(inp.value);
+  let d=destPorArea(inp.value), fuente='';
+  if(!d && typeof dirPorArea==='function'){
+    // si no está en los guardados, se busca en el directorio del hospital
+    const x=dirPorArea(inp.value);
+    if(x){ d={nombre:dirNombreDoc(x.n), cargo:limpiarCargoDir(x.c)}; fuente=' (directorio)'; }
+  }
   if(!d){ if(hint) hint.textContent=''; return; }
-  if(hint) hint.textContent='🔗 Jefe: '+d.nombre+(d.cargo?' — '+d.cargo:'');
+  if(hint) hint.textContent='🔗 Jefe: '+d.nombre+(d.cargo?' — '+d.cargo:'')+fuente;
   const en=document.getElementById('m-dest-nombre'), ec=document.getElementById('m-dest-cargo');
   if(en && !en.value.trim()){ en.value=d.nombre; ec.value=normalizarCargo(d.cargo||''); en.classList.remove('campo-error'); }
 }
@@ -2814,6 +2836,74 @@ document.getElementById('tr-imp-excel-file').addEventListener('change', async (e
     msgTr('✓ '+txt, true);
     alert('✓ '+txt+'\n\nRevisa los datos y continúa con los documentos que faltan.');
   }catch(err){ msgTr('⚠ '+(err.message||'No se pudo leer el archivo.'), false); console.error(err); }
+});
+
+// ====================== DIRECTORIO DEL HOSPITAL ======================
+const DIRECTORIO = __DIRECTORIO__;
+function sinTildes(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim(); }
+// El directorio agrega la dependencia superior al final ("... de la OEA",
+// "... de la Oficina Ejecutiva de Administración"). En los documentos el cargo
+// va sin ese añadido: "Jefe de la Oficina de Logística".
+function limpiarCargoDir(cargo){
+  let t=String(cargo||'').trim();
+  const m=t.match(/^(.*)\s+(?:de la|del)\s+((?:[A-ZÁÉÍÓÚÑ]{2,6})|(?:Oficina|Unidad|Departamento|Dirección)\b.*)$/);
+  if(m){
+    const antes=m[1];
+    // solo se recorta si lo que queda ya nombra una dependencia propia
+    if(/\b(Oficina|Unidad|Departamento|Servicio|Dirección)\b/i.test(antes)) return antes.replace(/[,\s]+$/,'');
+  }
+  return t;
+}
+function dirNombreDoc(n){ return String(n||'').toUpperCase().trim(); }
+// Busca en el directorio el responsable de un área usuaria
+function dirPorArea(area){
+  const q=sinTildes(area); if(q.length<4) return null;
+  let ex=DIRECTORIO.find(d=> sinTildes(limpiarCargoDir(d.c)).includes(q));
+  if(ex) return ex;
+  const pal=q.split(' ').filter(w=>w.length>3 && !PALABRAS_VACIAS.has(w));
+  if(pal.length<2) return null;
+  let mejor=null, mejorP=0;
+  DIRECTORIO.forEach(d=>{
+    const c=sinTildes(d.c);
+    let p=0; pal.forEach(w=>{ if(c.includes(w)) p++; });
+    const score=p/pal.length;
+    if(p>=2 && score>=0.6 && score>mejorP){ mejorP=score; mejor=d; }
+  });
+  return mejor;
+}
+function renderDirectorio(){
+  const cont=document.getElementById('dir-lista'), cnt=document.getElementById('dir-cuenta');
+  if(!cont) return;
+  const q=sinTildes((document.getElementById('dir-q')||{}).value||'');
+  let lista=DIRECTORIO;
+  if(q) lista=DIRECTORIO.filter(d=> sinTildes(d.n).includes(q) || sinTildes(d.c).includes(q));
+  cnt.textContent=q ? (lista.length+' de '+DIRECTORIO.length+' personas') : (DIRECTORIO.length+' personas en el directorio');
+  if(!lista.length){ cont.innerHTML='<div class="tr-vacio">Sin resultados. Prueba con otra palabra del área o del nombre.</div>'; return; }
+  cont.innerHTML=lista.slice(0,60).map((d,i)=>{
+    const idx=DIRECTORIO.indexOf(d);
+    return '<div class="tr-row"><div class="tr-info"><div class="tr-nom">'+escH(d.n)+'</div>'
+      +'<div class="tr-meta">'+escH(d.c)+'</div></div>'
+      +'<button type="button" class="btn-mini dir-usar" data-i="'+idx+'">➡ Usar en memo</button>'
+      +'<button type="button" class="btn-mini dir-copiar" data-i="'+idx+'">📋 Copiar</button></div>';
+  }).join('') + (lista.length>60?'<div class="tr-vacio">Mostrando 60 de '+lista.length+'. Afina la búsqueda.</div>':'');
+}
+document.getElementById('dir-q').addEventListener('input', ()=>{ clearTimeout(renderDirectorio._t); renderDirectorio._t=setTimeout(renderDirectorio,180); });
+document.getElementById('dir-lista').addEventListener('click',(e)=>{
+  const usar=e.target.closest('.dir-usar'), cop=e.target.closest('.dir-copiar');
+  const d=DIRECTORIO[+((usar||cop||{}).dataset||{}).i]; if(!d) return;
+  const cargo=limpiarCargoDir(d.c);
+  if(cop){
+    const txt=dirNombreDoc(d.n)+' — '+cargo;
+    if(navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>{});
+    const o=cop.textContent; cop.textContent='✓ Copiado'; setTimeout(()=>cop.textContent=o,1200);
+    return;
+  }
+  document.getElementById('m-dest-nombre').value=dirNombreDoc(d.n);
+  document.getElementById('m-dest-cargo').value=cargo;
+  const ar=document.getElementById('cc-area');
+  if(ar && !ar.value.trim()){ ar.value=areaDesdeCargo(cargo); vincularDesdeArea(); }
+  scheduleSave();
+  irA('memo');
 });
 
 // ====================== BUSCADOR GLOBAL ======================
