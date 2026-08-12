@@ -687,7 +687,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   <div id="panel-trabajos" class="panel oculto">
     <div class="card">
       <h2>💼 Mis trabajos guardados</h2>
-      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">Guarda aquí el trabajo completo (validación, memo, cuadro comparativo y nota) para <b>consultarlo o seguir editándolo después</b>, aunque cierres la app. Al <b>abrir</b> un trabajo queda <b>enlazado</b>: todo lo que edites se <b>actualiza solo</b> en ese trabajo (también con <b>Ctrl+S</b>). Se guardan en <b>esta computadora y navegador</b>.</p>
+      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">¿Tienes un <b>Cuadro de Validación o Comparativo en Excel</b> que no guardaste? Usa <b>“📊 Importar cuadro en Excel”</b> y la app vuelve a llenar el formulario con esos datos para que sigas con los documentos que faltan.<br><br>Guarda aquí el trabajo completo (validación, memo, cuadro comparativo y nota) para <b>consultarlo o seguir editándolo después</b>, aunque cierres la app. Al <b>abrir</b> un trabajo queda <b>enlazado</b>: todo lo que edites se <b>actualiza solo</b> en ese trabajo (también con <b>Ctrl+S</b>). Se guardan en <b>esta computadora y navegador</b>.</p>
       <div class="field"><label>Nombre para guardar el trabajo actual</label>
         <div class="tr-guardar-row">
           <input type="text" id="tr-nombre" placeholder="Ej: ADQUISICIÓN DE PRODUCTOS FARMACÉUTICOS - JULIO">
@@ -699,6 +699,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         <button type="button" class="btn btn-sec" id="tr-nuevo">✨ Empezar trabajo nuevo (limpiar formularios)</button>
         <button type="button" class="btn btn-sec" id="tr-importar">📂 Importar trabajo (.json)</button>
         <input type="file" id="tr-import-file" accept=".json,application/json" style="display:none">
+        <button type="button" class="btn btn-sec" id="tr-imp-excel">📊 Importar cuadro en Excel</button>
+        <input type="file" id="tr-imp-excel-file" accept=".xlsx" style="display:none">
       </div>
     </div>
     <div class="card">
@@ -2580,6 +2582,141 @@ document.getElementById('tr-import-file').addEventListener('change', (e)=>{
     }catch(err){ msgTr('⚠ Ese archivo no es un trabajo exportado de esta app (.json).', false); }
   };
   rd.readAsText(f);
+});
+
+// ============ IMPORTAR UN CUADRO YA GENERADO (.xlsx) ============
+// Relee un Cuadro de Validación o Comparativo hecho antes con la app y vuelve
+// a llenar el formulario, para continuar con los documentos que faltan.
+function celTxt(ws,r,c){
+  let v=ws.getRow(r).getCell(c).value;
+  if(v==null) return '';
+  if(typeof v==='object'){
+    if(v.richText) v=v.richText.map(t=>t.text).join('');
+    else if(v.formula!==undefined) v=(v.result!==undefined?v.result:'');
+    else if(v.text!==undefined) v=v.text;
+    else if(v instanceof Date) return v;
+  }
+  return String(v==null?'':v).trim();
+}
+function celFecha(ws,r,c){
+  const v=ws.getRow(r).getCell(c).value;
+  if(v instanceof Date){ const z=n=>('0'+n).slice(-2);
+    return v.getFullYear()+'-'+z(v.getMonth()+1)+'-'+z(v.getDate()); }
+  return '';
+}
+function leerValidacionXlsx(ws){
+  const T5=celTxt(ws,5,2);
+  const esServ=/TERMINO DE REFERENCIA/i.test(T5);
+  const pref=esServ?TITULOS.servicio:TITULOS.bien;
+  const adq=T5.toUpperCase().startsWith(pref.toUpperCase())?T5.substring(pref.length).trim():T5;
+  // postores: fila 13, columnas 7, 9, 11 ...
+  const post=[];
+  for(let i=0;i<8;i++){ const n=celTxt(ws,13,7+2*i); if(!n) break; post.push({nombre:n}); }
+  if(!post.length) throw new Error('No se encontraron postores en el archivo.');
+  // items: desde la fila 15 hasta que se acabe
+  const its=[];
+  for(let k=0;k<200;k++){ const r=15+k;
+    // las filas de items llevan el numero correlativo en la columna B;
+    // cuando deja de ser un numero, ya empezo el pie del cuadro
+    if(!/^\d+$/.test(String(celTxt(ws,r,2)).trim())) break;
+    its.push({codigo:celTxt(ws,r,3), denom:celTxt(ws,r,4), unidad:celTxt(ws,r,5)||'UND',
+              cantidad:String(celTxt(ws,r,6)||''),
+              marcas:post.map((p,i)=>celTxt(ws,r,7+2*i))});
+  }
+  if(!its.length) throw new Error('No se encontraron bienes/servicios en el archivo.');
+  return {tipo:esServ?'servicio':'bien', adquisicion:adq, postores:post, items:its};
+}
+function leerComparativoXlsx(ws){
+  const quitar=(t,p)=>{ const T=String(t||'').trim(); const i=T.toUpperCase().indexOf(p.toUpperCase());
+    return i>=0?T.substring(i+p.length).trim():T; };
+  const doc=quitar(celTxt(ws,3,1),'DOCUMENTO DE SOLICITUD :');
+  const area=quitar(celTxt(ws,4,1),'AREA USUARIA:');
+  const tipoProc=quitar(celTxt(ws,5,1),'TIPO DE PROCESO DE SELECCIÓN:');
+  let den=quitar(celTxt(ws,7,1),'DENOMINACIÓN DE LA CONTRATACIÓN:');
+  if(!den) den=celTxt(ws,7,4);
+  const esServ=/^SERVICIO DE/i.test(den);
+  den=den.replace(/^(ADQ\.?\s*DE|SERVICIO DE)\s*/i,'').trim();
+  // postores: fila 13, columnas 6, 9, 12, 15
+  const post=[];
+  for(let i=0;i<4;i++){ const b=6+3*i; const n=celTxt(ws,13,b); if(!n) continue;
+    post.push({idx:i, b:b, nombre:n, ruc:celTxt(ws,15,b+1), contacto:celTxt(ws,16,b+1),
+               telefono:celTxt(ws,17,b+1), email:celTxt(ws,18,b+1)}); }
+  if(!post.length) throw new Error('No se encontraron postores en el archivo.');
+  // items desde la fila 20
+  const its=[];
+  for(let k=0;k<200;k++){ const r=20+k;
+    if(!/^\d+$/.test(String(celTxt(ws,r,1)).trim())) break;   // fin de los items (fila TOTAL)
+    const d=celTxt(ws,r,2);
+    its.push({descripcion:d, medida:celTxt(ws,r,4)||'UNIDAD', cantidad:String(celTxt(ws,r,5)||''),
+              precios:post.map(p=>String(celTxt(ws,r,p.b)||'')),
+              marcas:post.map(p=>celTxt(ws,r,p.b+2))});
+  }
+  if(!its.length) throw new Error('No se encontraron ítems en el archivo.');
+  const OFF=its.length-1, F=r=>r+OFF;
+  post.forEach(p=>{
+    p.garantia=celTxt(ws,F(26),p.b); p.plazo_entrega=celTxt(ws,F(27),p.b);
+    p.fecha_solicitud=celFecha(ws,F(30),p.b); p.fecha_recepcion=celFecha(ws,F(32),p.b);
+    p.se_dedica=celTxt(ws,F(33),p.b); p.verifica=celTxt(ws,F(34),p.b);
+    p.cumple_rtm=celTxt(ws,F(35),p.b); p.se_tomo=celTxt(ws,F(36),p.b);
+  });
+  const veces=celTxt(ws,F(31),post[0].b);
+  // ganador: el que la metodología señala, ej "...COTIZACIÓN(02)..."
+  let gan=0; const met=celTxt(ws,20,21); const m=met.match(/COTIZACI[ÓO]N\s*\((\d+)\)/i);
+  if(m){ const num=parseInt(m[1],10); if(num>=1 && num<=post.length) gan=num-1; }
+  return {documento:doc, area:area, tipo_proceso:tipoProc, denominacion:den,
+          objeto:esServ?'servicio':'bien', veces:String(veces||''), postores:post, items:its, ganador:gan};
+}
+async function importarCuadroExcel(file){
+  const buf=await file.arrayBuffer();
+  const wb=new ExcelJS.Workbook(); await wb.xlsx.load(buf);
+  const ws=wb.worksheets[0];
+  const esVal=/^VALIDACION/i.test(celTxt(ws,5,2));
+  const esCC =/ITEM/i.test(celTxt(ws,11,1)) || /CUADRO COMPARATIVO/i.test(celTxt(ws,1,1));
+  if(esVal){
+    const d=leerValidacionXlsx(ws);
+    tipo=d.tipo;
+    const rb=document.querySelector('input[name=tipo][value="'+tipo+'"]'); if(rb){ rb.checked=true; rb.dispatchEvent(new Event('change')); }
+    document.getElementById('adquisicion').value=d.adquisicion;
+    postores=d.postores; items=d.items;
+    renderPostores(); renderItems(); scheduleSave();
+    irA('val');
+    return 'Cuadro de Validación importado: '+d.items.length+' bien(es)/servicio(s) y '+d.postores.length+' postor(es).';
+  }
+  if(esCC){
+    const d=leerComparativoXlsx(ws);
+    const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v||''; };
+    set('cc-doc',d.documento); set('cc-area',d.area); set('cc-denom',d.denominacion);
+    set('cc-veces',d.veces);
+    const selT=document.getElementById('cc-tipo');
+    if(selT && d.tipo_proceso && [...selT.options].some(o=>o.value===d.tipo_proceso)) selT.value=d.tipo_proceso;
+    const selO=document.getElementById('cc-objeto'); if(selO) selO.value=d.objeto;
+    ccPostores=d.postores.map(p=>Object.assign(nuevoPostorCC(),{
+      nombre:p.nombre, ruc:p.ruc, contacto:p.contacto, telefono:p.telefono, email:p.email,
+      garantia:p.garantia, plazo_entrega:p.plazo_entrega, fecha_solicitud:p.fecha_solicitud,
+      fecha_recepcion:p.fecha_recepcion, se_dedica:p.se_dedica, verifica:p.verifica,
+      cumple_rtm:p.cumple_rtm, se_tomo:p.se_tomo }));
+    ccItems=d.items.map(it=>({descripcion:it.descripcion, medida:it.medida, cantidad:it.cantidad,
+                              precios:it.precios.slice(), marcas:it.marcas.slice()}));
+    ccGanador=Math.min(d.ganador, ccPostores.length-1);
+    if(typeof aplicarObjetoCC==='function') aplicarObjetoCC();
+    renderCCItems(); renderCC(); syncPunto1(); scheduleSave();
+    irA('cc');
+    return 'Cuadro Comparativo importado: '+d.items.length+' ítem(s) y '+d.postores.length+' postor(es). Ganador: '+(ccPostores[ccGanador]||{}).nombre+'.';
+  }
+  throw new Error('Ese Excel no parece un Cuadro de Validación ni un Cuadro Comparativo generado por la app.');
+}
+document.getElementById('tr-imp-excel').addEventListener('click', ()=> document.getElementById('tr-imp-excel-file').click());
+document.getElementById('tr-imp-excel-file').addEventListener('change', async (e)=>{
+  const f=e.target.files && e.target.files[0]; e.target.value='';
+  if(!f) return;
+  if(hayTrabajoEnCurso() && !confirm('Ya tienes datos escritos en los formularios.\n¿Reemplazarlos con los del Excel que vas a importar?')) return;
+  msgTr('Leyendo el archivo…', true);
+  try{
+    const txt=await importarCuadroExcel(f);
+    setTrabajoActivo(null);   // es un trabajo nuevo, no toca ningún guardado
+    msgTr('✓ '+txt, true);
+    alert('✓ '+txt+'\n\nRevisa los datos y continúa con los documentos que faltan.');
+  }catch(err){ msgTr('⚠ '+(err.message||'No se pudo leer el archivo.'), false); console.error(err); }
 });
 
 // ====================== BUSCADOR GLOBAL ======================
