@@ -979,7 +979,27 @@ async function generarValidacion(datos){
     for(let c=2;c<=ultima;c++) bordeInf(F(r),c);
   });
 
-  ws.pageSetup = Object.assign({}, ws.pageSetup, {fitToPage:true, fitToWidth:1, fitToHeight:0});
+  // Limpiar celdas con formato residual a la derecha del cuadro: si quedan,
+  // Excel/LibreOffice agregan una hoja en blanco al imprimir.
+  for(let r=1; r<=FOOT_BOT+OFF; r++){
+    const row=ws.getRow(r);
+    for(let c=ultima+1; c<=40; c++){ const cell=row.getCell(c); cell.value=null; cell.style={}; }
+  }
+  for(let r=FOOT_BOT+OFF+1; r<=ws.rowCount; r++){
+    const row=ws.getRow(r); row.height=undefined;
+    for(let c=1; c<=40; c++){ const cell=row.getCell(c); cell.value=null; cell.style={}; }
+  }
+  for(let c=ultima+1; c<=60; c++){ const col=ws.getColumn(c); col.hidden=true; col.width=0; }
+  // Impresión lista: área exacta y todo ajustado a UNA hoja, sin tener que acomodar nada
+  ws.pageSetup = Object.assign({}, ws.pageSetup, {
+    orientation:'landscape', paperSize:9,
+    fitToPage:true, fitToWidth:1, fitToHeight:1,
+    horizontalCentered:true,
+    margins:{left:0.3,right:0.3,top:0.4,bottom:0.4,header:0.2,footer:0.2},
+    printArea:'A1:'+colLetter(ultima)+(FOOT_BOT+OFF),
+  });
+  // la plantilla traía una escala fija (18%) que impedía el ajuste a una hoja
+  delete ws.pageSetup.scale;
   // Estetica: sin cuadriculas, abre arriba y hoja con nombre claro
   ws.views=[{showGridLines:false, topLeftCell:'A1', zoomScale:20, zoomScaleNormal:20, workbookViewId:0}];
   try{ ws.name='VALIDACION'; }catch(e){}
@@ -1100,11 +1120,26 @@ renderPostores();
 renderItems();
 
 // --- Generar ---
-function nombreArchivo(adq){
-  let base = String(adq).toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-  base = base.substring(0,50) || 'CUADRO';
-  return 'VALIDACION_'+base+'.xlsx';
+// ---- Nombre del archivo: abreviado y con lo que realmente es el documento ----
+const PALABRAS_VACIAS=new Set(['DE','DEL','LA','EL','LOS','LAS','PARA','POR','CON','Y','E','EN','A','AL','UN','UNA','UNOS','UNAS','SU','SUS','SEGUN']);
+function abreviarObjeto(txt, max){
+  max=max||45;
+  let t=String(txt||'').trim().toUpperCase();
+  // el prefijo ya va en el nombre del documento, no se repite
+  t=t.replace(/^(ADQ\.?\s*DE|ADQUISICION\s+DE|SERVICIO\s+DE)\s+/,'');
+  // si hay un guion separador, lo específico suele ir al final (ej: "... - FURAZOLIDONA 100MG")
+  const p=t.split(/\s+[-–—]\s+/);
+  if(p.length>1){ const cola=p[p.length-1].trim(); if(cola.length>=5 && cola.length<=60) t=cola; }
+  t=t.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9\s]/g,' ');
+  const pal=t.split(/\s+/).filter(w=>w && !PALABRAS_VACIAS.has(w));
+  const out=[];
+  for(const w of pal){
+    if(out.join('_').length + (out.length?1:0) + w.length > max) break;
+    out.push(w);
+  }
+  return (out.length?out:pal.slice(0,3)).join('_') || 'DOCUMENTO';
 }
+function nombreArchivo(adq){ return 'CUADRO_VALIDACION_'+abreviarObjeto(adq)+'.xlsx'; }
 function mostrarError(t){ const m=document.getElementById('msg'); m.className='msg-error'; m.textContent='⚠ '+t; }
 
 document.getElementById('form').addEventListener('submit', (e)=>{
@@ -1512,11 +1547,28 @@ async function generarCuadroComparativo(datos){
 
   ws.views=[{showGridLines:false, topLeftCell:'A1', zoomScale:30, zoomScaleNormal:30, workbookViewId:0}];
   try{ ws.name='CUADRO COMPARATIVO'; }catch(e){}
+  // Limpiar lo que hay a la derecha del cuadro (la plantilla trae un "Regresar"
+  // suelto en X1 y celdas con formato): si queda, se imprime una hoja en blanco.
+  for(let r=1; r<=FOOT_BOT+OFF; r++){
+    const row=ws.getRow(r);
+    for(let c=24; c<=40; c++){ const cell=row.getCell(c); cell.value=null; cell.style={}; }
+  }
+  for(let r=FOOT_BOT+OFF+1; r<=ws.rowCount; r++){
+    const row=ws.getRow(r); row.height=undefined;
+    for(let c=1; c<=40; c++){ const cell=row.getCell(c); cell.value=null; cell.style={}; }
+  }
+  // la plantilla define ancho para TODAS las columnas hasta la 16384; ocultar las
+  // que sobran evita que el ajuste de impresion las tome en cuenta
+  for(let c=24; c<=60; c++){ const col=ws.getColumn(c); col.hidden=true; col.width=0; }
+  // Impresión lista: área exacta y todo ajustado a UNA hoja
   ws.pageSetup = Object.assign({}, ws.pageSetup, {
-    orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0,
+    orientation:'landscape', paperSize:9,
+    fitToPage:true, fitToWidth:1, fitToHeight:1,
+    horizontalCentered:true,
     margins:{left:0.3,right:0.3,top:0.4,bottom:0.4,header:0.2,footer:0.2},
     printArea:'A1:W'+(FOOT_BOT+OFF),
   });
+  delete ws.pageSetup.scale;   // que mande el ajuste a una hoja, no una escala fija
   return await wb.xlsx.writeBuffer();
 }
 
@@ -1719,8 +1771,7 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
     try{
       const buffer=await generarCuadroComparativo(datos);
       const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-      const baseN=val('cc-denom').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'CUADRO';
-      descargarBlob(blob, 'CUADRO_COMPARATIVO_'+baseN+'.xlsx', msg, 'cc');
+      descargarBlob(blob, 'CUADRO_COMPARATIVO_'+abreviarObjeto(val('cc-denom'))+'.xlsx', msg, 'cc');
       datos.postores.forEach(p=>upsertProveedor(p)); // alimentar el directorio de proveedores
       // alimentar el histórico de precios con el precio ganador de cada ítem
       try{
@@ -1877,8 +1928,7 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
       doc.render(datos);
       const blob = doc.getZip().generate({type:'blob',
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-      const baseN = datos.titulo.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'MEMO';
-      descargarBlob(blob, 'MEMO_'+baseN+'.docx', msg, 'memo');
+      descargarBlob(blob, 'MEMO_VALIDACION_'+abreviarObjeto(datos.titulo)+'.docx', msg, 'memo');
       datos.filas.forEach(f=>upsertProveedor({nombre:f.empresa, ruc:f.ruc})); // alimentar el directorio
     }catch(err){ mostrarErrorMemo(err.message||'Ocurrió un error al generar el memo.'); console.error(err); }
   }, 'memo');
@@ -2038,8 +2088,8 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
       doc.render(datos);
       const blob = doc.getZip().generate({type:'blob',
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-      const baseN = (filas[0].descripcion||'NOTA').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').substring(0,50)||'NOTA';
-      descargarBlob(blob, 'NOTA_INFORMATIVA_'+baseN+'.docx', msg, 'nota');
+      const objNota = (document.getElementById('cc-denom').value||'').trim() || filas[0].descripcion || 'NOTA';
+      descargarBlob(blob, 'NOTA_INFORMATIVA_'+abreviarObjeto(objNota)+'.docx', msg, 'nota');
     }catch(err){ mostrarErrorNota(err.message||'Ocurrió un error al generar la nota.'); console.error(err); }
   }, 'nota');
 });
