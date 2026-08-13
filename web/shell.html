@@ -603,7 +603,9 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 
     <div class="card">
       <h2>2. Objeto de la contratación <span class="hint">— sale automático del cuadro de validación</span></h2>
-      <div class="field"><label>Descripción (va en el contexto del memo, entre comillas)</label><input type="text" id="m-titulo" placeholder="Ej: ADQUISICION DE TOKEN DE SEGURIDAD CON CONECTOR USB"></div>
+      <div class="field"><label>Descripción (va en el contexto del memo, entre comillas)</label><input type="text" id="m-titulo" placeholder="Ej: 4 LETREROS DE ACRILICO 3 MM X 29.7 CM X 42 CM">
+        <p class="hint" style="margin:8px 0 0">Si escribes solo el bien, el memo sale igual como <b>se solicita la “ADQUISICIÓN DE …”</b>. En servicios sale <b>el “SERVICIO DE …”</b>. Si ya lo escribes con ese encabezado, no se repite.</p>
+      </div>
     </div>
 
     <div class="card">
@@ -1142,7 +1144,7 @@ function abreviarObjeto(txt, max){
   max=max||45;
   let t=String(txt||'').trim().toUpperCase();
   // el prefijo ya va en el nombre del documento, no se repite
-  t=t.replace(/^(ADQ\.?\s*DE|ADQUISICION\s+DE|SERVICIO\s+DE)\s+/,'');
+  t=t.replace(/^(ADQ\.?\s*DE|ADQUISICI[OÓ]N\s+DE|CONTRATACI[OÓ]N\s+DE|SERVICIO\s+DE|SUMINISTRO\s+DE|ALQUILER\s+DE)\s+/,'');
   // si hay un guion separador, lo específico suele ir al final (ej: "... - FURAZOLIDONA 100MG")
   const p=t.split(/\s+[-–—]\s+/);
   if(p.length>1){ const cola=p[p.length-1].trim(); if(cola.length>=5 && cola.length<=60) t=cola; }
@@ -1885,10 +1887,23 @@ document.getElementById('m-agregar-fila').addEventListener('click',()=>{
 });
 renderMemoFilas();
 
+// El memo cita el objeto entre comillas y necesita el encabezado completo:
+//   se solicita la “ADQUISICIÓN DE 4 LETREROS…”   /   se solicita el “SERVICIO DE …”
+// En el cuadro de validación solo se escribe el bien ("4 LETREROS…"), así que aquí
+// se le antepone "ADQUISICIÓN DE" / "SERVICIO DE" si el texto todavía no lo trae.
+function conPrefijoObjeto(txt, esServicio){
+  let t=String(txt||'').trim().replace(/^["“”']+|["“”']+$/g,'').trim();
+  if(!t) return '';
+  if(/^(ADQUISICI[OÓ]N|CONTRATACI[OÓ]N|SERVICIO|SUMINISTRO|ALQUILER)\b/i.test(t)) return t;
+  return (esServicio ? 'SERVICIO DE ' : 'ADQUISICIÓN DE ') + t;
+}
+function articuloObjeto(txt){
+  return /^(SERVICIO|SUMINISTRO|ALQUILER)\b/i.test(String(txt||'').trim()) ? 'el' : 'la';
+}
 // --- "Emitir Memo": trae los datos del cuadro de validación y va a la pestaña ---
 document.getElementById('btn-emitir-memo').addEventListener('click',()=>{
   const adq = document.getElementById('adquisicion').value.trim();
-  document.getElementById('m-titulo').value = adq.toUpperCase();
+  document.getElementById('m-titulo').value = conPrefijoObjeto(adq, tipo==='servicio').toUpperCase();
   document.getElementById('m-asunto').value = (tipo==='servicio') ? 'tdr' : 'et';
   const nombres = postores.map(p=>(p.nombre||'').trim()).filter(Boolean);
   if(nombres.length){
@@ -1912,6 +1927,8 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
   const filas = memoFilas.filter(f=>(f.empresa||'').trim()!=='');
   if(filas.length===0){ mostrarErrorMemo('Agrega al menos una empresa.'); return; }
   const esET = val('m-asunto')==='et';
+  // aunque el usuario haya escrito solo el bien, el memo sale con el encabezado completo
+  const tituloMemo = conPrefijoObjeto(val('m-titulo'), !esET).toUpperCase();
   const datos = {
     anio: val('m-anio').trim() || '2026',
     destNombre: val('m-dest-nombre').trim(),
@@ -1921,7 +1938,8 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
     asunto: esET ? 'Especificaciones Técnicas.' : 'Términos de Referencia.',
     referencia: val('m-ref').trim(),
     fecha: fechaLima(val('m-fecha')),
-    titulo: val('m-titulo').trim(),
+    titulo: tituloMemo,
+    articulo: articuloObjeto(tituloMemo),
     cantidad: numeroATexto(filas.length),
     solicitud: esET ? 'las Especificaciones Técnicas' : 'los Términos de Referencia',
     filas: filas.map((f,i)=>({
@@ -1943,7 +1961,7 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
     ['Asunto', 'Cumplimiento de '+(esET?'Especificaciones Técnicas.':'Términos de Referencia.')],
     ['Referencia', val('m-ref')],
     ['Fecha', datos.fecha],
-    ['Objeto', val('m-titulo')],
+    ['Objeto', 'se solicita '+articuloObjeto(tituloMemo)+' “'+tituloMemo+'”'],
     ['Cotizaciones', datos.cantidad],
     ['Elaborado por', val('m-elaborado')+(val('m-iniciales')?' ('+val('m-iniciales').toUpperCase()+')':'')],
   ]) + '<div class="pv-sub">Empresas</div>' + pvTabla(

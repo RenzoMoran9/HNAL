@@ -188,7 +188,7 @@ def tabla_postores():
 
 CONTEXTO_PRE = ("Por medio del presente me dirijo a usted, para saludarla "
                 "cordialmente, y en atención al documento de la referencia, "
-                "mediante el cual se solicita el ")
+                "mediante el cual se solicita ")
 CONTEXTO_MID = " al rubro en materia de convocatoria, obteniendo "
 CONTEXTO_MID2 = " cotizaciones a solicitud de "
 CONTEXTO_END = ", según detalle:"
@@ -281,7 +281,7 @@ def build_body():
     parts.append(para("", jc=None, border=True))
     parts.append(blank())
     # Contexto: el objeto y el numero de cotizaciones van en AZUL + negrita
-    ctx = (run(CONTEXTO_PRE, sz=16) + run("“", sz=16)
+    ctx = (run(CONTEXTO_PRE, sz=16) + run("{articulo} ", sz=16) + run("“", sz=16)
            + run("{titulo}", sz=16, bold=True, color=AZUL) + run("”", sz=16)
            + run(CONTEXTO_MID, sz=16)
            + run("{cantidad} cotizaciones", sz=16, bold=True, color=AZUL)
