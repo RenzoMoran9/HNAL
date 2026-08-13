@@ -468,6 +468,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 
     <div class="card">
       <h2>2. Postores que presentaron cotización</h2>
+      <p class="hint" style="margin:-8px 0 12px">Escribe en el campo y saldrán las <b>empresas que ya trabajaste antes</b>. También puedes verlas y borrarlas en <b>Mis trabajos → Directorio de proveedores</b>.</p>
       <div id="postores"></div>
       <button type="button" class="btn btn-sec" id="agregar-postor">＋ Agregar postor</button>
     </div>
@@ -1055,7 +1056,7 @@ function renderPostores(){
     div.innerHTML = `<div class="num">${i+1}</div>
       <div class="field" style="margin:0">
         <label>Razón social / nombre del postor</label>
-        <input type="text" class="p-nombre" placeholder="Ej: EMPRESA EJEMPLO S.A.C.">
+        <input type="text" class="p-nombre" list="dl-proveedores" placeholder="Ej: EMPRESA EJEMPLO S.A.C. — escribe y sale la lista de las ya trabajadas">
       </div>
       <button type="button" class="btn-quitar" title="Quitar postor">✕</button>`;
     const inp = div.querySelector('.p-nombre');
@@ -1193,6 +1194,7 @@ document.getElementById('form').addEventListener('submit', (e)=>{
       const buffer = await generarValidacion(datos);
       const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
       descargarBlob(blob, nombreArchivo(adquisicion), msg, 'val');
+      datos.postores.forEach(p=>upsertProveedor({nombre:p.nombre})); // alimentar el directorio desde el primer documento
     }catch(err){ mostrarError(err.message || 'Ocurrió un error al generar.'); console.error(err); }
   }, 'val');
 });
@@ -2349,7 +2351,7 @@ function renderDatalistProv(){
 }
 function renderProvLista(){
   const cont=document.getElementById('prov-lista'); if(!cont) return;
-  if(!proveedores.length){ cont.innerHTML='<div class="tr-vacio">Aún no hay proveedores guardados. Se agregan solos al generar un cuadro comparativo o un memo.</div>'; return; }
+  if(!proveedores.length){ cont.innerHTML='<div class="tr-vacio">Aún no hay proveedores guardados. Se agregan solos al generar un cuadro de validación, un memo o un cuadro comparativo.</div>'; return; }
   cont.innerHTML=proveedores.map((p,i)=>{
     const det=[p.ruc?('RUC '+p.ruc):'',p.contacto,p.telefono,p.email].filter(Boolean).join(' · ')||'—';
     return '<div class="tr-row"><div class="tr-info"><div class="tr-nom">'+escH(p.nombre)+'</div><div class="tr-meta">'+escH(det)+'</div></div>'
@@ -2363,6 +2365,21 @@ document.getElementById('prov-lista').addEventListener('click',(e)=>{
     proveedores.splice(+b.dataset.i,1); guardarProvStore(); renderDatalistProv(); renderProvLista();
   }
 });
+// Siembra el directorio con las empresas que ya están en los trabajos guardados,
+// para que la lista desplegable sirva desde el primer día (una sola vez).
+(function sembrarProveedores(){
+  try{
+    if(localStorage.getItem('hnal_prov_sembrado')==='1') return;
+    const trabajos=JSON.parse(localStorage.getItem('hnal_trabajos')||'[]')||[];
+    trabajos.forEach(t=>{
+      const d=t.data||{};
+      (d.postores||[]).forEach(p=>{ if((p.nombre||'').trim()) upsertProveedor({nombre:p.nombre}); });
+      (d.ccPostores||[]).forEach(p=>{ if((p.nombre||'').trim()) upsertProveedor(p); });
+      (d.memoFilas||[]).forEach(f=>{ if((f.empresa||'').trim()) upsertProveedor({nombre:f.empresa, ruc:f.ruc}); });
+    });
+    localStorage.setItem('hnal_prov_sembrado','1');
+  }catch(e){}
+})();
 renderDatalistProv();
 
 // ====================== DESTINATARIOS FRECUENTES ======================
