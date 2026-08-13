@@ -737,6 +737,12 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         <button type="button" class="btn btn-sec" id="tr-imp-excel">📊 Importar cuadro en Excel</button>
         <input type="file" id="tr-imp-excel-file" accept=".xlsx" style="display:none">
       </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:12px;border-top:1px solid var(--gris)">
+        <span class="hint" style="width:100%;margin:0 0 4px">¿Te cambias de computadora? Exporta todo aquí y lo importas allá.</span>
+        <button type="button" class="btn btn-azul" id="tr-exp-todo">💾 Exportar TODO (respaldo)</button>
+        <button type="button" class="btn btn-sec" id="tr-imp-todo">📥 Importar respaldo</button>
+        <input type="file" id="tr-imp-todo-file" accept=".json,application/json" style="display:none">
+      </div>
     </div>
     <div class="card">
       <h2>Trabajos guardados</h2>
@@ -2904,6 +2910,68 @@ document.getElementById('dir-lista').addEventListener('click',(e)=>{
   if(ar && !ar.value.trim()){ ar.value=areaDesdeCargo(cargo); vincularDesdeArea(); }
   scheduleSave();
   irA('memo');
+});
+
+// ---- Respaldo completo: llevarse TODO a otra computadora ----
+async function histReemplazar(regs){
+  const db=await idbAbrir();
+  return new Promise((res,rej)=>{
+    const t=db.transaction('historial','readwrite'), st=t.objectStore('historial');
+    st.clear();
+    (regs||[]).forEach(r=>{ const c=Object.assign({},r); delete c.id; st.add(c); });
+    t.oncomplete=()=>res(); t.onerror=()=>rej(t.error);
+  });
+}
+async function exportarTodo(){
+  let borrador=null; try{ borrador=JSON.parse(localStorage.getItem('hnal_borrador')||'null'); }catch(e){}
+  const payload={
+    formato:'hnal-respaldo', v:1, ts:Date.now(),
+    trabajos: leerTrabajos(),
+    destinatarios: destinatarios,
+    proveedores: proveedores,
+    historial: await histTodos(),
+    borrador: borrador,
+    precarga: localStorage.getItem('hnal_dest_precarga')||null,
+  };
+  const f=new Date(), z=n=>('0'+n).slice(-2);
+  const nombre='RESPALDO_HNAL_'+f.getFullYear()+'-'+z(f.getMonth()+1)+'-'+z(f.getDate())+'.json';
+  descargarBlob(new Blob([JSON.stringify(payload)],{type:'application/json'}), nombre, null);
+  msgTr('✓ Respaldo descargado: '+payload.trabajos.length+' expediente(s), '+payload.destinatarios.length
+        +' destinatario(s), '+payload.proveedores.length+' proveedor(es) y '+payload.historial.length+' precio(s) del histórico.', true);
+}
+async function importarTodo(file){
+  const obj=JSON.parse(await file.text());
+  if(!obj || obj.formato!=='hnal-respaldo') throw new Error('Ese archivo no es un respaldo de esta app.');
+  const t=(obj.trabajos||[]).length, d=(obj.destinatarios||[]).length,
+        pr=(obj.proveedores||[]).length, h=(obj.historial||[]).length;
+  if(!confirm('El respaldo trae:\n· '+t+' expediente(s)\n· '+d+' destinatario(s)\n· '+pr+' proveedor(es)\n· '+h+' precio(s) del histórico\n\n'
+    +'Se REEMPLAZARÁ lo que tengas guardado en esta computadora.\n¿Continuar?')) return null;
+  guardarTrabajos(obj.trabajos||[]);
+  destinatarios=(obj.destinatarios||[]); guardarDest();
+  proveedores=(obj.proveedores||[]); guardarProvStore();
+  await histReemplazar(obj.historial||[]);
+  try{
+    if(obj.borrador) localStorage.setItem('hnal_borrador', JSON.stringify(obj.borrador));
+    else localStorage.removeItem('hnal_borrador');
+    if(obj.precarga) localStorage.setItem('hnal_dest_precarga', obj.precarga);
+  }catch(e){}
+  return {t,d,pr,h};
+}
+document.getElementById('tr-exp-todo').addEventListener('click', async ()=>{
+  try{ await exportarTodo(); }
+  catch(e){ msgTr('⚠ No se pudo crear el respaldo.', false); console.error(e); }
+});
+document.getElementById('tr-imp-todo').addEventListener('click', ()=> document.getElementById('tr-imp-todo-file').click());
+document.getElementById('tr-imp-todo-file').addEventListener('change', async (e)=>{
+  const f=e.target.files && e.target.files[0]; e.target.value='';
+  if(!f) return;
+  try{
+    const r=await importarTodo(f);
+    if(!r) return;
+    alert('✓ Respaldo restaurado:\n· '+r.t+' expediente(s)\n· '+r.d+' destinatario(s)\n· '+r.pr+' proveedor(es)\n· '+r.h+' precio(s)\n\n'
+      +'La app se recargará para aplicarlo.\n\nRecuerda volver a vincular las carpetas de descarga en esta computadora.');
+    location.reload();
+  }catch(err){ msgTr('⚠ '+(err.message||'No se pudo leer el respaldo.'), false); console.error(err); }
 });
 
 // ====================== BUSCADOR GLOBAL ======================
