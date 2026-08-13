@@ -1237,7 +1237,9 @@ document.getElementById('flowbar').addEventListener('click',(e)=>{
   const b=e.target.closest('.fb-step'); if(b) irA(b.dataset.tab);
 });
 
+const TABS_VALIDAS=['val','cc','memo','nota','trabajos','buscar','directorio'];
 function irA(t){
+  if(TABS_VALIDAS.indexOf(t)<0) t='val';   // nunca dejar la pantalla en blanco
   tabActual=t;
   document.querySelectorAll('.side-item').forEach(b=> b.classList.toggle('active', b.dataset.tab===t));
   document.getElementById('panel-val').classList.toggle('oculto', t!=='val');
@@ -2913,7 +2915,7 @@ function renderDirectorio(){
   cont.innerHTML=lista.slice(0,60).map((d,i)=>{
     const idx=DIRECTORIO.indexOf(d);
     return '<div class="tr-row"><div class="tr-info"><div class="tr-nom">'+escH(d.n)+'</div>'
-      +'<div class="tr-meta">'+escH(d.c)+'</div></div>'
+      +'<div class="tr-meta">'+escH(limpiarCargoDir(d.c))+'</div></div>'
       +'<button type="button" class="btn-mini dir-usar" data-i="'+idx+'">➡ Usar en memo</button>'
       +'<button type="button" class="btn-mini dir-copiar" data-i="'+idx+'">📋 Copiar</button></div>';
   }).join('') + (lista.length>60?'<div class="tr-vacio">Mostrando 60 de '+lista.length+'. Afina la búsqueda.</div>':'');
