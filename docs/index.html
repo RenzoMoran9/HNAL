@@ -71,9 +71,26 @@ body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--texto);li
   border-radius:999px;padding:6px 15px;font-size:.74rem;font-weight:700;white-space:nowrap;letter-spacing:.03em;}
 .tb-save{flex-shrink:0;color:var(--verde);font-size:.76rem;font-weight:700;white-space:nowrap;transition:opacity .2s;}
 @media (max-width:820px){.tb-save{display:none;}}
-.side-toggle{display:none;background:var(--gris);border:1px solid var(--borde);border-radius:8px;
+.side-toggle{display:block;background:var(--gris);border:1px solid var(--borde);border-radius:8px;
   font-size:1.2rem;line-height:1;padding:6px 11px;cursor:pointer;color:var(--azul);}
 
+/* Barra lateral colapsada: solo iconos, para ganar espacio en pantalla */
+.sidebar{transition:width .18s ease;}
+@media (min-width:821px){
+  .app.colapsada .sidebar{width:64px;}
+  .app.colapsada .side-brand{padding:20px 0;justify-content:center;}
+  .app.colapsada .side-brand > div{display:none;}
+  .app.colapsada .side-group-t{display:none;}
+  .app.colapsada .side-group{margin-bottom:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.10);}
+  .app.colapsada .side-group:first-child{border-top:none;padding-top:0;}
+  .app.colapsada .side-nav{padding:14px 8px;}
+  .app.colapsada .side-item{font-size:0;justify-content:center;padding:12px 0;gap:0;}
+  .app.colapsada .side-item .si-ico{font-size:1.2rem;}
+  .app.colapsada .side-foot{padding:12px 8px;}
+  .app.colapsada .side-home{font-size:0;padding:11px 0;}
+  .app.colapsada .side-home::before{content:'⌂';font-size:1.15rem;line-height:1;}
+  .app.colapsada .side-copy{display:none;}
+}
 .panel.oculto{display:none;}
 main{max-width:940px;width:100%;margin:0 auto;padding:26px 30px 70px;}
 
@@ -1290,8 +1307,16 @@ document.querySelectorAll('.side-item').forEach(btn=>{
   btn.addEventListener('click', ()=> irA(btn.dataset.tab));
 });
 document.getElementById('sideToggle').addEventListener('click', ()=>{
-  document.getElementById('sidebar').classList.toggle('open');
+  if(window.matchMedia('(max-width:820px)').matches){
+    document.getElementById('sidebar').classList.toggle('open');   // móvil: desliza
+  } else {
+    const c=document.getElementById('app').classList.toggle('colapsada'); // escritorio: solo iconos
+    try{ localStorage.setItem('hnal_barra_colapsada', c?'1':'0'); }catch(e){}
+  }
 });
+// al pasar el mouse sobre un icono se ve el nombre, y se recuerda si estaba colapsada
+document.querySelectorAll('.side-item').forEach(b=>{ if(!b.title) b.title=b.textContent.trim(); });
+try{ if(localStorage.getItem('hnal_barra_colapsada')==='1') document.getElementById('app').classList.add('colapsada'); }catch(e){}
 
 // ====================== PORTADA ======================
 const landing = document.getElementById('landing');
