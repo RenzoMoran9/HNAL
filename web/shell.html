@@ -220,6 +220,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   border-radius:10px;padding:12px 15px;margin-bottom:10px;background:#fbfcfe;}
 .tr-row .tr-info{flex:1;min-width:180px;}
 .tr-row .tr-nom{font-weight:700;color:var(--azul);}
+.dir-tit{display:inline-block;background:#e8eef7;color:#1f4e79;border-radius:4px;padding:0 5px;font-size:.82em;letter-spacing:.02em;}
 .tr-row .tr-meta{font-size:.8rem;color:var(--muted);margin-top:2px;}
 .tr-row .btn-mini{flex-shrink:0;}
 .tr-vacio{color:var(--muted);font-size:.9rem;padding:6px 2px;}
@@ -1979,6 +1980,7 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       descargarBlob(blob, 'MEMO_VALIDACION_'+abreviarObjeto(datos.titulo)+'.docx', msg, 'memo');
       aprenderAreaJefe();   // recuerda qué jefe corresponde a esa área usuaria
+      aprenderTitulo(datos.destNombre);   // y con qué carrera se le nombra
       datos.filas.forEach(f=>upsertProveedor({nombre:f.empresa, ruc:f.ruc})); // alimentar el directorio
     }catch(err){ mostrarErrorMemo(err.message||'Ocurrió un error al generar el memo.'); console.error(err); }
   }, 'memo');
@@ -2140,6 +2142,7 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       const objNota = (document.getElementById('cc-denom').value||'').trim() || filas[0].descripcion || 'NOTA';
       descargarBlob(blob, 'NOTA_INFORMATIVA_'+abreviarObjeto(objNota)+'.docx', msg, 'nota');
+      aprenderTitulo(datos.destNombre);   // recuerda con qué carrera se nombra a ese funcionario
     }catch(err){ mostrarErrorNota(err.message||'Ocurrió un error al generar la nota.'); console.error(err); }
   }, 'nota');
 });
@@ -2503,7 +2506,7 @@ function vincularDesdeArea(){
   if(!d && typeof dirPorArea==='function'){
     // si no está en los guardados, se busca en el directorio del hospital
     const x=dirPorArea(inp.value);
-    if(x){ d={nombre:dirNombreDoc(x.n), cargo:limpiarCargoDir(x.c)}; fuente=' (directorio)'; }
+    if(x){ d={nombre:dirNombreDoc(x), cargo:limpiarCargoDir(x.c)}; fuente=' (directorio)'; }
   }
   if(!d){ if(hint) hint.textContent=''; return; }
   if(hint) hint.textContent='🔗 Jefe: '+d.nombre+(d.cargo?' — '+d.cargo:'')+fuente;
@@ -2922,7 +2925,58 @@ function limpiarCargoDir(cargo){
   }
   return t;
 }
-function dirNombreDoc(n){ return String(n||'').toUpperCase().trim(); }
+// ---- Título profesional de cada funcionario (Q.F., ING., DR., LIC., C.P.C. …) ----
+// En los documentos el nombre va con su carrera: «Q.F. SONIA APAESTEGUI INFANZON».
+// El directorio trae los que ya se conocen; los demás se aprenden solos de lo que
+// escribes en tus memos y notas, y quedan guardados en esta computadora.
+const TITULOS_CONOCIDOS = ['Q.F.','C.P.C.','ABOG.','ING.','LIC.','DRA.','DR.','MG.','SRA.','SR.','M.C.','OBST.','ARQ.','ECON.','BLGO.','T.M.','ENF.'];
+// El título puede venir pegado al nombre ("ING.JORGE", "Lic.YACQUELIN") o separado
+// ("Q. F. SONIA"), así que el punto también sirve de separador. Exigir punto o
+// espacio evita que un nombre como "DRAGO" se confunda con "DR".
+const RE_TITULO = /^\s*(Q\.?\s?F|C\.?P\.?C|ABOG|ING|LIC|DRA|DR|MG|SRA|SR|M\.?C|OBST|ARQ|ECON|BLGO|T\.?M|ENF)(?:\.\s*|\s+)/i;
+function canonTitulo(t){
+  const k=String(t||'').replace(/[^A-Za-zÁÉÍÓÚÑ]/g,'').toUpperCase();
+  const map={QF:'Q.F.',CPC:'C.P.C.',ABOG:'ABOG.',ING:'ING.',LIC:'LIC.',DRA:'DRA.',DR:'DR.',MG:'MG.',
+             SRA:'SRA.',SR:'SR.',MC:'M.C.',OBST:'OBST.',ARQ:'ARQ.',ECON:'ECON.',BLGO:'BLGO.',TM:'T.M.',ENF:'ENF.'};
+  return map[k]||'';
+}
+function partirTitulo(nombre){
+  const s=String(nombre||'').trim();
+  const m=s.match(RE_TITULO);
+  if(!m) return {titulo:'', nombre:s};
+  return {titulo:canonTitulo(m[1]), nombre:s.slice(m[0].length).replace(/^[.\s]+/,'').trim()};
+}
+// clave por nombre + los dos apellidos, para que "Yacquelin Tello Ayala" y
+// "Jacquelin Alicia Tello Ayala" se reconozcan como la misma persona
+function clavePersona(nombre){
+  const p=sinTildes(partirTitulo(nombre).nombre).replace(/[^A-Z ]/g,' ').split(/\s+/).filter(w=>w.length>2);
+  if(p.length<2) return '';
+  return p.length>2 ? (p[p.length-2]+' '+p[p.length-1]) : (p[0]+' '+p[1]);
+}
+// var (no let) porque estas funciones se usan desde código que corre antes de esta línea
+var titulosAprendidos={};
+try{ titulosAprendidos=JSON.parse(localStorage.getItem('hnal_titulos')||'{}')||{}; }catch(e){ titulosAprendidos={}; }
+function tituloDe(persona){
+  const ap=titulosAprendidos||{};
+  const k=clavePersona(persona&&persona.n||persona||'');
+  return (k && ap[k]) || (persona&&persona.t) || '';
+}
+// Aprende de lo que el usuario escribió: si puso "DRA. PAMELA MUÑOZ LOPEZ",
+// la próxima vez que use a esa persona el título sale solo.
+function aprenderTitulo(nombreEscrito){
+  const {titulo}=partirTitulo(nombreEscrito);
+  const k=clavePersona(nombreEscrito);
+  if(!titulosAprendidos) titulosAprendidos={};
+  if(!titulo || !k || titulosAprendidos[k]===titulo) return;
+  titulosAprendidos[k]=titulo;
+  try{ localStorage.setItem('hnal_titulos', JSON.stringify(titulosAprendidos)); }catch(e){}
+  if(typeof renderDirectorio==='function' && tabActual==='directorio') renderDirectorio();
+}
+function dirNombreDoc(p){
+  if(typeof p==='string') return String(p||'').toUpperCase().trim();
+  const t=tituloDe(p);
+  return (t?t+' ':'')+String(p&&p.n||'').toUpperCase().trim();
+}
 // Busca en el directorio el responsable de un área usuaria
 function dirPorArea(area){
   const q=sinTildes(area); if(q.length<4) return null;
@@ -2949,7 +3003,9 @@ function renderDirectorio(){
   if(!lista.length){ cont.innerHTML='<div class="tr-vacio">Sin resultados. Prueba con otra palabra del área o del nombre.</div>'; return; }
   cont.innerHTML=lista.slice(0,60).map((d,i)=>{
     const idx=DIRECTORIO.indexOf(d);
-    return '<div class="tr-row"><div class="tr-info"><div class="tr-nom">'+escH(d.n)+'</div>'
+    const t=tituloDe(d);
+    return '<div class="tr-row"><div class="tr-info"><div class="tr-nom">'
+      +(t?'<span class="dir-tit">'+escH(t)+'</span> ':'')+escH(d.n)+'</div>'
       +'<div class="tr-meta">'+escH(limpiarCargoDir(d.c))+'</div></div>'
       +'<button type="button" class="btn-mini dir-usar" data-i="'+idx+'">➡ Usar en memo</button>'
       +'<button type="button" class="btn-mini dir-copiar" data-i="'+idx+'">📋 Copiar</button></div>';
@@ -2961,12 +3017,12 @@ document.getElementById('dir-lista').addEventListener('click',(e)=>{
   const d=DIRECTORIO[+((usar||cop||{}).dataset||{}).i]; if(!d) return;
   const cargo=limpiarCargoDir(d.c);
   if(cop){
-    const txt=dirNombreDoc(d.n)+' — '+cargo;
+    const txt=dirNombreDoc(d)+' — '+cargo;
     if(navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>{});
     const o=cop.textContent; cop.textContent='✓ Copiado'; setTimeout(()=>cop.textContent=o,1200);
     return;
   }
-  document.getElementById('m-dest-nombre').value=dirNombreDoc(d.n);
+  document.getElementById('m-dest-nombre').value=dirNombreDoc(d);
   document.getElementById('m-dest-cargo').value=cargo;
   const ar=document.getElementById('cc-area');
   if(ar && !ar.value.trim()){ ar.value=areaDesdeCargo(cargo); vincularDesdeArea(); }
@@ -2994,6 +3050,7 @@ async function exportarTodo(){
     historial: await histTodos(),
     borrador: borrador,
     precarga: localStorage.getItem('hnal_dest_precarga')||null,
+    titulos: titulosAprendidos||{},
   };
   const f=new Date(), z=n=>('0'+n).slice(-2);
   const nombre='RESPALDO_HNAL_'+f.getFullYear()+'-'+z(f.getMonth()+1)+'-'+z(f.getDate())+'.json';
@@ -3016,6 +3073,7 @@ async function importarTodo(file){
     if(obj.borrador) localStorage.setItem('hnal_borrador', JSON.stringify(obj.borrador));
     else localStorage.removeItem('hnal_borrador');
     if(obj.precarga) localStorage.setItem('hnal_dest_precarga', obj.precarga);
+    if(obj.titulos){ titulosAprendidos=obj.titulos; localStorage.setItem('hnal_titulos', JSON.stringify(obj.titulos)); }
   }catch(e){}
   return {t,d,pr,h};
 }

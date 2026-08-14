@@ -220,6 +220,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   border-radius:10px;padding:12px 15px;margin-bottom:10px;background:#fbfcfe;}
 .tr-row .tr-info{flex:1;min-width:180px;}
 .tr-row .tr-nom{font-weight:700;color:var(--azul);}
+.dir-tit{display:inline-block;background:#e8eef7;color:#1f4e79;border-radius:4px;padding:0 5px;font-size:.82em;letter-spacing:.02em;}
 .tr-row .tr-meta{font-size:.8rem;color:var(--muted);margin-top:2px;}
 .tr-row .btn-mini{flex-shrink:0;}
 .tr-vacio{color:var(--muted);font-size:.9rem;padding:6px 2px;}
@@ -2024,6 +2025,7 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       descargarBlob(blob, 'MEMO_VALIDACION_'+abreviarObjeto(datos.titulo)+'.docx', msg, 'memo');
       aprenderAreaJefe();   // recuerda qué jefe corresponde a esa área usuaria
+      aprenderTitulo(datos.destNombre);   // y con qué carrera se le nombra
       datos.filas.forEach(f=>upsertProveedor({nombre:f.empresa, ruc:f.ruc})); // alimentar el directorio
     }catch(err){ mostrarErrorMemo(err.message||'Ocurrió un error al generar el memo.'); console.error(err); }
   }, 'memo');
@@ -2185,6 +2187,7 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       const objNota = (document.getElementById('cc-denom').value||'').trim() || filas[0].descripcion || 'NOTA';
       descargarBlob(blob, 'NOTA_INFORMATIVA_'+abreviarObjeto(objNota)+'.docx', msg, 'nota');
+      aprenderTitulo(datos.destNombre);   // recuerda con qué carrera se nombra a ese funcionario
     }catch(err){ mostrarErrorNota(err.message||'Ocurrió un error al generar la nota.'); console.error(err); }
   }, 'nota');
 });
@@ -2548,7 +2551,7 @@ function vincularDesdeArea(){
   if(!d && typeof dirPorArea==='function'){
     // si no está en los guardados, se busca en el directorio del hospital
     const x=dirPorArea(inp.value);
-    if(x){ d={nombre:dirNombreDoc(x.n), cargo:limpiarCargoDir(x.c)}; fuente=' (directorio)'; }
+    if(x){ d={nombre:dirNombreDoc(x), cargo:limpiarCargoDir(x.c)}; fuente=' (directorio)'; }
   }
   if(!d){ if(hint) hint.textContent=''; return; }
   if(hint) hint.textContent='🔗 Jefe: '+d.nombre+(d.cargo?' — '+d.cargo:'')+fuente;
@@ -2952,7 +2955,630 @@ document.getElementById('tr-imp-excel-file').addEventListener('change', async (e
 });
 
 // ====================== DIRECTORIO DEL HOSPITAL ======================
-const DIRECTORIO = [{"n":"Eduardo Franklin Yong Motta","c":"Director General del Hospital Nacional Arzobispo Loayza"},{"n":"Eduardo Franklin Yong Motta","c":"Director Adjunto del Hospital Nacional Arzobispo Loayza"},{"n":"Manuel Godofredo Arancel Díaz","c":"Jefe del Órgano de Control Institucional"},{"n":"José Raúl Carpio Barbieri","c":"Director Ejecutivo de la Oficina Ejecutiva de Planeamiento Estratégico"},{"n":"Arturo Cirilo Rojas Gonzales","c":"Director Ejecutivo de la Oficina Ejecutiva de Administración"},{"n":"Jacquelin Alicia Tello Ayala","c":"Jefa del Departamento de Nutrición y Dietética"},{"n":"María Cecilia Ortíz Mejía","c":"Jefa del Departamento de Diagnóstico por Imágenes"},{"n":"Luis Sandro Florian Tutaya","c":"Jefe del Departamento de Pediatría"},{"n":"Pierino Humberto Álvarez Bedoya","c":"Jefe del Departamento de Anatomía Patológica"},{"n":"Carlos Homero Otiniano Alvarado","c":"Jefe del Departamento de Cirugía General, Aparato Digestivo y Pared Abdominal"},{"n":"Marco Antonio Limache Tueros","c":"Jefe del Departamento de Consulta Externa y Hospitalización"},{"n":"Luis Alberto Maya Pérez","c":"Jefe del Departamento de Medicina Interna"},{"n":"José Alberto Rojas Jaimes","c":"Jefe del Departamento de Ginecología y Obstetricia"},{"n":"Marieta Mercedes Vilca Hurtado","c":"Jefa del Departamento de Servicio Social"},{"n":"Félix Jesús Romero Peña","c":"Jefe del Departamento de Especialidades Médicas"},{"n":"Percy Genaro Salas Ponce","c":"Jefe del Departamento de Patología Clínica y Banco de Sangre"},{"n":"Pedro Ernesto Castillo Chirinos","c":"Jefe del Departamento de Especialidades Quirúrgicas"},{"n":"Iván Bernuy Rodríguez","c":"Jefe del Departamento de Emergencia y Cuidados Críticos"},{"n":"Nancy Salinas Escobar","c":"Jefa del Departamento de Enfermería"},{"n":"Leonardo Moisés Corrales Mechato","c":"Jefe del Departamento de Anestesiología y Centros Quirúrgicos"},{"n":"Sonia Apaestegui Infanzon","c":"Jefe del Departamento de Farmacia"},{"n":"Lily Nera Asencios Trujillo","c":"Jefa del Departamento de Estomatología"},{"n":"Natalia Patricia Ysla Rubiños","c":"Jefa de la Oficina de Comunicaciones"},{"n":"Moisés Guido Sihuincha Maldonado","c":"Jefe de la Oficina de Epidemiología y Salud Ambiental"},{"n":"Italo Edward Vásquez Vargas","c":"Jefe de la Oficina de Gestión de la Calidad"},{"n":"María Lucinda Ramon Velásquez","c":"Jefa de la Oficina de Estadística e Informática"},{"n":"Hamilton Muñoz Tafur","c":"Jefe de la Oficina de Personal"},{"n":"Elizabeth Lucila Vargas Fabes","c":"Jefa de la Oficina de Asesoría Jurídica"},{"n":"Jorge Luis Takami Oblitas","c":"Jefe de la Oficina de Servicios Generales y Mantenimiento de la OEA"},{"n":"Wilfredo Uber Ascencios Principe","c":"Jefe de la Oficina de Economía"},{"n":"Carlos Segundo Cruzado Grau","c":"Jefe de la Oficina de Apoyo a la Docencia e Investigación"},{"n":"Frank Ronald Tipte Ruiz","c":"Jefe de la Oficina de Logística de la Oficina Ejecutiva de Administración"},{"n":"Juan Carlos Velasco Guerrero","c":"Jefe de la Oficina de Seguros"},{"n":"Juan Marcos Villón Almendras","c":"Jefe del Servicio de Geriatría"},{"n":"Marsi Mónica Larragán Rodríguez","c":"Jefa del Servicio de Pediatría"},{"n":"Mario Daniel Danilla Dávila","c":"Jefe del Servicio de Neumología"},{"n":"Jorge Luis Garavito Rentería","c":"Jefe del Servicio de Gastroenterología"},{"n":"Mario Roberto Cavero Cueva","c":"Jefe del Servicio de Radiología"},{"n":"Ana María Del Carmen Paredes Pérez","c":"Jefa del Servicio de Ecografía"},{"n":"Freddy Edmundo García Ramos","c":"Jefe del Servicio de Endocrinología"},{"n":"Percy Genaro Salas Ponce","c":"Jefe del Servicio de Bioquímica"},{"n":"Carmen Nelly Zapata Nalbarte","c":"Jefa del Servicio Social de Emergencia Adultos y Materno Infantil"},{"n":"Boris Eduardo Medina Santander","c":"Jefe del Servicio de Nefrología"},{"n":"Víctor Alfonso Valencia Caballero","c":"Jefe del Servicio de Medicina Interna 1-I"},{"n":"Silvia Patricia Martina Zamudio Romero","c":"Jefa del Servicio de Medicina Interna 3-II"},{"n":"Sonia Del Pilar Huaipar Rodríguez","c":"Jefa del Servicio de Neonatología"},{"n":"Marisol Rosa Egusquiza Ortega","c":"Jefa del Servicio de Hospitalización"},{"n":"Jorge Humberto Pedro Velásquez Pomar","c":"Jefe del Servicio de Microbiología"},{"n":"Daniel Andrés Caceres Alpaca","c":"Jefe del Servicio de Medicina Interna 1-II"},{"n":"Zandra Judith Moncada Vilela","c":"Jefa del Servicio de Medicina Interna 2-II"},{"n":"Aldo Belly Vivar Mendoza","c":"Jefe del Servicio de Medicina Interna 8-I"},{"n":"Federico Efrain Elguera Falcón","c":"Jefe del Servicio de Medicina Interna 4-II"},{"n":"José Ignacio Vladimiro Caballero López","c":"Jefe del Servicio de Medicina Interna 4-I"},{"n":"Gilberto Fernando Torres Vega","c":"Jefe del Servicio de Cardiología y Cuidados Coronarios"},{"n":"Jorge Aysanoa Ballester","c":"Jefe del Servicio de Cirugía Vascular Periférico y Angiología"},{"n":"Jorge Aquiles Orna Costa","c":"Jefe del Servicio de Oftalmología"},{"n":"Julio Cesar Ricardo Castillo Garagate","c":"Jefe del Servicio de Cirugía Torácica y Cardiovascular"},{"n":"Leónidas Chang Carrillo Ñañez","c":"Jefe del Servicio de Medicina Interna 2-I"},{"n":"Wenceslao Javier Castillo Farneschi","c":"Jefe del Servicio de Dermatología"},{"n":"Rosa Elvira Sack Ninatanta","c":"Jefa del Servicio de Obstetricia"},{"n":"Johandi Delgado Quispe","c":"Jefe del Servicio de Cirugía 6-II"},{"n":"Maria Angela Fernandez Pacheco","c":"Jefa de Servicio de Enfermería en Atención Clínica Pabellón 1"},{"n":"Virginia Tanta De Solano","c":"Jefa de Servicio de Enfermería en Atención Quirúrgico Pabellón 6-I"},{"n":"Mirian Belbet Pineda Segura De Rentería","c":"Jefa de Servicio de Enfermería en Cuidado Quirúrgico en Traumatología y Urología"},{"n":"Cecilia Del Pilar Murga Cornejo","c":"Jefa de Servicio de Enfermería en Atención Clínica Pabellón 2"},{"n":"María Guima Reinoso Huerta","c":"Jefa de Servicio de Enfermería Cuidado Quirúrgico Pabellón 6-II Y 6-III"},{"n":"Gladys Borjas Avalos","c":"Jefa de Servicio de Enfermería en Cuidado del Neonato y del Niño"},{"n":"Juan Carlos Samame Perez Vargas","c":"Jefe del Servicio de Oncohematología"},{"n":"Roberto Eduardo Avila Matos","c":"Jefe del Servicio de Ginecología"},{"n":"Beatriz Ore Diaz","c":"Jefa del Servicio Social de Educación y Animación Social"},{"n":"Luis Yingherd Garcia Bernal","c":"Jefe del Servicio de Oncología Ginecológica y Mama"},{"n":"José Antonio Novoa Pérez","c":"Jefe del Servicio de Cirugía de Cabeza y Cuello"},{"n":"Yaneth Mónica Peña Valverde","c":"Jefa del Servicio de Farmacia"},{"n":"María Elena Álvarez Peralta","c":"Jefa del Servicio de Fórmulas Magistrales y Set Quirúrgicos"},{"n":"Martin Diego Sanchez Sanguinetti","c":"Jefe del Servicio de Neurología"},{"n":"Mijahil Pavel Cornejo Ortega","c":"Jefe del Servicio de Inmunoreumatología"},{"n":"Nathaly Fernández Castro","c":"Jefa del Servicio de Inmunoserología"},{"n":"Juan Ismael Villarreal Menchola","c":"Jefe del Servicio de Medicina Interna 3-I"},{"n":"Víctor Vladimir Torres Pérez","c":"Jefe del Servicio de Neurocirugía"},{"n":"Eduardo Demetrio Matos Prado","c":"Jefe del Servicio de Infectología"},{"n":"Juan Mirko Tello Vinces","c":"Jefe del Servicio de Ortopedia y Traumatología"},{"n":"Ronny Mitchel Mercado Lopez","c":"Jefe del Servicio de Cuidados Intensivos y Cuidados Intermedios"},{"n":"Erwin Werner Laserna Suarez","c":"Jefe del Servicio de Emergencia"},{"n":"Libertad Pascuala Alcoser Oliveros","c":"Jefa de Servicio de Enfermería en Atención Clínica Pabellón 4 y 8-I"},{"n":"Juan Antonio Allemant Mori","c":"Jefe del Servicio de Reproducción Humana"},{"n":"Martina Obando Zegarra","c":"Jefa de Servicio de Enfermería en Atención de Emergencia"},{"n":"Emma Gladys Cadenillas Coronel","c":"Jefa de Servicio de Enfermería en Consulta Externa"},{"n":"Alexander Adonias Espinoza Vargas","c":"Jefe del Servicio de Cirugía 6-III"},{"n":"Alina Bruner Carrasco Gil","c":"Jefa del Servicio de Banco de Sangre"},{"n":"Pedro Cesar Ciudad Cruz","c":"Jefe del Servicio de Cirugía Plástica y Quemados"},{"n":"Karen Stephania Osorio Gilardi","c":"Jefa del Servicio de Anestesia"},{"n":"Melissa Sue Velarde Rodriguez","c":"Jefa del Servicio de Citología"},{"n":"Guillermo Idelso Zuñiga Briceño","c":"Jefe de Servicio de Enfermería en Atención Clínica Pabellón 3"},{"n":"Graciela Celina Priale Priale","c":"Jefe del Servicio de Hematología"},{"n":"Walter Manuel Guitton Arteaga","c":"Jefe del Servicio de Histopatología y Necropsias"},{"n":"Marco Antonio Limache Tueros","c":"Jefe del Servicio de Salud Mental"},{"n":"Nancy Emperatriz Garcia Pretell","c":"Jefa del Servicio de Alimentación Central"},{"n":"Roxana Zoila Roman Gameros","c":"Jefa del Servicio de Tratamiento Dietético"},{"n":"María Elena Franco Cortez","c":"Jefa de Servicio de Enfermería en Atención Ginecológica y Obstetricia"},{"n":"Lucia Veronica Jara Zumaran","c":"Jefa del Servicio de Consulta Externa"},{"n":"Ana Milagros Serpa Solano","c":"Jefa del Servicio Social de Hospitalización y Consulta Externa"},{"n":"Martha Cecilia Rios Lopez","c":"Jefa del Servicio de Obstetrices"},{"n":"Gerber Hernan Flores Ccosi","c":"Jefe del Servicio de Urología"},{"n":"Patricia Elizabeth Burga Coronado","c":"Jefa del Servicio de Enfermería en Atención en Sala de Operaciones y Central de Esterilización del Departamento de Enfermería"},{"n":"Oswaldo Ángelo Granados Huaynates","c":"Jefa del Servicio de Reanimación"},{"n":"Rubisnol Daga Javier","c":"Jefe del Servicio de Analgesia"},{"n":"Nadia Liz Segovia Cabello","c":"Jefa del Servicio de Medicina Preventiva y Salud Publica"},{"n":"Rosa Elizabeth Nina Lopez","c":"Jefa del Servicio de Medicina Física y Rehabilitación"},{"n":"Helmund Mariano Manza Diaz","c":"Jefe del Servicio de Otorrinolaringología"},{"n":"Luz Beldad Silva Cachay","c":"Jefa del Servicio de Enfermería en Atención Integral"},{"n":"Nelsa Alina Pacheco Baldeon","c":"Jefa de Servicio de Enfermería en Atención UCI General y UCI Coronarias"},{"n":"Juan Avelino Larios Mitacc","c":"Jefe del Servicio de Estomatología Quirúrgica del Departamento de Estomatología"},{"n":"Ronald Arnaldo Ore De La Cruz","c":"Jefe del Servicio de Cirugía 6-I"},{"n":"Elizabeth Sonia Cerro Olivares","c":"Jefa del Servicio de Estomatología Clínica"},{"n":"Jaime Ronald Román Gutarra","c":"Jefe de la Unidad de Registros Médicos de la OEI"},{"n":"Lucy Nancy Isla Samaniego","c":"Jefa de la Unidad Funcional de Presupuesto de la OEPE"},{"n":"Ysabel Guerrero López","c":"Jefa de la Unidad Funcional de Costos, Ingresos y Tarifas de la OEPE"},{"n":"Rodolfo Castilla Ponce De León","c":"Jefe de la Unidad de Lavandería de la OSGM"},{"n":"Mario De La Cruz Yauri","c":"Jefe de la Unidad de Costura de la OSGM"},{"n":"Milusca Giovana Flores Durand","c":"Jefa de la Unidad Funcional de Planeamiento y Gestión Institucional de la OEPE"},{"n":"Vicente Federico Suárez Mori","c":"Jefe de la Unidad Funcional de Organización Institucional de la OEPE"},{"n":"Sony Marleny Quiróz Navarro","c":"Jefa de la Unidad Funcional Proyectos de Inversión de la OEPE"},{"n":"Brumilda Carlos Carrasco","c":"Jefa de la Unidad de Presupuesto de la Oficina de Economía"},{"n":"David Aníbal Ascencio Garay","c":"Jefe de la Unidad de Archivo Central de la OEI"},{"n":"Rosa Agustina Rojas Rodríguez","c":"Jefe de la Unidad de Desarrollo y Capacitación de Recursos Humanos de la Oficina de Personal"},{"n":"Dora Amalia Morales Tarazona","c":"Jefe de la Unidad de Remuneraciones Beneficios y Pensiones de la Oficina de Personal"},{"n":"Luis Díaz Sánchez","c":"Jefe de la Unidad de Mantenimiento de la OSGM"},{"n":"Rosario Cerrón Torres","c":"Jefa de la Unidad de Secretaria Técnica de la Dirección General"},{"n":"Raúl Barzola Chávez","c":"Jefe de la Unidad de Tramite Documentario"},{"n":"Herbert Jesús Diaz Villon","c":"Jefe de la Unidad de Estadística"},{"n":"Israel Gilberto Paredes Carbajal","c":"Jefe de la Unidad de Limpieza y Jardines de la OSGM"},{"n":"Magaly Rosario Sanchez Ávila","c":"Jefa de la Unidad de Bienestar Social de Servicios Básicos de la Oficina de Personal"},{"n":"Elizabeth Lucila Vargas Fabes","c":"Secretaria Técnica de los Órganos Instructores del Procedimiento Administrativo Disciplinario"},{"n":"Lizeth Olenka Limache Montes","c":"Jefa de la Unidad de Prevención, Seguridad y Salud en el Trabajo"},{"n":"Cesar Luis García Laya","c":"Jefe de la Unidad de Transporte de la OSGM"},{"n":"Edwin Silverio Aponte Penadillo","c":"Jefe de la Unidad de Ingeniería Clínica de la OSGM"},{"n":"Eduardo Santos Velásquez","c":"Jefe de la Unidad de Tesorería de la Oficina de Economía"},{"n":"Manuel Alfredo Ybarcena Izaguirre","c":"Jefe de la Unidad de Programación, Presupuesto y Planeamiento de RRHH de la Oficina de Personal"},{"n":"Alicia Emperatriz Mantilla Arestegui","c":"Jefe de la Unidad de Control Previo de la Oficina de Economía"},{"n":"Edwin Alberto Ravines Sanchez Tirado","c":"Jefe de la Unidad de Control Patrimonial de la Oficina de Logística"},{"n":"Arturo Cirilo Rojas Gonzales","c":"Jefe de la Unidad de Programación de la Oficina de Logística"},{"n":"Ana Ulianova Vargas Chancara","c":"Jefa de la Unidad de Contabilidad de la Oficina de Economia"},{"n":"María Lucinda Ramon Velásquez","c":"Jefa de la Unidad de Informática"},{"n":"María Edith Zavala Parodi","c":"Jefa de la Unidad de Ingreso y Escalafón de la Oficina de Personal"},{"n":"Carlos Enrique Vilela Pacherre","c":"Jefe de la Unidad de Almacén de la Oficina de Logística"},{"n":"Juan José Gonzales Nonato","c":"Jefe de la Unidad de Seguridad y Vigilancia de la OSGM"},{"n":"Próspero Emiro Montenegro Ángeles","c":"Jefe de la Unidad de Adquisiciones de la Oficina de Logística"},{"n":"Elizabeth Lucila Vargas Fabes","c":"Responsable de Acceso a la Información Pública"},{"n":"David Zenobio Vilcarano Bendezú","c":"Coordinador General de TELESALUD"},{"n":"Cinthya Evangelista Medina","c":"Coordinadora de la Unidad de Gestión del Riesgo de Desastres"},{"n":"Mercedes Celestino Marcelo","c":"Responsable de la Plataforma de Atención al Usuario"}];
+const DIRECTORIO = [
+ {
+  "n": "Eduardo Franklin Yong Motta",
+  "c": "Director General del Hospital Nacional Arzobispo Loayza"
+ },
+ {
+  "n": "Eduardo Franklin Yong Motta",
+  "c": "Director Adjunto del Hospital Nacional Arzobispo Loayza"
+ },
+ {
+  "n": "Manuel Godofredo Arancel Díaz",
+  "c": "Jefe del Órgano de Control Institucional"
+ },
+ {
+  "n": "José Raúl Carpio Barbieri",
+  "c": "Director Ejecutivo de la Oficina Ejecutiva de Planeamiento Estratégico"
+ },
+ {
+  "n": "Arturo Cirilo Rojas Gonzales",
+  "c": "Director Ejecutivo de la Oficina Ejecutiva de Administración",
+  "t": "LIC."
+ },
+ {
+  "n": "Jacquelin Alicia Tello Ayala",
+  "c": "Jefa del Departamento de Nutrición y Dietética",
+  "t": "LIC."
+ },
+ {
+  "n": "María Cecilia Ortíz Mejía",
+  "c": "Jefa del Departamento de Diagnóstico por Imágenes",
+  "t": "DRA."
+ },
+ {
+  "n": "Luis Sandro Florian Tutaya",
+  "c": "Jefe del Departamento de Pediatría"
+ },
+ {
+  "n": "Pierino Humberto Álvarez Bedoya",
+  "c": "Jefe del Departamento de Anatomía Patológica"
+ },
+ {
+  "n": "Carlos Homero Otiniano Alvarado",
+  "c": "Jefe del Departamento de Cirugía General, Aparato Digestivo y Pared Abdominal"
+ },
+ {
+  "n": "Marco Antonio Limache Tueros",
+  "c": "Jefe del Departamento de Consulta Externa y Hospitalización"
+ },
+ {
+  "n": "Luis Alberto Maya Pérez",
+  "c": "Jefe del Departamento de Medicina Interna"
+ },
+ {
+  "n": "José Alberto Rojas Jaimes",
+  "c": "Jefe del Departamento de Ginecología y Obstetricia",
+  "t": "DR."
+ },
+ {
+  "n": "Marieta Mercedes Vilca Hurtado",
+  "c": "Jefa del Departamento de Servicio Social"
+ },
+ {
+  "n": "Félix Jesús Romero Peña",
+  "c": "Jefe del Departamento de Especialidades Médicas"
+ },
+ {
+  "n": "Percy Genaro Salas Ponce",
+  "c": "Jefe del Departamento de Patología Clínica y Banco de Sangre"
+ },
+ {
+  "n": "Pedro Ernesto Castillo Chirinos",
+  "c": "Jefe del Departamento de Especialidades Quirúrgicas",
+  "t": "DR."
+ },
+ {
+  "n": "Iván Bernuy Rodríguez",
+  "c": "Jefe del Departamento de Emergencia y Cuidados Críticos",
+  "t": "DR."
+ },
+ {
+  "n": "Nancy Salinas Escobar",
+  "c": "Jefa del Departamento de Enfermería"
+ },
+ {
+  "n": "Leonardo Moisés Corrales Mechato",
+  "c": "Jefe del Departamento de Anestesiología y Centros Quirúrgicos",
+  "t": "DR."
+ },
+ {
+  "n": "Sonia Apaestegui Infanzon",
+  "c": "Jefe del Departamento de Farmacia",
+  "t": "Q.F."
+ },
+ {
+  "n": "Lily Nera Asencios Trujillo",
+  "c": "Jefa del Departamento de Estomatología"
+ },
+ {
+  "n": "Natalia Patricia Ysla Rubiños",
+  "c": "Jefa de la Oficina de Comunicaciones"
+ },
+ {
+  "n": "Moisés Guido Sihuincha Maldonado",
+  "c": "Jefe de la Oficina de Epidemiología y Salud Ambiental"
+ },
+ {
+  "n": "Italo Edward Vásquez Vargas",
+  "c": "Jefe de la Oficina de Gestión de la Calidad"
+ },
+ {
+  "n": "María Lucinda Ramon Velásquez",
+  "c": "Jefa de la Oficina de Estadística e Informática",
+  "t": "ING."
+ },
+ {
+  "n": "Hamilton Muñoz Tafur",
+  "c": "Jefe de la Oficina de Personal"
+ },
+ {
+  "n": "Elizabeth Lucila Vargas Fabes",
+  "c": "Jefa de la Oficina de Asesoría Jurídica"
+ },
+ {
+  "n": "Jorge Luis Takami Oblitas",
+  "c": "Jefe de la Oficina de Servicios Generales y Mantenimiento de la OEA",
+  "t": "ING."
+ },
+ {
+  "n": "Wilfredo Uber Ascencios Principe",
+  "c": "Jefe de la Oficina de Economía",
+  "t": "C.P.C."
+ },
+ {
+  "n": "Carlos Segundo Cruzado Grau",
+  "c": "Jefe de la Oficina de Apoyo a la Docencia e Investigación"
+ },
+ {
+  "n": "Frank Ronald Tipte Ruiz",
+  "c": "Jefe de la Oficina de Logística de la Oficina Ejecutiva de Administración",
+  "t": "ING."
+ },
+ {
+  "n": "Juan Carlos Velasco Guerrero",
+  "c": "Jefe de la Oficina de Seguros"
+ },
+ {
+  "n": "Juan Marcos Villón Almendras",
+  "c": "Jefe del Servicio de Geriatría"
+ },
+ {
+  "n": "Marsi Mónica Larragán Rodríguez",
+  "c": "Jefa del Servicio de Pediatría"
+ },
+ {
+  "n": "Mario Daniel Danilla Dávila",
+  "c": "Jefe del Servicio de Neumología"
+ },
+ {
+  "n": "Jorge Luis Garavito Rentería",
+  "c": "Jefe del Servicio de Gastroenterología",
+  "t": "DR."
+ },
+ {
+  "n": "Mario Roberto Cavero Cueva",
+  "c": "Jefe del Servicio de Radiología"
+ },
+ {
+  "n": "Ana María Del Carmen Paredes Pérez",
+  "c": "Jefa del Servicio de Ecografía"
+ },
+ {
+  "n": "Freddy Edmundo García Ramos",
+  "c": "Jefe del Servicio de Endocrinología"
+ },
+ {
+  "n": "Percy Genaro Salas Ponce",
+  "c": "Jefe del Servicio de Bioquímica"
+ },
+ {
+  "n": "Carmen Nelly Zapata Nalbarte",
+  "c": "Jefa del Servicio Social de Emergencia Adultos y Materno Infantil"
+ },
+ {
+  "n": "Boris Eduardo Medina Santander",
+  "c": "Jefe del Servicio de Nefrología"
+ },
+ {
+  "n": "Víctor Alfonso Valencia Caballero",
+  "c": "Jefe del Servicio de Medicina Interna 1-I"
+ },
+ {
+  "n": "Silvia Patricia Martina Zamudio Romero",
+  "c": "Jefa del Servicio de Medicina Interna 3-II"
+ },
+ {
+  "n": "Sonia Del Pilar Huaipar Rodríguez",
+  "c": "Jefa del Servicio de Neonatología"
+ },
+ {
+  "n": "Marisol Rosa Egusquiza Ortega",
+  "c": "Jefa del Servicio de Hospitalización"
+ },
+ {
+  "n": "Jorge Humberto Pedro Velásquez Pomar",
+  "c": "Jefe del Servicio de Microbiología"
+ },
+ {
+  "n": "Daniel Andrés Caceres Alpaca",
+  "c": "Jefe del Servicio de Medicina Interna 1-II"
+ },
+ {
+  "n": "Zandra Judith Moncada Vilela",
+  "c": "Jefa del Servicio de Medicina Interna 2-II"
+ },
+ {
+  "n": "Aldo Belly Vivar Mendoza",
+  "c": "Jefe del Servicio de Medicina Interna 8-I"
+ },
+ {
+  "n": "Federico Efrain Elguera Falcón",
+  "c": "Jefe del Servicio de Medicina Interna 4-II"
+ },
+ {
+  "n": "José Ignacio Vladimiro Caballero López",
+  "c": "Jefe del Servicio de Medicina Interna 4-I"
+ },
+ {
+  "n": "Gilberto Fernando Torres Vega",
+  "c": "Jefe del Servicio de Cardiología y Cuidados Coronarios"
+ },
+ {
+  "n": "Jorge Aysanoa Ballester",
+  "c": "Jefe del Servicio de Cirugía Vascular Periférico y Angiología"
+ },
+ {
+  "n": "Jorge Aquiles Orna Costa",
+  "c": "Jefe del Servicio de Oftalmología"
+ },
+ {
+  "n": "Julio Cesar Ricardo Castillo Garagate",
+  "c": "Jefe del Servicio de Cirugía Torácica y Cardiovascular"
+ },
+ {
+  "n": "Leónidas Chang Carrillo Ñañez",
+  "c": "Jefe del Servicio de Medicina Interna 2-I"
+ },
+ {
+  "n": "Wenceslao Javier Castillo Farneschi",
+  "c": "Jefe del Servicio de Dermatología"
+ },
+ {
+  "n": "Rosa Elvira Sack Ninatanta",
+  "c": "Jefa del Servicio de Obstetricia"
+ },
+ {
+  "n": "Johandi Delgado Quispe",
+  "c": "Jefe del Servicio de Cirugía 6-II"
+ },
+ {
+  "n": "Maria Angela Fernandez Pacheco",
+  "c": "Jefa de Servicio de Enfermería en Atención Clínica Pabellón 1"
+ },
+ {
+  "n": "Virginia Tanta De Solano",
+  "c": "Jefa de Servicio de Enfermería en Atención Quirúrgico Pabellón 6-I"
+ },
+ {
+  "n": "Mirian Belbet Pineda Segura De Rentería",
+  "c": "Jefa de Servicio de Enfermería en Cuidado Quirúrgico en Traumatología y Urología"
+ },
+ {
+  "n": "Cecilia Del Pilar Murga Cornejo",
+  "c": "Jefa de Servicio de Enfermería en Atención Clínica Pabellón 2"
+ },
+ {
+  "n": "María Guima Reinoso Huerta",
+  "c": "Jefa de Servicio de Enfermería Cuidado Quirúrgico Pabellón 6-II Y 6-III"
+ },
+ {
+  "n": "Gladys Borjas Avalos",
+  "c": "Jefa de Servicio de Enfermería en Cuidado del Neonato y del Niño"
+ },
+ {
+  "n": "Juan Carlos Samame Perez Vargas",
+  "c": "Jefe del Servicio de Oncohematología"
+ },
+ {
+  "n": "Roberto Eduardo Avila Matos",
+  "c": "Jefe del Servicio de Ginecología"
+ },
+ {
+  "n": "Beatriz Ore Diaz",
+  "c": "Jefa del Servicio Social de Educación y Animación Social"
+ },
+ {
+  "n": "Luis Yingherd Garcia Bernal",
+  "c": "Jefe del Servicio de Oncología Ginecológica y Mama"
+ },
+ {
+  "n": "José Antonio Novoa Pérez",
+  "c": "Jefe del Servicio de Cirugía de Cabeza y Cuello"
+ },
+ {
+  "n": "Yaneth Mónica Peña Valverde",
+  "c": "Jefa del Servicio de Farmacia"
+ },
+ {
+  "n": "María Elena Álvarez Peralta",
+  "c": "Jefa del Servicio de Fórmulas Magistrales y Set Quirúrgicos"
+ },
+ {
+  "n": "Martin Diego Sanchez Sanguinetti",
+  "c": "Jefe del Servicio de Neurología"
+ },
+ {
+  "n": "Mijahil Pavel Cornejo Ortega",
+  "c": "Jefe del Servicio de Inmunoreumatología"
+ },
+ {
+  "n": "Nathaly Fernández Castro",
+  "c": "Jefa del Servicio de Inmunoserología"
+ },
+ {
+  "n": "Juan Ismael Villarreal Menchola",
+  "c": "Jefe del Servicio de Medicina Interna 3-I"
+ },
+ {
+  "n": "Víctor Vladimir Torres Pérez",
+  "c": "Jefe del Servicio de Neurocirugía"
+ },
+ {
+  "n": "Eduardo Demetrio Matos Prado",
+  "c": "Jefe del Servicio de Infectología"
+ },
+ {
+  "n": "Juan Mirko Tello Vinces",
+  "c": "Jefe del Servicio de Ortopedia y Traumatología"
+ },
+ {
+  "n": "Ronny Mitchel Mercado Lopez",
+  "c": "Jefe del Servicio de Cuidados Intensivos y Cuidados Intermedios"
+ },
+ {
+  "n": "Erwin Werner Laserna Suarez",
+  "c": "Jefe del Servicio de Emergencia"
+ },
+ {
+  "n": "Libertad Pascuala Alcoser Oliveros",
+  "c": "Jefa de Servicio de Enfermería en Atención Clínica Pabellón 4 y 8-I"
+ },
+ {
+  "n": "Juan Antonio Allemant Mori",
+  "c": "Jefe del Servicio de Reproducción Humana"
+ },
+ {
+  "n": "Martina Obando Zegarra",
+  "c": "Jefa de Servicio de Enfermería en Atención de Emergencia"
+ },
+ {
+  "n": "Emma Gladys Cadenillas Coronel",
+  "c": "Jefa de Servicio de Enfermería en Consulta Externa"
+ },
+ {
+  "n": "Alexander Adonias Espinoza Vargas",
+  "c": "Jefe del Servicio de Cirugía 6-III"
+ },
+ {
+  "n": "Alina Bruner Carrasco Gil",
+  "c": "Jefa del Servicio de Banco de Sangre"
+ },
+ {
+  "n": "Pedro Cesar Ciudad Cruz",
+  "c": "Jefe del Servicio de Cirugía Plástica y Quemados"
+ },
+ {
+  "n": "Karen Stephania Osorio Gilardi",
+  "c": "Jefa del Servicio de Anestesia"
+ },
+ {
+  "n": "Melissa Sue Velarde Rodriguez",
+  "c": "Jefa del Servicio de Citología"
+ },
+ {
+  "n": "Guillermo Idelso Zuñiga Briceño",
+  "c": "Jefe de Servicio de Enfermería en Atención Clínica Pabellón 3"
+ },
+ {
+  "n": "Graciela Celina Priale Priale",
+  "c": "Jefe del Servicio de Hematología"
+ },
+ {
+  "n": "Walter Manuel Guitton Arteaga",
+  "c": "Jefe del Servicio de Histopatología y Necropsias"
+ },
+ {
+  "n": "Marco Antonio Limache Tueros",
+  "c": "Jefe del Servicio de Salud Mental"
+ },
+ {
+  "n": "Nancy Emperatriz Garcia Pretell",
+  "c": "Jefa del Servicio de Alimentación Central"
+ },
+ {
+  "n": "Roxana Zoila Roman Gameros",
+  "c": "Jefa del Servicio de Tratamiento Dietético"
+ },
+ {
+  "n": "María Elena Franco Cortez",
+  "c": "Jefa de Servicio de Enfermería en Atención Ginecológica y Obstetricia"
+ },
+ {
+  "n": "Lucia Veronica Jara Zumaran",
+  "c": "Jefa del Servicio de Consulta Externa"
+ },
+ {
+  "n": "Ana Milagros Serpa Solano",
+  "c": "Jefa del Servicio Social de Hospitalización y Consulta Externa"
+ },
+ {
+  "n": "Martha Cecilia Rios Lopez",
+  "c": "Jefa del Servicio de Obstetrices"
+ },
+ {
+  "n": "Gerber Hernan Flores Ccosi",
+  "c": "Jefe del Servicio de Urología"
+ },
+ {
+  "n": "Patricia Elizabeth Burga Coronado",
+  "c": "Jefa del Servicio de Enfermería en Atención en Sala de Operaciones y Central de Esterilización del Departamento de Enfermería"
+ },
+ {
+  "n": "Oswaldo Ángelo Granados Huaynates",
+  "c": "Jefa del Servicio de Reanimación"
+ },
+ {
+  "n": "Rubisnol Daga Javier",
+  "c": "Jefe del Servicio de Analgesia"
+ },
+ {
+  "n": "Nadia Liz Segovia Cabello",
+  "c": "Jefa del Servicio de Medicina Preventiva y Salud Publica"
+ },
+ {
+  "n": "Rosa Elizabeth Nina Lopez",
+  "c": "Jefa del Servicio de Medicina Física y Rehabilitación"
+ },
+ {
+  "n": "Helmund Mariano Manza Diaz",
+  "c": "Jefe del Servicio de Otorrinolaringología"
+ },
+ {
+  "n": "Luz Beldad Silva Cachay",
+  "c": "Jefa del Servicio de Enfermería en Atención Integral"
+ },
+ {
+  "n": "Nelsa Alina Pacheco Baldeon",
+  "c": "Jefa de Servicio de Enfermería en Atención UCI General y UCI Coronarias"
+ },
+ {
+  "n": "Juan Avelino Larios Mitacc",
+  "c": "Jefe del Servicio de Estomatología Quirúrgica del Departamento de Estomatología"
+ },
+ {
+  "n": "Ronald Arnaldo Ore De La Cruz",
+  "c": "Jefe del Servicio de Cirugía 6-I"
+ },
+ {
+  "n": "Elizabeth Sonia Cerro Olivares",
+  "c": "Jefa del Servicio de Estomatología Clínica"
+ },
+ {
+  "n": "Jaime Ronald Román Gutarra",
+  "c": "Jefe de la Unidad de Registros Médicos de la OEI"
+ },
+ {
+  "n": "Lucy Nancy Isla Samaniego",
+  "c": "Jefa de la Unidad Funcional de Presupuesto de la OEPE"
+ },
+ {
+  "n": "Ysabel Guerrero López",
+  "c": "Jefa de la Unidad Funcional de Costos, Ingresos y Tarifas de la OEPE"
+ },
+ {
+  "n": "Rodolfo Castilla Ponce De León",
+  "c": "Jefe de la Unidad de Lavandería de la OSGM"
+ },
+ {
+  "n": "Mario De La Cruz Yauri",
+  "c": "Jefe de la Unidad de Costura de la OSGM"
+ },
+ {
+  "n": "Milusca Giovana Flores Durand",
+  "c": "Jefa de la Unidad Funcional de Planeamiento y Gestión Institucional de la OEPE"
+ },
+ {
+  "n": "Vicente Federico Suárez Mori",
+  "c": "Jefe de la Unidad Funcional de Organización Institucional de la OEPE"
+ },
+ {
+  "n": "Sony Marleny Quiróz Navarro",
+  "c": "Jefa de la Unidad Funcional Proyectos de Inversión de la OEPE"
+ },
+ {
+  "n": "Brumilda Carlos Carrasco",
+  "c": "Jefa de la Unidad de Presupuesto de la Oficina de Economía"
+ },
+ {
+  "n": "David Aníbal Ascencio Garay",
+  "c": "Jefe de la Unidad de Archivo Central de la OEI"
+ },
+ {
+  "n": "Rosa Agustina Rojas Rodríguez",
+  "c": "Jefe de la Unidad de Desarrollo y Capacitación de Recursos Humanos de la Oficina de Personal"
+ },
+ {
+  "n": "Dora Amalia Morales Tarazona",
+  "c": "Jefe de la Unidad de Remuneraciones Beneficios y Pensiones de la Oficina de Personal"
+ },
+ {
+  "n": "Luis Díaz Sánchez",
+  "c": "Jefe de la Unidad de Mantenimiento de la OSGM"
+ },
+ {
+  "n": "Rosario Cerrón Torres",
+  "c": "Jefa de la Unidad de Secretaria Técnica de la Dirección General"
+ },
+ {
+  "n": "Raúl Barzola Chávez",
+  "c": "Jefe de la Unidad de Tramite Documentario",
+  "t": "SR."
+ },
+ {
+  "n": "Herbert Jesús Diaz Villon",
+  "c": "Jefe de la Unidad de Estadística"
+ },
+ {
+  "n": "Israel Gilberto Paredes Carbajal",
+  "c": "Jefe de la Unidad de Limpieza y Jardines de la OSGM"
+ },
+ {
+  "n": "Magaly Rosario Sanchez Ávila",
+  "c": "Jefa de la Unidad de Bienestar Social de Servicios Básicos de la Oficina de Personal"
+ },
+ {
+  "n": "Elizabeth Lucila Vargas Fabes",
+  "c": "Secretaria Técnica de los Órganos Instructores del Procedimiento Administrativo Disciplinario"
+ },
+ {
+  "n": "Lizeth Olenka Limache Montes",
+  "c": "Jefa de la Unidad de Prevención, Seguridad y Salud en el Trabajo"
+ },
+ {
+  "n": "Cesar Luis García Laya",
+  "c": "Jefe de la Unidad de Transporte de la OSGM"
+ },
+ {
+  "n": "Edwin Silverio Aponte Penadillo",
+  "c": "Jefe de la Unidad de Ingeniería Clínica de la OSGM",
+  "t": "ING."
+ },
+ {
+  "n": "Eduardo Santos Velásquez",
+  "c": "Jefe de la Unidad de Tesorería de la Oficina de Economía"
+ },
+ {
+  "n": "Manuel Alfredo Ybarcena Izaguirre",
+  "c": "Jefe de la Unidad de Programación, Presupuesto y Planeamiento de RRHH de la Oficina de Personal"
+ },
+ {
+  "n": "Alicia Emperatriz Mantilla Arestegui",
+  "c": "Jefe de la Unidad de Control Previo de la Oficina de Economía"
+ },
+ {
+  "n": "Edwin Alberto Ravines Sanchez Tirado",
+  "c": "Jefe de la Unidad de Control Patrimonial de la Oficina de Logística"
+ },
+ {
+  "n": "Arturo Cirilo Rojas Gonzales",
+  "c": "Jefe de la Unidad de Programación de la Oficina de Logística",
+  "t": "LIC."
+ },
+ {
+  "n": "Ana Ulianova Vargas Chancara",
+  "c": "Jefa de la Unidad de Contabilidad de la Oficina de Economia"
+ },
+ {
+  "n": "María Lucinda Ramon Velásquez",
+  "c": "Jefa de la Unidad de Informática",
+  "t": "ING."
+ },
+ {
+  "n": "María Edith Zavala Parodi",
+  "c": "Jefa de la Unidad de Ingreso y Escalafón de la Oficina de Personal"
+ },
+ {
+  "n": "Carlos Enrique Vilela Pacherre",
+  "c": "Jefe de la Unidad de Almacén de la Oficina de Logística"
+ },
+ {
+  "n": "Juan José Gonzales Nonato",
+  "c": "Jefe de la Unidad de Seguridad y Vigilancia de la OSGM"
+ },
+ {
+  "n": "Próspero Emiro Montenegro Ángeles",
+  "c": "Jefe de la Unidad de Adquisiciones de la Oficina de Logística"
+ },
+ {
+  "n": "Elizabeth Lucila Vargas Fabes",
+  "c": "Responsable de Acceso a la Información Pública"
+ },
+ {
+  "n": "David Zenobio Vilcarano Bendezú",
+  "c": "Coordinador General de TELESALUD"
+ },
+ {
+  "n": "Cinthya Evangelista Medina",
+  "c": "Coordinadora de la Unidad de Gestión del Riesgo de Desastres",
+  "t": "DRA."
+ },
+ {
+  "n": "Mercedes Celestino Marcelo",
+  "c": "Responsable de la Plataforma de Atención al Usuario"
+ }
+];
 function sinTildes(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim(); }
 // El directorio agrega la dependencia superior al final ("... de la OEA",
 // "... de la Oficina Ejecutiva de Administración"). En los documentos el cargo
@@ -2967,7 +3593,58 @@ function limpiarCargoDir(cargo){
   }
   return t;
 }
-function dirNombreDoc(n){ return String(n||'').toUpperCase().trim(); }
+// ---- Título profesional de cada funcionario (Q.F., ING., DR., LIC., C.P.C. …) ----
+// En los documentos el nombre va con su carrera: «Q.F. SONIA APAESTEGUI INFANZON».
+// El directorio trae los que ya se conocen; los demás se aprenden solos de lo que
+// escribes en tus memos y notas, y quedan guardados en esta computadora.
+const TITULOS_CONOCIDOS = ['Q.F.','C.P.C.','ABOG.','ING.','LIC.','DRA.','DR.','MG.','SRA.','SR.','M.C.','OBST.','ARQ.','ECON.','BLGO.','T.M.','ENF.'];
+// El título puede venir pegado al nombre ("ING.JORGE", "Lic.YACQUELIN") o separado
+// ("Q. F. SONIA"), así que el punto también sirve de separador. Exigir punto o
+// espacio evita que un nombre como "DRAGO" se confunda con "DR".
+const RE_TITULO = /^\s*(Q\.?\s?F|C\.?P\.?C|ABOG|ING|LIC|DRA|DR|MG|SRA|SR|M\.?C|OBST|ARQ|ECON|BLGO|T\.?M|ENF)(?:\.\s*|\s+)/i;
+function canonTitulo(t){
+  const k=String(t||'').replace(/[^A-Za-zÁÉÍÓÚÑ]/g,'').toUpperCase();
+  const map={QF:'Q.F.',CPC:'C.P.C.',ABOG:'ABOG.',ING:'ING.',LIC:'LIC.',DRA:'DRA.',DR:'DR.',MG:'MG.',
+             SRA:'SRA.',SR:'SR.',MC:'M.C.',OBST:'OBST.',ARQ:'ARQ.',ECON:'ECON.',BLGO:'BLGO.',TM:'T.M.',ENF:'ENF.'};
+  return map[k]||'';
+}
+function partirTitulo(nombre){
+  const s=String(nombre||'').trim();
+  const m=s.match(RE_TITULO);
+  if(!m) return {titulo:'', nombre:s};
+  return {titulo:canonTitulo(m[1]), nombre:s.slice(m[0].length).replace(/^[.\s]+/,'').trim()};
+}
+// clave por nombre + los dos apellidos, para que "Yacquelin Tello Ayala" y
+// "Jacquelin Alicia Tello Ayala" se reconozcan como la misma persona
+function clavePersona(nombre){
+  const p=sinTildes(partirTitulo(nombre).nombre).replace(/[^A-Z ]/g,' ').split(/\s+/).filter(w=>w.length>2);
+  if(p.length<2) return '';
+  return p.length>2 ? (p[p.length-2]+' '+p[p.length-1]) : (p[0]+' '+p[1]);
+}
+// var (no let) porque estas funciones se usan desde código que corre antes de esta línea
+var titulosAprendidos={};
+try{ titulosAprendidos=JSON.parse(localStorage.getItem('hnal_titulos')||'{}')||{}; }catch(e){ titulosAprendidos={}; }
+function tituloDe(persona){
+  const ap=titulosAprendidos||{};
+  const k=clavePersona(persona&&persona.n||persona||'');
+  return (k && ap[k]) || (persona&&persona.t) || '';
+}
+// Aprende de lo que el usuario escribió: si puso "DRA. PAMELA MUÑOZ LOPEZ",
+// la próxima vez que use a esa persona el título sale solo.
+function aprenderTitulo(nombreEscrito){
+  const {titulo}=partirTitulo(nombreEscrito);
+  const k=clavePersona(nombreEscrito);
+  if(!titulosAprendidos) titulosAprendidos={};
+  if(!titulo || !k || titulosAprendidos[k]===titulo) return;
+  titulosAprendidos[k]=titulo;
+  try{ localStorage.setItem('hnal_titulos', JSON.stringify(titulosAprendidos)); }catch(e){}
+  if(typeof renderDirectorio==='function' && tabActual==='directorio') renderDirectorio();
+}
+function dirNombreDoc(p){
+  if(typeof p==='string') return String(p||'').toUpperCase().trim();
+  const t=tituloDe(p);
+  return (t?t+' ':'')+String(p&&p.n||'').toUpperCase().trim();
+}
 // Busca en el directorio el responsable de un área usuaria
 function dirPorArea(area){
   const q=sinTildes(area); if(q.length<4) return null;
@@ -2994,7 +3671,9 @@ function renderDirectorio(){
   if(!lista.length){ cont.innerHTML='<div class="tr-vacio">Sin resultados. Prueba con otra palabra del área o del nombre.</div>'; return; }
   cont.innerHTML=lista.slice(0,60).map((d,i)=>{
     const idx=DIRECTORIO.indexOf(d);
-    return '<div class="tr-row"><div class="tr-info"><div class="tr-nom">'+escH(d.n)+'</div>'
+    const t=tituloDe(d);
+    return '<div class="tr-row"><div class="tr-info"><div class="tr-nom">'
+      +(t?'<span class="dir-tit">'+escH(t)+'</span> ':'')+escH(d.n)+'</div>'
       +'<div class="tr-meta">'+escH(limpiarCargoDir(d.c))+'</div></div>'
       +'<button type="button" class="btn-mini dir-usar" data-i="'+idx+'">➡ Usar en memo</button>'
       +'<button type="button" class="btn-mini dir-copiar" data-i="'+idx+'">📋 Copiar</button></div>';
@@ -3006,12 +3685,12 @@ document.getElementById('dir-lista').addEventListener('click',(e)=>{
   const d=DIRECTORIO[+((usar||cop||{}).dataset||{}).i]; if(!d) return;
   const cargo=limpiarCargoDir(d.c);
   if(cop){
-    const txt=dirNombreDoc(d.n)+' — '+cargo;
+    const txt=dirNombreDoc(d)+' — '+cargo;
     if(navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>{});
     const o=cop.textContent; cop.textContent='✓ Copiado'; setTimeout(()=>cop.textContent=o,1200);
     return;
   }
-  document.getElementById('m-dest-nombre').value=dirNombreDoc(d.n);
+  document.getElementById('m-dest-nombre').value=dirNombreDoc(d);
   document.getElementById('m-dest-cargo').value=cargo;
   const ar=document.getElementById('cc-area');
   if(ar && !ar.value.trim()){ ar.value=areaDesdeCargo(cargo); vincularDesdeArea(); }
@@ -3039,6 +3718,7 @@ async function exportarTodo(){
     historial: await histTodos(),
     borrador: borrador,
     precarga: localStorage.getItem('hnal_dest_precarga')||null,
+    titulos: titulosAprendidos||{},
   };
   const f=new Date(), z=n=>('0'+n).slice(-2);
   const nombre='RESPALDO_HNAL_'+f.getFullYear()+'-'+z(f.getMonth()+1)+'-'+z(f.getDate())+'.json';
@@ -3061,6 +3741,7 @@ async function importarTodo(file){
     if(obj.borrador) localStorage.setItem('hnal_borrador', JSON.stringify(obj.borrador));
     else localStorage.removeItem('hnal_borrador');
     if(obj.precarga) localStorage.setItem('hnal_dest_precarga', obj.precarga);
+    if(obj.titulos){ titulosAprendidos=obj.titulos; localStorage.setItem('hnal_titulos', JSON.stringify(obj.titulos)); }
   }catch(e){}
   return {t,d,pr,h};
 }
