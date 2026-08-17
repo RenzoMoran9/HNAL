@@ -743,8 +743,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   <div id="panel-trabajos" class="panel oculto">
     <div class="card">
       <h2>💼 Mis trabajos guardados</h2>
-      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">¿Tienes un <b>Cuadro de Validación o Comparativo en Excel</b> que no guardaste? Usa <b>“📊 Importar cuadro en Excel”</b> y la app vuelve a llenar el formulario con esos datos para que sigas con los documentos que faltan.<br><br>Guarda aquí el trabajo completo (validación, memo, cuadro comparativo y nota) para <b>consultarlo o seguir editándolo después</b>, aunque cierres la app. Al <b>abrir</b> un trabajo queda <b>enlazado</b>: todo lo que edites se <b>actualiza solo</b> en ese trabajo (también con <b>Ctrl+S</b>). Se guardan en <b>esta computadora y navegador</b>.</p>
-      <div class="field"><label>Nombre para guardar el trabajo actual</label>
+      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">¿Tienes un <b>Cuadro de Validación o Comparativo en Excel</b> que no guardaste? Usa <b>“📊 Importar cuadro en Excel”</b> y la app vuelve a llenar el formulario con esos datos para que sigas con los documentos que faltan.<br><br>Guarda aquí el trabajo completo (validación, memo, cuadro comparativo y nota) para <b>consultarlo o seguir editándolo después</b>, aunque cierres la app. Al <b>abrir</b> un trabajo queda <b>enlazado</b>: su nombre aparece abajo y todo lo que edites — o guardes con <b>“Guardar trabajo”</b> o <b>Ctrl+S</b> — <b>actualiza ese mismo</b>, nunca crea otro repetido. Se guardan en <b>esta computadora y navegador</b>.</p>
+      <div class="field"><label>Nombre para guardar el trabajo actual <span class="hint">— obligatorio, lo escribes tú</span></label>
         <div class="tr-guardar-row">
           <input type="text" id="tr-nombre" placeholder="Ej: ADQUISICIÓN DE PRODUCTOS FARMACÉUTICOS - JULIO">
           <button type="button" class="btn btn-azul" id="tr-guardar">💾 Guardar trabajo</button>
@@ -1336,9 +1336,17 @@ function volverInicio(){
   document.getElementById('nm-nuevo').addEventListener('click', ()=>{ cerrar(); limpiarYReiniciar(null); });
   document.getElementById('nm-guardar').addEventListener('click', ()=>{
     try{
-      const nombre=nombreSugerido();
       const lista=leerTrabajos();
-      const i=lista.findIndex(t=>(t.nombre||'').toUpperCase()===nombre.toUpperCase());
+      // si hay un trabajo abierto se actualiza ese; si no, el nombre lo pone el usuario
+      const iAbierto = trabajoActivo ? lista.findIndex(t=>t.id===trabajoActivo) : -1;
+      let nombre = iAbierto>=0 ? lista[iAbierto].nombre : '';
+      if(iAbierto<0){
+        nombre=(prompt('¿Con qué nombre guardo este trabajo?\n(Escríbelo; sin nombre no se guarda.)\n\nSugerencia: '+nombreSugerido(), '')||'').trim();
+        if(!nombre) return;   // sin nombre no se guarda ni se limpia nada
+      }
+      const iMismoNombre=lista.findIndex(t=>(t.nombre||'').trim().toUpperCase()===nombre.toUpperCase());
+      const i = iAbierto>=0 ? iAbierto : iMismoNombre;
+      if(i>=0 && iAbierto<0 && !confirm('Ya existe un trabajo llamado “'+nombre+'”. ¿Reemplazarlo?')) return;
       const reg={id:(i>=0?lista[i].id:'t'+Date.now()), nombre, ts:Date.now(), data:snapshot()};
       if(i>=0) lista[i]=reg; else lista.unshift(reg);
       guardarTrabajos(lista.slice(0,60));
@@ -2737,21 +2745,40 @@ function renderTrabajos(){
 }
 function guardarTrabajoActual(){
   const inp=document.getElementById('tr-nombre');
-  let nombre=(inp.value||'').trim() || nombreSugerido();
+  const nombre=(inp.value||'').trim();
+  // El nombre se escribe a mano siempre: nada de nombres inventados por la app
+  if(!nombre){
+    inp.classList.add('campo-error'); inp.focus();
+    msgTr('⚠ Escribe un nombre para el trabajo antes de guardar.', false);
+    return;
+  }
+  inp.classList.remove('campo-error');
   const lista=leerTrabajos();
   const data=snapshot();
-  const i=lista.findIndex(t=>(t.nombre||'').toUpperCase()===nombre.toUpperCase());
+  // Si hay un trabajo abierto, se ACTUALIZA ese mismo (aunque le cambies el
+  // nombre): nunca se crea uno nuevo repetido.
+  const iAbierto = trabajoActivo ? lista.findIndex(t=>t.id===trabajoActivo) : -1;
+  const iMismoNombre = lista.findIndex(t=>(t.nombre||'').trim().toUpperCase()===nombre.toUpperCase());
   let id;
-  if(i>=0){
+  if(iAbierto>=0){
+    if(iMismoNombre>=0 && iMismoNombre!==iAbierto){
+      alert('Ya tienes otro trabajo llamado “'+nombre+'”.\nPonle un nombre distinto para no confundirlos.');
+      inp.classList.add('campo-error'); inp.focus(); return;
+    }
+    id=lista[iAbierto].id; lista[iAbierto]={id, nombre, ts:Date.now(), data};
+  } else if(iMismoNombre>=0){
     if(!confirm('Ya existe un trabajo llamado “'+nombre+'”. ¿Reemplazarlo con el estado actual?')) return;
-    id=lista[i].id; lista[i]={id, nombre, ts:Date.now(), data};
+    id=lista[iMismoNombre].id; lista[iMismoNombre]={id, nombre, ts:Date.now(), data};
   } else {
     id='t'+Date.now(); lista.unshift({id, nombre, ts:Date.now(), data});
   }
   if(guardarTrabajos(lista.slice(0,60))){
+    const eraAbierto = iAbierto>=0;
     setTrabajoActivo(id, nombre);   // queda enlazado: se seguira actualizando solo
-    inp.value=''; renderTrabajos(); marcarGuardado();
-    msgTr('✓ Trabajo guardado: '+nombre+' (quedó abierto: se actualizará solo mientras edites)', true);
+    inp.value=nombre;               // se queda a la vista cual es el trabajo abierto
+    renderTrabajos(); marcarGuardado();
+    msgTr(eraAbierto ? ('✓ Se actualizó el trabajo: '+nombre)
+                     : ('✓ Trabajo guardado: '+nombre+' (quedó abierto: se actualizará solo mientras edites)'), true);
   }
   else { msgTr('⚠ No se pudo guardar (almacenamiento del navegador lleno). Elimina trabajos viejos.', false); }
 }
@@ -2760,6 +2787,10 @@ function abrirTrabajo(id){
   saveReady=true; draftMostrado=true; pendingDraft=null;
   const b=document.getElementById('draftBar'); if(b) b.style.display='none';
   setTrabajoActivo(t.id, t.nombre||'');
+  // el nombre queda escrito en la caja: así se ve cuál está abierto y
+  // "Guardar trabajo" actualiza ESE mismo en vez de crear otro
+  const inp=document.getElementById('tr-nombre');
+  if(inp){ inp.value=t.nombre||''; inp.classList.remove('campo-error'); }
   restore(t.data||{});
   guardarYa();
   irA(tabDeTrabajo(t.data||{}));
