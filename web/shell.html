@@ -721,7 +721,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 
     <div class="card">
       <h2>1. Empresa a la que se le escribe</h2>
-      <button type="button" class="btn btn-carta" id="ca-jalar" style="margin-bottom:14px">⬇ Jalar datos de los cuadros</button>
+      <div class="field"><label>¿A cuál de los postores se le escribe? <span class="hint">— la carta va a la mejor oferta validada</span></label>
+        <select id="ca-postor"></select>
+        <div class="hint" id="ca-postor-hint" style="margin-top:7px"></div>
+      </div>
+      <button type="button" class="btn btn-carta" id="ca-jalar" style="margin-bottom:14px">⬇ Jalar sus datos y los ítems</button>
       <div class="field" style="max-width:200px"><label>Año</label><input type="text" id="ca-anio" value="2026"></div>
       <div class="field"><label>Razón social</label><input type="text" id="ca-empresa" list="dl-proveedores" placeholder="Ej: INDUSTRIA &amp; LABORATORIO SOL S.A.C. (INDUSOL)"></div>
       <div class="grid2">
@@ -1320,6 +1324,7 @@ function irA(t){
   document.getElementById('panel-trabajos').classList.toggle('oculto', t!=='trabajos');
   document.getElementById('panel-buscar').classList.toggle('oculto', t!=='buscar');
   document.getElementById('panel-directorio').classList.toggle('oculto', t!=='directorio');
+  if(t==='carta' && typeof renderCartaPostores==='function') renderCartaPostores();
   if(t==='directorio' && typeof renderDirectorio==='function') renderDirectorio();
   if(t==='buscar' && typeof renderBusqueda==='function') renderBusqueda();
   if(t==='trabajos' && typeof renderTrabajos==='function'){ renderTrabajos(); if(typeof renderProvLista==='function') renderProvLista(); }
@@ -2337,17 +2342,61 @@ document.getElementById('ca-empresa').addEventListener('input',()=>{
   });
 });
 
-// Trae de los cuadros: ganador del comparativo + precios, y códigos SIGA de la validación
+// La app NO adivina a quién se le escribe: lista los postores que hay en los
+// cuadros y tú eliges. Si el comparativo ya tiene marcado un ganador, ese viene
+// preseleccionado; si todavía no hiciste el comparativo (caso urgente), salen
+// los postores del cuadro de validación y los precios los escribes tú.
+function postoresParaCarta(){
+  const lista=[];
+  (ccPostores||[]).forEach((p,i)=>{
+    const nom=(p.nombre||'').trim();
+    if(nom) lista.push({clave:'cc:'+i, i:i, fuente:'cc', nombre:nom, ruc:p.ruc||'', email:p.email||'', ganador:i===ccGanador});
+  });
+  if(!lista.length){
+    (postores||[]).forEach((p,i)=>{
+      const nom=(p.nombre||'').trim();
+      if(nom) lista.push({clave:'val:'+i, i:i, fuente:'val', nombre:nom, ruc:'', email:'', ganador:false});
+    });
+  }
+  return lista;
+}
+function renderCartaPostores(){
+  const sel=document.getElementById('ca-postor'), hint=document.getElementById('ca-postor-hint');
+  if(!sel) return;
+  const lista=postoresParaCarta();
+  const antes=sel.value;
+  if(!lista.length){
+    sel.innerHTML='<option value="">— todavía no hay postores en los cuadros —</option>';
+    hint.textContent='Llena los postores en el Cuadro de Validación o en el Comparativo, o escribe los datos de la empresa a mano aquí abajo.';
+    return;
+  }
+  sel.innerHTML=lista.map(p=>'<option value="'+escH(p.clave)+'">'+escH(p.nombre)
+    +(p.ganador?'  ★ ganador del comparativo':'')+(p.ruc?'  ·  RUC '+escH(p.ruc):'')+'</option>').join('');
+  // se respeta lo que ya habías elegido; si no, el ganador marcado
+  const gan=lista.find(p=>p.ganador);
+  sel.value = lista.some(p=>p.clave===antes) ? antes : ((gan||lista[0]).clave);
+  const eleg=lista.find(p=>p.clave===sel.value)||lista[0];
+  hint.textContent = eleg.fuente==='cc'
+    ? (eleg.ganador ? 'Es el que marcaste como ganador en el Cuadro Comparativo; con sus precios.'
+                    : 'Ojo: NO es el que marcaste como ganador. Se usarán los precios de esta empresa.')
+    : 'Sale del Cuadro de Validación (aún no hay comparativo), así que los precios los escribes tú.';
+}
+// Trae los datos del postor elegido + los ítems, con el código SIGA de la validación
 function jalarCartaDesdeCC(){
   const v=id=>{ const el=document.getElementById(id); return el?String(el.value||'').trim():''; };
   const s=(id,val)=>{ const el=document.getElementById(id); if(el && val){ el.value=val; } };
-  const gan=ccPostores[ccGanador]||{};
-  if(gan.nombre) s('ca-empresa', gan.nombre.toUpperCase());
-  if(gan.ruc) s('ca-ruc', gan.ruc);
-  if(gan.email) s('ca-email', gan.email);
-  const prov=provPorNombre(gan.nombre||'');
-  if(prov && prov.direccion) s('ca-direccion', prov.direccion);
-  const den=v('cc-denom');
+  const lista=postoresParaCarta();
+  const sel=document.getElementById('ca-postor');
+  const eleg=lista.find(p=>p.clave===(sel||{}).value) || lista[0];
+  if(!eleg) return 0;
+
+  s('ca-empresa', eleg.nombre.toUpperCase());
+  if(eleg.ruc) s('ca-ruc', eleg.ruc);
+  if(eleg.email) s('ca-email', eleg.email);
+  const prov=provPorNombre(eleg.nombre);
+  if(prov){ if(prov.ruc) s('ca-ruc', prov.ruc); if(prov.email) s('ca-email', prov.email); if(prov.direccion) s('ca-direccion', prov.direccion); }
+
+  const den=v('cc-denom') || v('adquisicion');
   if(den){
     const conPref=conPrefijoObjeto(den, esServicioCC()).toUpperCase();
     s('ca-denom', conPref);
@@ -2358,28 +2407,47 @@ function jalarCartaDesdeCC(){
   }
   if(v('cc-doc')) s('ca-ref', v('cc-doc'));
   if(!v('ca-fecha')) s('ca-fecha', new Date().toISOString().slice(0,10));
-  // Ítems: descripción/cantidad/unidad + precio del ganador; el código SIGA sale
-  // del cuadro de validación buscando el ítem por su descripción
-  const usados=ccItems.filter(it=>(it.descripcion||'').trim()!=='');
-  let n=0;
-  if(usados.length){
-    cartaFilas=usados.map(it=>{
+
+  let filas=[];
+  if(eleg.fuente==='cc'){
+    // del comparativo: descripción/cantidad/unidad + los precios de ESA empresa
+    filas=(ccItems||[]).filter(it=>(it.descripcion||'').trim()!=='').map(it=>{
       const desc=(it.descripcion||'').trim();
       const eq=(items||[]).find(x=>(x.denom||'').trim().toUpperCase()===desc.toUpperCase());
       return {codigo:(eq&&eq.codigo)||'', descripcion:desc.toUpperCase(),
               cantidad:String(it.cantidad||''), unidad:(it.medida||'UNIDAD'),
-              precio:String((it.precios||[])[ccGanador]||'')};
+              precio:String((it.precios||[])[eleg.i]||'')};
     });
-    n=cartaFilas.length;
-    renderCartaFilas();
+  } else {
+    // del cuadro de validación: sin precios, los pone el usuario
+    filas=(items||[]).filter(it=>(it.denom||'').trim()!=='').map(it=>({
+      codigo:(it.codigo||''), descripcion:(it.denom||'').trim().toUpperCase(),
+      cantidad:String(it.cantidad||''), unidad:(it.unidad||'UNIDAD'), precio:''}));
   }
-  return n;
+  if(!filas.length) return 0;
+  cartaFilas=filas; renderCartaFilas();
+  return filas.length;
 }
+document.getElementById('ca-postor').addEventListener('change', ()=>{ renderCartaPostores(); });
 document.getElementById('ca-jalar').addEventListener('click',()=>{
   const msg=document.getElementById('msg-carta'); msg.className=''; msg.textContent='';
+  const lista=postoresParaCarta();
+  if(!lista.length){
+    msg.className='msg-error';
+    msg.textContent='⚠ No hay postores en los cuadros. Llénalos primero, o escribe los datos de la empresa a mano aquí abajo.';
+    return;
+  }
+  const eleg=lista.find(p=>p.clave===document.getElementById('ca-postor').value)||lista[0];
   const n=jalarCartaDesdeCC();
-  if(n>0){ msg.className='msg-ok'; msg.textContent='✓ Se jalaron los datos del proveedor ganador y '+n+' ítem(s).'; scheduleSave(); }
-  else { msg.className='msg-error'; msg.textContent='⚠ Aún no hay ítems en el cuadro comparativo. Llénalo primero y vuelve.'; }
+  if(n>0){
+    msg.className='msg-ok';
+    msg.textContent='✓ '+eleg.nombre+' y '+n+' ítem(s)'
+      + (eleg.fuente==='val' ? '. Escribe tú los precios: aún no hay comparativo.' : ' con sus precios.');
+    scheduleSave();
+  } else {
+    msg.className='msg-error';
+    msg.textContent='⚠ No hay ítems que jalar. Llena el cuadro de validación o el comparativo y vuelve.';
+  }
 });
 
 function mostrarErrorCarta(t){ const m=document.getElementById('msg-carta'); m.className='msg-error'; m.textContent='⚠ '+t; }
