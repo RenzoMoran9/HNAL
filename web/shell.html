@@ -1901,19 +1901,48 @@ function conPrefijoObjeto(txt, esServicio){
 function articuloObjeto(txt){
   return /^(SERVICIO|SUMINISTRO|ALQUILER)\b/i.test(String(txt||'').trim()) ? 'el' : 'la';
 }
+// De qué expediente vienen los datos que ya están cargados en el memo / la nota.
+// Si el cuadro pasa a hablar de otra cosa, se avisa antes de arrastrar al
+// documento nuevo el destinatario, la referencia y los EXP. del anterior.
+let memoOrigen='', notaOrigen='', notaRefAuto='';
+function limpiarCampos(ids){
+  ids.forEach(id=>{ const el=document.getElementById(id); if(el){ el.value=''; el.classList.remove('campo-error'); } });
+}
+function otroExpediente(origenPrevio, origenNuevo, queSeLimpia){
+  if(!origenPrevio || !origenNuevo || origenPrevio===origenNuevo) return false;
+  return confirm('Lo que hay en este documento es de:\n   '+origenPrevio
+    +'\n\nY el cuadro ahora dice:\n   '+origenNuevo
+    +'\n\n¿Limpio '+queSeLimpia+' del anterior para empezar este?\n'
+    +'(Si solo corregiste el nombre, elige Cancelar y no se toca nada.)');
+}
 // --- "Emitir Memo": trae los datos del cuadro de validación y va a la pestaña ---
 document.getElementById('btn-emitir-memo').addEventListener('click',()=>{
   const adq = document.getElementById('adquisicion').value.trim();
-  document.getElementById('m-titulo').value = conPrefijoObjeto(adq, tipo==='servicio').toUpperCase();
+  const objeto = conPrefijoObjeto(adq, tipo==='servicio').toUpperCase();
+  if(otroExpediente(memoOrigen, objeto, 'la referencia, el destinatario, la fecha y los EXP.')){
+    limpiarCampos(['m-ref','m-dest-nombre','m-dest-cargo','m-expdir','m-explog','m-folios','m-fecha']);
+    memoFilas=[];
+    const mm=document.getElementById('msg-memo');
+    if(mm){ mm.className='msg-ok'; mm.textContent='✓ Se limpió lo del expediente anterior. Completa el destinatario, la referencia y los EXP. de este.'; }
+  }
+  document.getElementById('m-titulo').value = objeto;
   document.getElementById('m-asunto').value = (tipo==='servicio') ? 'tdr' : 'et';
   const nombres = postores.map(p=>(p.nombre||'').trim()).filter(Boolean);
   if(nombres.length){
-    memoFilas = nombres.map(n=>({empresa:n.toUpperCase(),ruc:'',obs:'NINGUNA OBSERVACION'}));
+    // el RUC y la observación se conservan por EMPRESA (no por posición), y si la
+    // empresa ya está en el directorio de proveedores su RUC viene solo
+    memoFilas = nombres.map(n=>{
+      const nom=n.toUpperCase();
+      const prev=memoFilas.find(f=>(f.empresa||'').trim().toUpperCase()===nom);
+      const prov=(typeof provPorNombre==='function') ? provPorNombre(nom) : null;
+      return {empresa:nom, ruc:(prev&&prev.ruc)||(prov&&prov.ruc)||'', obs:(prev&&prev.obs)||'NINGUNA OBSERVACION'};
+    });
   }
   renderMemoFilas();
   if(!document.getElementById('m-fecha').value){
     document.getElementById('m-fecha').value = new Date().toISOString().slice(0,10);
   }
+  if(objeto) memoOrigen = objeto;
   irA('memo');
   window.scrollTo(0,0);
 });
@@ -2062,15 +2091,29 @@ document.getElementById('n-asunto-num').addEventListener('input', ()=>aplicarCcp
 // a las filas de la Nota. Conserva lo que ya escribiste (CCMN, CCP SIAF, Meta,
 // Específica, F.F.) por posición y solo actualiza descripción y monto.
 function jalarNotaDesdeCC(){
-  // Referencia: jala el "Documento de solicitud" del cuadro comparativo,
-  // salvo que la nota ya tenga una referencia escrita (hecha directamente).
   const ccDoc=(document.getElementById('cc-doc').value||'').trim();
+  const ccDen=(document.getElementById('cc-denom').value||'').trim().toUpperCase();
+  const origen=[ccDoc,ccDen].filter(Boolean).join(' — ');
+  // ¿el comparativo cambió de expediente? entonces no se arrastran meta,
+  // específica, F.F., CCP ni los EXP. de la nota anterior
+  const otro=otroExpediente(notaOrigen, origen, 'el CCP, la meta, la específica, la F.F., la fecha y los EXP.');
+  if(otro){
+    limpiarCampos(['n-asunto-num','n-expdir','n-explog','n-folios','n-fecha']);
+    notaFilas=[]; notaCcpAuto='';
+    const mn=document.getElementById('msg-nota');
+    if(mn){ mn.className='msg-ok'; mn.textContent='✓ Se limpió lo del expediente anterior. Completa el N° de Asunto (CCP), la meta, la específica y los EXP. de este.'; }
+  }
+  // Referencia: jala el "Documento de solicitud" del cuadro comparativo. Si la
+  // escribiste a mano (nota hecha directamente) se respeta, salvo que el
+  // comparativo ya sea de otro expediente.
   const refEl=document.getElementById('n-ref');
-  if(ccDoc && !refEl.value.trim()) refEl.value=ccDoc;
+  const refActual=refEl.value.trim();
+  if(ccDoc && (otro || !refActual || refActual===notaRefAuto)){ refEl.value=ccDoc; notaRefAuto=ccDoc; }
 
   const gw=ccGanador;
   const itemsUsed=ccItems.filter(it=>(it.descripcion||'').trim()!=='' || (it.precios||[]).some(x=>String(x).trim()!==''));
   if(!itemsUsed.length) return 0;
+  if(origen) notaOrigen=origen;
   notaFilas=itemsUsed.map((it,idx)=>{
     const prev=notaFilas[idx]||nuevaFilaNota();
     const pu=Number(String((it.precios||[])[gw]||'').replace(',','.'));
@@ -2604,6 +2647,13 @@ function restore(d){
     if(typeof aplicarModeloCC==='function') aplicarModeloCC();
     if(typeof aplicarObjetoCC==='function') aplicarObjetoCC();
     const asEl=document.getElementById('n-asunto-num'); if(asEl) notaCcpAuto=(asEl.value||'').trim();
+    // al reabrir un trabajo, lo que ya está cargado ES de este expediente:
+    // así "Emitir Memo/Nota" no lo toma por datos de otro y no pregunta de más
+    memoOrigen=(document.getElementById('m-titulo').value||'').trim().toUpperCase();
+    const ccD=(document.getElementById('cc-doc').value||'').trim();
+    const ccN=(document.getElementById('cc-denom').value||'').trim().toUpperCase();
+    notaOrigen=[ccD,ccN].filter(Boolean).join(' — ');
+    notaRefAuto='';   // una referencia escrita a mano se respeta
     const p1el=document.getElementById('cc-p1'); if(p1el) ccP1Auto=(p1el.value.trim()===''||p1el.value===ccTextoPunto1());
   }catch(e){ console.error('restore', e); }
 }
