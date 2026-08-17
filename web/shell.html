@@ -342,7 +342,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .btn-memo:hover{filter:brightness(1.07);}
 .aviso-memo{background:#e8f6f0;border:1px solid #b9e2d2;color:#0a5c46;border-radius:10px;
   padding:13px 15px;margin-bottom:16px;font-size:.9rem;line-height:1.45;}
-.memo-fila{display:grid;grid-template-columns:36px 1fr 150px 190px 42px;gap:10px;align-items:end;
+.memo-fila{display:grid;grid-template-columns:36px 1fr 230px 190px 42px;gap:10px;align-items:end;
   background:var(--gris);border:1px solid var(--borde);border-radius:10px;padding:13px;margin-bottom:10px;}
 .memo-fila .num{align-self:center;font-weight:800;color:var(--azul);text-align:center;}
 @media (max-width:640px){.memo-fila{grid-template-columns:1fr;}.memo-fila .num{text-align:left;}}
@@ -729,7 +729,10 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       <div class="field" style="max-width:200px"><label>Año</label><input type="text" id="ca-anio" value="2026"></div>
       <div class="field"><label>Razón social</label><input type="text" id="ca-empresa" list="dl-proveedores" placeholder="Ej: INDUSTRIA &amp; LABORATORIO SOL S.A.C. (INDUSOL)"></div>
       <div class="grid2">
-        <div class="field"><label>RUC</label><input type="text" id="ca-ruc" inputmode="numeric" maxlength="11" placeholder="Ej: 20550350166"><div class="ruc-msg" id="ca-ruc-msg"></div></div>
+        <div class="field"><label>RUC</label>
+          <div class="ruc-row"><input type="text" id="ca-ruc" inputmode="numeric" maxlength="11" placeholder="Ej: 20550350166"><button type="button" class="btn-mini" id="ca-sunat" title="Copia el RUC y abre la consulta oficial de SUNAT">SUNAT ↗</button></div>
+          <div class="ruc-msg" id="ca-ruc-msg"></div>
+          <div class="sunat-hint" id="ca-sunat-hint" style="display:none"></div></div>
         <div class="field"><label>Correo electrónico</label><input type="text" id="ca-email" placeholder="Ej: ventas@empresa.com"></div>
       </div>
       <div class="field"><label>Dirección</label><input type="text" id="ca-direccion" placeholder="Ej: PROLONGACIÓN JR. AYACUCHO N° 447 INT. A-4, SAN MIGUEL - LIMA"></div>
@@ -1939,7 +1942,10 @@ function renderMemoFilas(){
     div.innerHTML = `
       <div class="num">${('0'+(i+1)).slice(-2)}</div>
       <div class="field" style="margin:0"><label>Empresa</label><input type="text" class="mf-empresa" placeholder="Ej: EGUSQFARMA EIRL"></div>
-      <div class="field" style="margin:0"><label>RUC</label><input type="text" class="mf-ruc" placeholder="Ej: 20604200131" inputmode="numeric"><div class="ruc-msg mf-ruc-msg"></div></div>
+      <div class="field" style="margin:0"><label>RUC</label>
+        <div class="ruc-row"><input type="text" class="mf-ruc" placeholder="Ej: 20604200131" inputmode="numeric"><button type="button" class="btn-mini mf-sunat" title="Copia el RUC y abre la consulta oficial de SUNAT">SUNAT ↗</button></div>
+        <div class="ruc-msg mf-ruc-msg"></div>
+        <div class="sunat-hint mf-sunat-hint" style="display:none"></div></div>
       <div class="field" style="margin:0"><label>Observación</label>
         <select class="mf-obs">
           <option value="NINGUNA OBSERVACION">NINGUNA OBSERVACION</option>
@@ -1956,6 +1962,8 @@ function renderMemoFilas(){
     });
     ruc.addEventListener('input',()=>f.ruc=ruc.value);
     wireRuc(ruc, div.querySelector('.mf-ruc-msg'));
+    div.querySelector('.mf-sunat').addEventListener('click',()=>
+      abrirSunat(ruc.value, div.querySelector('.mf-sunat'), div.querySelector('.mf-sunat-hint')));
     obs.addEventListener('change',()=>f.obs=obs.value);
     div.querySelector('.btn-quitar').addEventListener('click',()=>{
       if(memoFilas.length<=1) return;
@@ -2333,6 +2341,10 @@ function pintarTotalCarta(){
 document.getElementById('ca-agregar').addEventListener('click',()=>{ cartaFilas.push(nuevaFilaCarta()); renderCartaFilas(); scheduleSave(); });
 renderCartaFilas();
 wireRuc(document.getElementById('ca-ruc'), document.getElementById('ca-ruc-msg'));
+document.getElementById('ca-sunat').addEventListener('click',()=>
+  abrirSunat(document.getElementById('ca-ruc').value,
+             document.getElementById('ca-sunat'),
+             document.getElementById('ca-sunat-hint')));
 // Si escribes una empresa que ya está en el directorio, se completan sus datos
 document.getElementById('ca-empresa').addEventListener('input',()=>{
   const prov=provPorNombre(document.getElementById('ca-empresa').value); if(!prov) return;
