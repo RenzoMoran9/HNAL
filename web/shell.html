@@ -355,6 +355,16 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .nota-fila .nf-head .t{font-weight:700;color:var(--azul);font-size:.9rem;}
 .nota-grid{display:grid;grid-template-columns:88px 88px 1fr 78px 108px 108px 128px;gap:8px;align-items:end;}
 @media (max-width:900px){.nota-grid{grid-template-columns:1fr 1fr;}}
+.btn-carta{background:#8a4b12;color:#fff;border:1px solid #8a4b12;}
+.btn-carta:hover{filter:brightness(1.1);}
+.aviso-carta{background:#fdf1e3;border:1px solid #f0d3ae;color:#7a4210;border-radius:10px;
+  padding:13px 15px;margin-bottom:16px;font-size:.9rem;line-height:1.45;}
+.carta-fila{background:var(--gris);border:1px solid var(--borde);border-radius:10px;padding:13px;margin-bottom:10px;}
+.carta-fila .cf-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.carta-fila .cf-head .t{font-weight:700;color:var(--azul);font-size:.9rem;}
+.carta-grid{display:grid;grid-template-columns:140px 1fr 90px 120px 120px 130px;gap:8px;align-items:end;}
+@media (max-width:900px){.carta-grid{grid-template-columns:1fr 1fr;}}
+.ca-total{margin-top:12px;text-align:right;font-weight:800;color:var(--azul);font-size:1.02rem;}
 </style>
 </head>
 <body>
@@ -416,6 +426,10 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         <div class="side-group-t">2 · Indagación de Mercado</div>
         <button type="button" class="side-item" data-tab="cc"><span class="si-ico">📊</span> Cuadro Comparativo</button>
         <button type="button" class="side-item" data-tab="nota"><span class="si-ico">📄</span> Nota Informativa</button>
+      </div>
+      <div class="side-group">
+        <div class="side-group-t">Urgencias</div>
+        <button type="button" class="side-item" data-tab="carta"><span class="si-ico">✉️</span> Carta al proveedor</button>
       </div>
       <div class="side-group">
         <div class="side-group-t">Archivo</div>
@@ -696,6 +710,56 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
     <div class="barra-final">
       <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Nota (Word)</button>
       <div id="msg-nota"></div>
+    </div>
+  </form>
+  </div>
+
+  <!-- ==================== CARTA AL PROVEEDOR (URGENTE) ==================== -->
+  <div id="panel-carta" class="panel oculto">
+  <form id="form-carta" novalidate>
+    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto</b> cuando la adquisición es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con sus precios del <b>Cuadro Comparativo</b> y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
+
+    <div class="card">
+      <h2>1. Empresa a la que se le escribe</h2>
+      <button type="button" class="btn btn-carta" id="ca-jalar" style="margin-bottom:14px">⬇ Jalar datos de los cuadros</button>
+      <div class="field" style="max-width:200px"><label>Año</label><input type="text" id="ca-anio" value="2026"></div>
+      <div class="field"><label>Razón social</label><input type="text" id="ca-empresa" list="dl-proveedores" placeholder="Ej: INDUSTRIA &amp; LABORATORIO SOL S.A.C. (INDUSOL)"></div>
+      <div class="grid2">
+        <div class="field"><label>RUC</label><input type="text" id="ca-ruc" inputmode="numeric" maxlength="11" placeholder="Ej: 20550350166"><div class="ruc-msg" id="ca-ruc-msg"></div></div>
+        <div class="field"><label>Correo electrónico</label><input type="text" id="ca-email" placeholder="Ej: ventas@empresa.com"></div>
+      </div>
+      <div class="field"><label>Dirección</label><input type="text" id="ca-direccion" placeholder="Ej: PROLONGACIÓN JR. AYACUCHO N° 447 INT. A-4, SAN MIGUEL - LIMA"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Asunto, referencia y fecha</h2>
+      <div class="field"><label>Asunto <span class="hint">— empieza con “ADQ.” y termina con el área usuaria</span></label>
+        <textarea id="ca-asunto" rows="2" placeholder="Ej: ADQ. ADQUISICIÓN DE INSUMO (JABÓN GRANULADO EN ESCAMA) PARA EL PROCESO DE LAVADO DE ROPA HOSPITALARIA, SOLICITADO POR LA UNIDAD DE LAVANDERÍA PARA EL HNAL"></textarea></div>
+      <div class="field"><label>Referencia <span class="hint">— sale del cuadro comparativo</span></label><input type="text" id="ca-ref" placeholder="Ej: NOTA INFORMATIVA N° 0291-2026-UL-OSGM-OEA/HNAL"></div>
+      <div class="field"><label>Denominación <span class="hint">— la que va entre comillas en el cuerpo de la carta</span></label><input type="text" id="ca-denom" placeholder="Ej: ADQUISICIÓN DE INSUMO (JABÓN GRANULADO EN ESCAMA)"></div>
+      <div class="field"><label>Fecha</label><input type="date" id="ca-fecha"></div>
+    </div>
+
+    <div class="card">
+      <h2>3. Detalle de lo solicitado</h2>
+      <div id="ca-items"></div>
+      <button type="button" class="btn btn-sec" id="ca-agregar">＋ Agregar ítem</button>
+      <div class="ca-total" id="ca-total"></div>
+    </div>
+
+    <div class="card">
+      <h2>4. Pie de la carta</h2>
+      <div class="field" style="max-width:420px"><label>Elaborado por</label><input type="text" id="ca-elaborado" placeholder="Ej: EDGARDO MORAN"></div>
+    </div>
+
+    <div class="carpeta-bar" data-doc="carta">
+      <span class="cb-txt">📁 <b>Carpeta de destino:</b> <span class="cb-est">sin vincular — se descarga normal</span></span>
+      <button type="button" class="btn-mini cb-link">Vincular carpeta</button>
+      <button type="button" class="btn-mini danger cb-unlink" style="display:none">Quitar</button>
+    </div>
+    <div class="barra-final">
+      <button type="submit" class="btn btn-azul btn-generar">⬇ Generar y descargar Carta (Word)</button>
+      <div id="msg-carta"></div>
     </div>
   </form>
   </div>
@@ -1208,6 +1272,7 @@ const META_TAB = {
   memo: {title:'Memo de Validación',    sub:'Emite el memorando de solicitud de revisión en Word.',                    flow:'Flujo 1 · Validación'},
   cc:   {title:'Cuadro Comparativo',    sub:'Indagación de mercado: compara cotizaciones y define el valor estimado.', flow:'Flujo 2 · Indagación'},
   nota: {title:'Nota Informativa',      sub:'Solicita la aprobación de la Certificación de Crédito Presupuestario.',    flow:'Flujo 2 · Indagación'},
+  carta:{title:'Carta al proveedor',  sub:'Pide a la empresa ganadora que adelante el producto por urgencia.',    flow:'Urgencias'},
   trabajos: {title:'Mis trabajos',      sub:'Guarda y vuelve a abrir tus trabajos cuando quieras.',                    flow:'Archivo'},
   buscar:   {title:'Buscar / Histórico', sub:'Busca en tus expedientes y consulta precios de compras anteriores.',      flow:'Archivo'},
   directorio:{title:'Directorio HNAL',  sub:'Consulta jefes y áreas del hospital sin salir de la app.',               flow:'Archivo'},
@@ -1242,7 +1307,7 @@ document.getElementById('flowbar').addEventListener('click',(e)=>{
   const b=e.target.closest('.fb-step'); if(b) irA(b.dataset.tab);
 });
 
-const TABS_VALIDAS=['val','cc','memo','nota','trabajos','buscar','directorio'];
+const TABS_VALIDAS=['val','cc','memo','nota','carta','trabajos','buscar','directorio'];
 function irA(t){
   if(TABS_VALIDAS.indexOf(t)<0) t='val';   // nunca dejar la pantalla en blanco
   tabActual=t;
@@ -1251,6 +1316,7 @@ function irA(t){
   document.getElementById('panel-cc').classList.toggle('oculto', t!=='cc');
   document.getElementById('panel-memo').classList.toggle('oculto', t!=='memo');
   document.getElementById('panel-nota').classList.toggle('oculto', t!=='nota');
+  document.getElementById('panel-carta').classList.toggle('oculto', t!=='carta');
   document.getElementById('panel-trabajos').classList.toggle('oculto', t!=='trabajos');
   document.getElementById('panel-buscar').classList.toggle('oculto', t!=='buscar');
   document.getElementById('panel-directorio').classList.toggle('oculto', t!=='directorio');
@@ -1304,7 +1370,8 @@ function mostrarLanding(){
 function hayTrabajoEnCurso(){
   const v=id=>{ const el=document.getElementById(id); return el?String(el.value||'').trim():''; };
   const campos=['adquisicion','cc-denom','cc-doc','cc-area','m-dest-nombre','m-titulo','m-ref',
-                'n-dest-nombre','n-ref','n-asunto-num','n-expdir','n-explog','m-expdir','m-explog'];
+                'n-dest-nombre','n-ref','n-asunto-num','n-expdir','n-explog','m-expdir','m-explog',
+                'ca-empresa','ca-asunto','ca-ref','ca-denom'];
   if(campos.some(v)) return true;
   if((postores||[]).some(p=>(p.nombre||'').trim())) return true;
   if((items||[]).some(it=>((it.denom||'')+(it.codigo||'')+(it.cantidad||'')).trim())) return true;
@@ -1312,6 +1379,7 @@ function hayTrabajoEnCurso(){
   if((ccItems||[]).some(it=>((it.descripcion||'')+(it.cantidad||'')).trim() || (it.precios||[]).some(x=>String(x||'').trim()))) return true;
   if((memoFilas||[]).some(f=>(f.empresa||'').trim())) return true;
   if((notaFilas||[]).some(f=>(f.descripcion||'').trim()||(f.monto||'').trim())) return true;
+  if((cartaFilas||[]).some(f=>(f.descripcion||'').trim())) return true;
   return false;
 }
 // Limpia TODO recargando la app (garantiza los valores por defecto originales)
@@ -2198,6 +2266,181 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
   }, 'nota');
 });
 
+// ====================== CARTA AL PROVEEDOR (adelanto urgente) ======================
+const TEMPLATE_CARTA_B64 = "__TEMPLATE_CARTA_B64__";
+// La carta escribe los importes como "S/.375.00" (con punto tras S/)
+function montoCarta(n){
+  const num=Number(n);
+  if(!isFinite(num)) return '';
+  return 'S/.'+num.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+// "24 de julio de 2026" (la carta usa "de", sin "del" y sin "Lima,")
+function fechaCarta(iso){
+  if(!iso) return '';
+  const m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return iso;
+  return parseInt(m[3],10)+' de '+MESES[parseInt(m[2],10)-1]+' de '+m[1];
+}
+function nuevaFilaCarta(){ return {codigo:'',descripcion:'',cantidad:'',unidad:'UNIDAD',precio:''}; }
+let cartaFilas=[nuevaFilaCarta()];
+function totalCarta(){
+  let t=0;
+  cartaFilas.forEach(f=>{ const c=parseMonto(f.cantidad), p=parseMonto(f.precio); if(c>0&&p>0) t+=c*p; });
+  return t;
+}
+function renderCartaFilas(){
+  const cont=document.getElementById('ca-items'); if(!cont) return;
+  cont.innerHTML='';
+  cartaFilas.forEach((f,i)=>{
+    const div=document.createElement('div');
+    div.className='carta-fila';
+    div.innerHTML='<div class="cf-head"><span class="t">Ítem '+(i+1)+'</span>'
+      +'<button type="button" class="btn-quitar cf-quitar" title="Quitar ítem">✕</button></div>'
+      +'<div class="carta-grid">'
+      +'<div class="field" style="margin:0"><label>Código SIGA</label><input type="text" class="cf-codigo"></div>'
+      +'<div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cf-descripcion"></div>'
+      +'<div class="field" style="margin:0"><label>Cantidad</label><input type="text" class="cf-cantidad" inputmode="decimal"></div>'
+      +'<div class="field" style="margin:0"><label>Unidad</label><input type="text" class="cf-unidad" list="dl-medidas"></div>'
+      +'<div class="field" style="margin:0"><label>Precio unitario</label><input type="text" class="cf-precio" inputmode="decimal"></div>'
+      +'<div class="field" style="margin:0"><label>Monto total</label><input type="text" class="cf-monto" readonly tabindex="-1"></div>'
+      +'</div>';
+    const set=(sel,key)=>{ const el=div.querySelector(sel); el.value=f[key]||'';
+      el.addEventListener('input',()=>{ f[key]=el.value; pintarMontoCarta(div,f); pintarTotalCarta(); scheduleSave(); }); };
+    ['codigo','descripcion','cantidad','unidad','precio'].forEach(k=>set('.cf-'+k,k));
+    pintarMontoCarta(div,f);
+    div.querySelector('.cf-quitar').addEventListener('click',()=>{
+      if(cartaFilas.length<=1) return;
+      cartaFilas.splice(i,1); renderCartaFilas(); scheduleSave();
+    });
+    cont.appendChild(div);
+  });
+  pintarTotalCarta();
+}
+function pintarMontoCarta(div,f){
+  const c=parseMonto(f.cantidad), p=parseMonto(f.precio);
+  div.querySelector('.cf-monto').value=(c>0&&p>0)?montoCarta(c*p):'';
+}
+function pintarTotalCarta(){
+  const el=document.getElementById('ca-total'); if(!el) return;
+  const t=totalCarta();
+  el.textContent=t>0?('Total: '+montoCarta(t)):'';
+}
+document.getElementById('ca-agregar').addEventListener('click',()=>{ cartaFilas.push(nuevaFilaCarta()); renderCartaFilas(); scheduleSave(); });
+renderCartaFilas();
+wireRuc(document.getElementById('ca-ruc'), document.getElementById('ca-ruc-msg'));
+// Si escribes una empresa que ya está en el directorio, se completan sus datos
+document.getElementById('ca-empresa').addEventListener('input',()=>{
+  const prov=provPorNombre(document.getElementById('ca-empresa').value); if(!prov) return;
+  [['ruc','ca-ruc'],['email','ca-email'],['direccion','ca-direccion']].forEach(([k,id])=>{
+    const el=document.getElementById(id);
+    if(prov[k] && !el.value.trim()){ el.value=prov[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }
+  });
+});
+
+// Trae de los cuadros: ganador del comparativo + precios, y códigos SIGA de la validación
+function jalarCartaDesdeCC(){
+  const v=id=>{ const el=document.getElementById(id); return el?String(el.value||'').trim():''; };
+  const s=(id,val)=>{ const el=document.getElementById(id); if(el && val){ el.value=val; } };
+  const gan=ccPostores[ccGanador]||{};
+  if(gan.nombre) s('ca-empresa', gan.nombre.toUpperCase());
+  if(gan.ruc) s('ca-ruc', gan.ruc);
+  if(gan.email) s('ca-email', gan.email);
+  const prov=provPorNombre(gan.nombre||'');
+  if(prov && prov.direccion) s('ca-direccion', prov.direccion);
+  const den=v('cc-denom');
+  if(den){
+    const conPref=conPrefijoObjeto(den, esServicioCC()).toUpperCase();
+    s('ca-denom', conPref);
+    const asu=document.getElementById('ca-asunto');
+    if(asu && !asu.value.trim()){
+      asu.value='ADQ. '+conPref+(v('cc-area')?', SOLICITADO POR '+v('cc-area').toUpperCase()+' PARA EL HNAL':'');
+    }
+  }
+  if(v('cc-doc')) s('ca-ref', v('cc-doc'));
+  if(!v('ca-fecha')) s('ca-fecha', new Date().toISOString().slice(0,10));
+  // Ítems: descripción/cantidad/unidad + precio del ganador; el código SIGA sale
+  // del cuadro de validación buscando el ítem por su descripción
+  const usados=ccItems.filter(it=>(it.descripcion||'').trim()!=='');
+  let n=0;
+  if(usados.length){
+    cartaFilas=usados.map(it=>{
+      const desc=(it.descripcion||'').trim();
+      const eq=(items||[]).find(x=>(x.denom||'').trim().toUpperCase()===desc.toUpperCase());
+      return {codigo:(eq&&eq.codigo)||'', descripcion:desc.toUpperCase(),
+              cantidad:String(it.cantidad||''), unidad:(it.medida||'UNIDAD'),
+              precio:String((it.precios||[])[ccGanador]||'')};
+    });
+    n=cartaFilas.length;
+    renderCartaFilas();
+  }
+  return n;
+}
+document.getElementById('ca-jalar').addEventListener('click',()=>{
+  const msg=document.getElementById('msg-carta'); msg.className=''; msg.textContent='';
+  const n=jalarCartaDesdeCC();
+  if(n>0){ msg.className='msg-ok'; msg.textContent='✓ Se jalaron los datos del proveedor ganador y '+n+' ítem(s).'; scheduleSave(); }
+  else { msg.className='msg-error'; msg.textContent='⚠ Aún no hay ítems en el cuadro comparativo. Llénalo primero y vuelve.'; }
+});
+
+function mostrarErrorCarta(t){ const m=document.getElementById('msg-carta'); m.className='msg-error'; m.textContent='⚠ '+t; }
+document.getElementById('form-carta').addEventListener('submit',(e)=>{
+  e.preventDefault();
+  const msg=document.getElementById('msg-carta'); msg.className=''; msg.textContent='';
+  const val=id=>document.getElementById(id).value;
+  if(!validarReq(['ca-empresa','ca-asunto','ca-ref','ca-denom','ca-fecha'])){ mostrarErrorCarta('Completa los campos marcados en rojo.'); return; }
+  const filas=cartaFilas.filter(f=>(f.descripcion||'').trim()!=='');
+  if(filas.length===0){ mostrarErrorCarta('Agrega al menos un ítem con descripción.'); return; }
+  const total=totalCarta();
+  const datos={
+    anio: val('ca-anio').trim() || '2026',
+    empresa: val('ca-empresa').trim().toUpperCase(),
+    ruc: val('ca-ruc').trim(),
+    direccion: val('ca-direccion').trim(),
+    email: val('ca-email').trim(),
+    asunto: val('ca-asunto').trim().toUpperCase(),
+    referencia: val('ca-ref').trim(),
+    fecha: fechaCarta(val('ca-fecha')),
+    denominacion: val('ca-denom').trim().toUpperCase(),
+    filas: filas.map(f=>{
+      const c=parseMonto(f.cantidad), p=parseMonto(f.precio);
+      return {codigo:(f.codigo||'').trim(), descripcion:(f.descripcion||'').trim().toUpperCase(),
+              cantidad:String(f.cantidad||'').trim(), unidad:(f.unidad||'').trim().toUpperCase(),
+              precio:p>0?montoCarta(p):'', monto:(c>0&&p>0)?montoCarta(c*p):''};
+    }),
+    hayTotal: filas.length>1 ? [{}] : [],   // la fila TOTAL solo si hay varios ítems
+    montoTotal: total>0?montoCarta(total):'',
+    elaborado: val('ca-elaborado').trim().toUpperCase(),
+  };
+  const rucMal = datos.ruc && !rucValido(datos.ruc);
+  const aviso = rucMal ? '<p class="pv-note" style="color:#c0392b">⚠ El RUC no es válido (11 dígitos y verificador). Revísalo antes de descargar.</p>' : '';
+  const resumen = aviso + pvDL([
+    ['Empresa', datos.empresa+(datos.ruc?' — RUC '+datos.ruc:'')],
+    ['Dirección', datos.direccion||'—'],
+    ['Correo', datos.email||'—'],
+    ['Asunto', datos.asunto],
+    ['Referencia', datos.referencia],
+    ['Fecha', datos.fecha],
+    ['Se solicita', 'INMEDIATA “'+datos.denominacion+'”'],
+  ]) + '<div class="pv-sub">Detalle</div>' + pvTabla(
+    ['Código SIGA','Descripción','Cant.','Unidad','P. unitario','Monto'],
+    datos.filas.map(f=>[f.codigo, f.descripcion, f.cantidad, f.unidad, f.precio, f.monto])
+    .concat(total>0?[['','','','','TOTAL', montoCarta(total)]]:[]));
+
+  abrirPreview('Carta al proveedor', resumen, ()=>{
+    msg.className=''; msg.textContent='Generando…';
+    try{
+      const DT = window.docxtemplater.default || window.docxtemplater;
+      const zip = new window.PizZip(TEMPLATE_CARTA_B64, {base64:true});
+      const doc = new DT(zip, {paragraphLoop:true, linebreaks:true});
+      doc.render(datos);
+      const blob = doc.getZip().generate({type:'blob',
+        mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+      descargarBlob(blob, 'CARTA_'+abreviarObjeto(datos.denominacion)+'.docx', msg, 'carta');
+      upsertProveedor({nombre:datos.empresa, ruc:datos.ruc, email:datos.email, direccion:datos.direccion});
+    }catch(err){ mostrarErrorCarta(err.message||'Ocurrió un error al generar la carta.'); console.error(err); }
+  }, 'carta');
+});
+
 // ====================== UTILIDADES (previa, validación, descarga) ======================
 function escH(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
@@ -2329,7 +2572,7 @@ function pintarCarpetas(){
 }
 async function cargarCarpetas(){
   if(!FS_OK) { pintarCarpetas(); return; }
-  for(const doc of ['val','memo','cc','nota']){
+  for(const doc of ['val','memo','cc','nota','carta']){
     try{ const h=await idbGet(doc); if(h && typeof h.getFileHandle==='function') dirHandles[doc]=h; }catch(e){}
   }
   pintarCarpetas();
@@ -2412,8 +2655,8 @@ function provPorNombre(n){ const q=String(n||'').trim().toUpperCase(); if(!q) re
 function upsertProveedor(d){
   const nombre=String(d.nombre||'').trim(); if(!nombre) return;
   let p=provPorNombre(nombre);
-  if(!p){ p={nombre:nombre.toUpperCase(),ruc:'',contacto:'',telefono:'',email:''}; proveedores.unshift(p); }
-  ['ruc','contacto','telefono','email'].forEach(k=>{ const v=String(d[k]||'').trim(); if(v) p[k]=v; });
+  if(!p){ p={nombre:nombre.toUpperCase(),ruc:'',contacto:'',telefono:'',email:'',direccion:''}; proveedores.unshift(p); }
+  ['ruc','contacto','telefono','email','direccion'].forEach(k=>{ const v=String(d[k]||'').trim(); if(v) p[k]=v; });
   guardarProvStore(); renderDatalistProv(); renderProvLista();
 }
 function renderDatalistProv(){
@@ -2425,7 +2668,7 @@ function renderProvLista(){
   const cont=document.getElementById('prov-lista'); if(!cont) return;
   if(!proveedores.length){ cont.innerHTML='<div class="tr-vacio">Aún no hay proveedores guardados. Se agregan solos al generar un cuadro de validación, un memo o un cuadro comparativo.</div>'; return; }
   cont.innerHTML=proveedores.map((p,i)=>{
-    const det=[p.ruc?('RUC '+p.ruc):'',p.contacto,p.telefono,p.email].filter(Boolean).join(' · ')||'—';
+    const det=[p.ruc?('RUC '+p.ruc):'',p.contacto,p.telefono,p.email,p.direccion].filter(Boolean).join(' · ')||'—';
     return '<div class="tr-row"><div class="tr-info"><div class="tr-nom">'+escH(p.nombre)+'</div><div class="tr-meta">'+escH(det)+'</div></div>'
       +'<button type="button" class="btn-mini danger prov-del" data-i="'+i+'">🗑 Quitar</button></div>';
   }).join('');
@@ -2617,7 +2860,7 @@ function setTrabajoActivo(id,nombre){
 function snapshot(){
   const inputs={};
   document.querySelectorAll('#app input[id], #app select[id], #app textarea[id]').forEach(el=>{ inputs[el.id]=el.value; });
-  return { v:3, ts:Date.now(), tipo, postores, items, ccPostores, ccGanador, ccItems, memoFilas, notaFilas, inputs };
+  return { v:4, ts:Date.now(), tipo, postores, items, ccPostores, ccGanador, ccItems, memoFilas, notaFilas, cartaFilas, inputs };
 }
 function guardarYa(){ if(!saveReady) return; try{
   const snap=snapshot();
@@ -2649,7 +2892,8 @@ function restore(d){
     ccItems.forEach(it=>{ while(it.precios.length<ccPostores.length) it.precios.push(''); it.precios.length=ccPostores.length; while(it.marcas.length<ccPostores.length) it.marcas.push(''); it.marcas.length=ccPostores.length; });
     if(Array.isArray(d.memoFilas)&&d.memoFilas.length) memoFilas=d.memoFilas.map(f=>({empresa:f.empresa||'',ruc:f.ruc||'',obs:f.obs||'NINGUNA OBSERVACION'}));
     if(Array.isArray(d.notaFilas)&&d.notaFilas.length) notaFilas=d.notaFilas.map(f=>({ccmn:f.ccmn||'',ccpsiaf:f.ccpsiaf||'',descripcion:f.descripcion||'',meta:f.meta||'',especifica:f.especifica||'',ff:f.ff||'DyT 4-13',monto:f.monto||''}));
-    renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas();
+    if(Array.isArray(d.cartaFilas)&&d.cartaFilas.length) cartaFilas=d.cartaFilas.map(f=>({codigo:f.codigo||'',descripcion:f.descripcion||'',cantidad:f.cantidad||'',unidad:f.unidad||'UNIDAD',precio:f.precio||''}));
+    renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas(); renderCartaFilas();
     if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(el) el.value=d.inputs[id]; }); }
     if(typeof normalizarCargosEnFormulario==='function') normalizarCargosEnFormulario();
     if(typeof aplicarModeloCC==='function') aplicarModeloCC();
@@ -2671,6 +2915,7 @@ function draftTieneContenido(d){
   if((d.postores||[]).some(p=>(p.nombre||'').trim())) return true;
   if((d.ccPostores||[]).some(p=>(p.nombre||'').trim())) return true;
   if((d.memoFilas||[]).some(f=>(f.empresa||'').trim())) return true;
+  if((d.cartaFilas||[]).some(f=>(f.descripcion||'').trim())) return true;
   if((d.items||[]).some(it=>((it.denom||'')+(it.codigo||'')+(it.cantidad||'')).trim())) return true;
   return false;
 }

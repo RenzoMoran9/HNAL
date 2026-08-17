@@ -21,6 +21,7 @@ PLANTILLA = BASE / "plantilla" / "FORMATO_VALIDACIONES_DE_BIENES.xlsx"
 PLANTILLA_CC = BASE / "plantilla" / "CUADRO_COMPARATIVO.xlsx"
 PLANTILLA_MEMO = BASE / "plantilla" / "MEMO_VALIDACION.docx"
 PLANTILLA_NOTA = BASE / "plantilla" / "NOTA_INFORMATIVA.docx"
+PLANTILLA_CARTA = BASE / "plantilla" / "CARTA_URGENTE.docx"
 DIRECTORIO = BASE / "web" / "directorio.json"
 FONTS = BASE / "web" / "fonts"
 FUENTES = {
@@ -41,6 +42,7 @@ def main():
     b64cc = base64.b64encode(PLANTILLA_CC.read_bytes()).decode("ascii")
     b64memo = base64.b64encode(PLANTILLA_MEMO.read_bytes()).decode("ascii")
     b64nota = base64.b64encode(PLANTILLA_NOTA.read_bytes()).decode("ascii")
+    b64carta = base64.b64encode(PLANTILLA_CARTA.read_bytes()).decode("ascii")
 
     html = shell.replace("/*__EXCELJS__*/", exceljs)
     html = html.replace("/*__PIZZIP__*/", pizzip)
@@ -49,6 +51,7 @@ def main():
     html = html.replace("__TEMPLATE_CC_B64__", b64cc)
     html = html.replace("__TEMPLATE_MEMO_B64__", b64memo)
     html = html.replace("__TEMPLATE_NOTA_B64__", b64nota)
+    html = html.replace("__TEMPLATE_CARTA_B64__", b64carta)
     html = html.replace("__DIRECTORIO__", DIRECTORIO.read_text(encoding="utf-8"))
     for token, nombre in FUENTES.items():
         b64f = base64.b64encode((FONTS / nombre).read_bytes()).decode("ascii")
