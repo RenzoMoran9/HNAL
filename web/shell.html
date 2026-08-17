@@ -2498,6 +2498,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     referencia: val('ca-ref').trim(),
     fecha: fechaCarta(val('ca-fecha')),
     denominacion: val('ca-denom').trim().toUpperCase(),
+    articulo: articuloObjeto(val('ca-denom')),   // la “ADQUISICIÓN…” / el “SERVICIO…”
     filas: filas.map(f=>{
       const c=parseMonto(f.cantidad), p=parseMonto(f.precio);
       return {codigo:(f.codigo||'').trim(), descripcion:(f.descripcion||'').trim().toUpperCase(),
@@ -2517,7 +2518,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     ['Asunto', datos.asunto],
     ['Referencia', datos.referencia],
     ['Fecha', datos.fecha],
-    ['Se solicita', 'INMEDIATA “'+datos.denominacion+'”'],
+    ['Se solicita', 'INMEDIATA '+datos.articulo+' “'+datos.denominacion+'”'],
   ]) + '<div class="pv-sub">Detalle</div>' + pvTabla(
     ['Código SIGA','Descripción','Cant.','Unidad','P. unitario','Monto'],
     datos.filas.map(f=>[f.codigo, f.descripcion, f.cantidad, f.unidad, f.precio, f.monto])

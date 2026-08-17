@@ -108,8 +108,9 @@ def tabla_asunto():
 # ---------------- TABLA DE ITEMS ----------------
 
 def tabla_items():
-    # proporciones de la carta original, ajustadas para que entren en la hoja
-    cols = [1689, 2071, 1231, 1006, 1253, 1254]
+    # la descripcion es lo mas largo, asi que se le da el ancho que le sobraba
+    # al codigo SIGA (un numero corto) y a "CANTIDAD"
+    cols = [1500, 2704, 900, 1100, 1150, 1150]
     hdrs = ["CÓDIGO SIGA", "DESCRIPCIÓN", "CANTIDAD", "UNIDAD DE MEDIDA",
             "PRECIO UNITARIO", "MONTO TOTAL"]
     campos = ["{codigo}", "{descripcion}", "{cantidad}", "{unidad}",
@@ -184,9 +185,13 @@ def build_body():
                   + run("MUY URGENTE", sz=18, bold=True)
                   + run(":", sz=18), jc="both", sz=18))
     p.append(blank())
+    # "Brindar en forma INMEDIATA la “ADQUISICIÓN DE …”". La carta original decia
+    # "INMEDIATA “Solicitud de adquisicion “ADQUISICION DE …”", que repetia la
+    # palabra adquisicion y dejaba tres comillas abiertas.
     p.append(para(run("Brindar en forma ", sz=18)
-                  + run("INMEDIATA “Solicitud de adquisición “", sz=18, bold=True)
-                  + run("{denominacion}", sz=18)
+                  + run("INMEDIATA", sz=18, bold=True)
+                  + run(" {articulo} “", sz=18)
+                  + run("{denominacion}", sz=18, bold=True)
                   + run("”, conforme el siguiente detalle:", sz=18),
                   jc="both", sz=18))
     p.append(blank())
