@@ -740,9 +740,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 
     <div class="card">
       <h2>2. Asunto, referencia y fecha</h2>
-      <div class="field"><label>Asunto <span class="hint">— empieza con “ADQ.” y termina con el área usuaria</span></label>
-        <textarea id="ca-asunto" rows="2" placeholder="Ej: ADQ. ADQUISICIÓN DE INSUMO (JABÓN GRANULADO EN ESCAMA) PARA EL PROCESO DE LAVADO DE ROPA HOSPITALARIA, SOLICITADO POR LA UNIDAD DE LAVANDERÍA PARA EL HNAL"></textarea></div>
-      <div class="field"><label>Referencia <span class="hint">— sale del cuadro comparativo</span></label><input type="text" id="ca-ref" placeholder="Ej: NOTA INFORMATIVA N° 0291-2026-UL-OSGM-OEA/HNAL"></div>
+      <div class="field"><label>Asunto <span class="hint">— empieza con “ADQ. DE” y termina con el área usuaria</span></label>
+        <textarea id="ca-asunto" rows="2" placeholder="Ej: ADQ. DE INSUMO (JABÓN GRANULADO EN ESCAMA) PARA EL PROCESO DE LAVADO DE ROPA HOSPITALARIA, SOLICITADO POR LA UNIDAD DE LAVANDERÍA PARA EL HNAL"></textarea></div>
+      <div class="field"><label>Referencia <span class="hint">— es la nota informativa del área usuaria</span></label>
+        <input type="text" id="ca-ref" placeholder="Ej: NOTA INFORMATIVA N° 0291-2026-UL-OSGM-OEA/HNAL">
+        <p class="hint" id="ca-ref-hint" style="margin:7px 0 0"></p></div>
       <div class="field"><label>Denominación <span class="hint">— la que va entre comillas en el cuerpo de la carta</span></label><input type="text" id="ca-denom" placeholder="Ej: ADQUISICIÓN DE INSUMO (JABÓN GRANULADO EN ESCAMA)"></div>
       <div class="field"><label>Fecha</label><input type="date" id="ca-fecha"></div>
     </div>
@@ -756,7 +758,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 
     <div class="card">
       <h2>4. Pie de la carta</h2>
-      <div class="field" style="max-width:420px"><label>Elaborado por</label><input type="text" id="ca-elaborado" placeholder="Ej: EDGARDO MORAN"></div>
+      <div class="field" style="max-width:420px"><label>Elaborado por</label><input type="text" id="ca-elaborado" placeholder="Ej: EDGARDO MORA"></div>
     </div>
 
     <div class="carpeta-bar" data-doc="carta">
@@ -2294,6 +2296,16 @@ function fechaCarta(iso){
   if(!m) return iso;
   return parseInt(m[3],10)+' de '+MESES[parseInt(m[2],10)-1]+' de '+m[1];
 }
+// El asunto usa "ADQ. DE …" igual que el cuadro comparativo. Si la denominación
+// ya empieza con "ADQUISICIÓN DE", se quita para no decirlo dos veces
+// ("ADQ. ADQUISICIÓN DE …" repite la misma palabra abreviada y completa).
+function asuntoCarta(den, esServicio, area){
+  const base=String(den||'').trim()
+    .replace(/^(ADQ\.?\s*DE|ADQUISICI[OÓ]N\s+DE|CONTRATACI[OÓ]N\s+DE|SERVICIO\s+DE)\s+/i,'').trim();
+  const cab=esServicio?'SERVICIO DE ':'ADQ. DE ';
+  const ar=String(area||'').trim();
+  return (cab+base+(ar?', SOLICITADO POR '+ar+' PARA EL HNAL':'')).toUpperCase();
+}
 function nuevaFilaCarta(){ return {codigo:'',descripcion:'',cantidad:'',unidad:'UNIDAD',precio:''}; }
 let cartaFilas=[nuevaFilaCarta()];
 function totalCarta(){
@@ -2410,14 +2422,19 @@ function jalarCartaDesdeCC(){
 
   const den=v('cc-denom') || v('adquisicion');
   if(den){
-    const conPref=conPrefijoObjeto(den, esServicioCC()).toUpperCase();
-    s('ca-denom', conPref);
+    const esServ=esServicioCC();
+    s('ca-denom', conPrefijoObjeto(den, esServ).toUpperCase());
     const asu=document.getElementById('ca-asunto');
-    if(asu && !asu.value.trim()){
-      asu.value='ADQ. '+conPref+(v('cc-area')?', SOLICITADO POR '+v('cc-area').toUpperCase()+' PARA EL HNAL':'');
-    }
+    if(asu && !asu.value.trim()) asu.value=asuntoCarta(den, esServ, v('cc-area'));
   }
-  if(v('cc-doc')) s('ca-ref', v('cc-doc'));
+  const refHint=document.getElementById('ca-ref-hint');
+  if(v('cc-doc')){
+    s('ca-ref', v('cc-doc'));
+    if(refHint) refHint.textContent='Salió del “Documento de solicitud” del Cuadro Comparativo.';
+  } else if(refHint){
+    refHint.textContent = v('ca-ref') ? '' :
+      '⚠ No se pudo jalar: el Cuadro Comparativo no tiene “Documento de solicitud”. Escríbela a mano.';
+  }
   if(!v('ca-fecha')) s('ca-fecha', new Date().toISOString().slice(0,10));
 
   let filas=[];
