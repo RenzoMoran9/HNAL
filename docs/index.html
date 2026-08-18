@@ -1075,21 +1075,24 @@ async function generarValidacion(datos){
   setv(11,FIRST,'CUMPLE CON LAS ESPECIFICACIONES TECNICAS');
   merge(11,FIRST,11,ultima);
 
-  // Postores (encabezado) + marca/sino por item
+  // Postores (encabezado) + marca (o plazo, en servicios) / sino por item
+  const esServ = datos.tipo === 'servicio';
   postores.forEach((p,i)=>{
     const cm = FIRST + 2*i, cs = cm+1;
     applyStyle(12,cm, st.postorIzq); applyStyle(12,cs, st.postorDer);
     setv(12,cm,'POSTOR '+(i+1)); merge(12,cm,12,cs);
     applyStyle(13,cm, st.empIzq); applyStyle(13,cs, st.empDer);
     setv(13,cm, String(p.nombre||'').trim()); merge(13,cm,13,cs);
-    applyStyle(14,cm, st.marcaHdr); setv(14,cm,'MARCA');
+    applyStyle(14,cm, st.marcaHdr); setv(14,cm, esServ ? 'PLAZO DE EJECUCIÓN' : 'MARCA');
     applyStyle(14,cs, st.sinoHdr); setv(14,cs,'(colocar SI o NO)');
     ws.getColumn(cm).width = 50;
     ws.getColumn(cs).width = 63;
     items.forEach((it,k)=>{
       const r = 15 + k;
       applyStyle(r,cm, st.marcaDato);
-      setv(r,cm, String((it.marcas && it.marcas[i])||'').trim());
+      // en servicios esa columna es el plazo: si solo escriben el número, se completa
+      const dato = String((it.marcas && it.marcas[i])||'').trim();
+      setv(r,cm, esServ ? fmtPlazo(dato) : dato);
       applyStyle(r,cs, st.sinoDato);
       // desplegable SI/NO para que el area usuario seleccione rapido
       ws.getRow(r).getCell(cs).dataValidation={type:'list',allowBlank:true,formulae:['"SI,NO"']};
@@ -1164,6 +1167,7 @@ document.querySelectorAll('input[name=tipo]').forEach(r=>{
       : '— se coloca después de "…PARA LA ADQUISICIÓN DE"';
     document.getElementById('adquisicion').placeholder = (tipo==='servicio')
       ? 'Ej: MANTENIMIENTO DE EQUIPOS BIOMEDICOS' : 'Ej: TOKEN DE SEGURIDAD CON CONECTOR USB';
+    renderItems();   // la columna de marca pasa a ser "plazo de ejecución" y al revés
   });
 });
 
@@ -1208,13 +1212,15 @@ document.getElementById('agregar-postor').addEventListener('click', ()=>{
 function renderItems(){
   const cont = document.getElementById('items');
   cont.innerHTML='';
+  // en servicios esa columna no es la marca sino el plazo de ejecución
+  const servicio = (tipo === 'servicio');
   items.forEach((it,k)=>{
     const card = document.createElement('div');
     card.className='item-card';
     const marcas = postores.map((p,i)=>`
       <div class="field" style="margin:0">
         <label class="lbl-postor" data-i="${i}">${etiquetaPostor(i)}</label>
-        <input type="text" class="i-marca" data-i="${i}" placeholder="Marca">
+        <input type="text" class="i-marca" data-i="${i}" placeholder="${servicio?'Ej: 15 (sale «15 DIAS CALENDARIO»)':'Marca'}">
       </div>`).join('');
     card.innerHTML = `
       <div class="item-head">
@@ -1227,7 +1233,7 @@ function renderItems(){
         <div class="field" style="margin:0"><label>Cantidad</label><input type="number" class="i-cantidad" min="0" placeholder="Ej: 150"></div>
       </div>
       <div class="field" style="margin:12px 0 0"><label>Denominación</label><input type="text" class="i-denom" placeholder="Ej: TOKEN DE SEGURIDAD CON CONECTOR USB"></div>
-      <div class="marcas-title">Marca ofertada por cada postor:</div>
+      <div class="marcas-title">${servicio?'Plazo de ejecución ofertado por cada postor:':'Marca ofertada por cada postor:'}</div>
       <div class="marcas-grid">${marcas}</div>`;
 
     const q = s => card.querySelector(s);
