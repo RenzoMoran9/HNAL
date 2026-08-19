@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Lee memos / notas ya emitidos (.docx) y saca de ellos el titulo profesional
-(Q.F., ING., DR., LIC., C.P.C., ...) con el que se nombra a cada funcionario,
+(Q.F., Ing., Dr., Lic., C.P.C., ...) con el que se nombra a cada funcionario,
 para guardarlo en web/directorio.json (campo "t" de cada persona).
 
     python web/aplicar_titulos.py documento1.docx documento2.docx ...
@@ -31,10 +31,12 @@ DIRECTORIO = BASE / "web" / "directorio.json"
 PATRON = (r"(Q\.?\s?F|C\.?P\.?C|ABOG|ING|LIC|DRA|DR|MG"
           r"|SRA|SR|M\.?C|OBST|ARQ|ECON|BLGO|T\.?M|ENF)(?:\.\s*|\s+)")
 CANON = {
-    "QF": "Q.F.", "CPC": "C.P.C.", "ABOG": "ABOG.", "ING": "ING.", "LIC": "LIC.",
-    "DRA": "DRA.", "DR": "DR.", "MG": "MG.", "SRA": "SRA.", "SR": "SR.",
-    "MC": "M.C.", "OBST": "OBST.", "ARQ": "ARQ.", "ECON": "ECON.",
-    "BLGO": "BLGO.", "TM": "T.M.", "ENF": "ENF.",
+    # Las siglas de varias palabras se quedan en mayuscula; las abreviaturas de
+    # una sola palabra van como el "Ing." del Jefe de Logistica.
+    "QF": "Q.F.", "CPC": "C.P.C.", "MC": "M.C.", "TM": "T.M.",
+    "ABOG": "Abog.", "ING": "Ing.", "LIC": "Lic.", "DRA": "Dra.", "DR": "Dr.",
+    "MG": "Mg.", "SRA": "Sra.", "SR": "Sr.", "OBST": "Obst.", "ARQ": "Arq.",
+    "ECON": "Econ.", "BLGO": "Blgo.", "ENF": "Enf.",
 }
 
 

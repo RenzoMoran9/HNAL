@@ -672,7 +672,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         <input type="text" class="no-mayus" id="n-dest-cargo" value="Director de la Oficina Ejecutiva de Planeamiento Estratégico" placeholder="Ej: Director de la Oficina Ejecutiva de Planeamiento Estratégico" style="margin-top:8px">
       </div>
       <div class="field"><label>Remitente — nombre / cargo</label>
-        <input type="text" class="no-mayus" id="n-rem-nombre" value="ING. FRANK RONALD TIPTE RUIZ">
+        <input type="text" class="no-mayus" id="n-rem-nombre" value="Ing. FRANK RONALD TIPTE RUIZ">
         <input type="text" class="no-mayus" id="n-rem-cargo" value="Jefe de la Oficina de Logística" style="margin-top:8px">
       </div>
       <div class="field"><label>Asunto — Solicito Aprobación de Certificación de Crédito Presupuestario N°</label>
@@ -3405,17 +3405,17 @@ const DIRECTORIO = [
  {
   "n": "Arturo Cirilo Rojas Gonzales",
   "c": "Director Ejecutivo de la Oficina Ejecutiva de Administración",
-  "t": "LIC."
+  "t": "Lic."
  },
  {
   "n": "Jacquelin Alicia Tello Ayala",
   "c": "Jefa del Departamento de Nutrición y Dietética",
-  "t": "LIC."
+  "t": "Lic."
  },
  {
   "n": "María Cecilia Ortíz Mejía",
   "c": "Jefa del Departamento de Diagnóstico por Imágenes",
-  "t": "DRA."
+  "t": "Dra."
  },
  {
   "n": "Luis Sandro Florian Tutaya",
@@ -3440,7 +3440,7 @@ const DIRECTORIO = [
  {
   "n": "José Alberto Rojas Jaimes",
   "c": "Jefe del Departamento de Ginecología y Obstetricia",
-  "t": "DR."
+  "t": "Dr."
  },
  {
   "n": "Marieta Mercedes Vilca Hurtado",
@@ -3457,12 +3457,12 @@ const DIRECTORIO = [
  {
   "n": "Pedro Ernesto Castillo Chirinos",
   "c": "Jefe del Departamento de Especialidades Quirúrgicas",
-  "t": "DR."
+  "t": "Dr."
  },
  {
   "n": "Iván Bernuy Rodríguez",
   "c": "Jefe del Departamento de Emergencia y Cuidados Críticos",
-  "t": "DR."
+  "t": "Dr."
  },
  {
   "n": "Nancy Salinas Escobar",
@@ -3471,7 +3471,7 @@ const DIRECTORIO = [
  {
   "n": "Leonardo Moisés Corrales Mechato",
   "c": "Jefe del Departamento de Anestesiología y Centros Quirúrgicos",
-  "t": "DR."
+  "t": "Dr."
  },
  {
   "n": "Sonia Apaestegui Infanzon",
@@ -3497,7 +3497,7 @@ const DIRECTORIO = [
  {
   "n": "María Lucinda Ramon Velásquez",
   "c": "Jefa de la Oficina de Estadística e Informática",
-  "t": "ING."
+  "t": "Ing."
  },
  {
   "n": "Hamilton Muñoz Tafur",
@@ -3510,7 +3510,7 @@ const DIRECTORIO = [
  {
   "n": "Jorge Luis Takami Oblitas",
   "c": "Jefe de la Oficina de Servicios Generales y Mantenimiento de la OEA",
-  "t": "ING."
+  "t": "Ing."
  },
  {
   "n": "Wilfredo Uber Ascencios Principe",
@@ -3524,7 +3524,7 @@ const DIRECTORIO = [
  {
   "n": "Frank Ronald Tipte Ruiz",
   "c": "Jefe de la Oficina de Logística de la Oficina Ejecutiva de Administración",
-  "t": "ING."
+  "t": "Ing."
  },
  {
   "n": "Juan Carlos Velasco Guerrero",
@@ -3545,7 +3545,7 @@ const DIRECTORIO = [
  {
   "n": "Jorge Luis Garavito Rentería",
   "c": "Jefe del Servicio de Gastroenterología",
-  "t": "DR."
+  "t": "Dr."
  },
  {
   "n": "Mario Roberto Cavero Cueva",
@@ -3914,7 +3914,7 @@ const DIRECTORIO = [
  {
   "n": "Raúl Barzola Chávez",
   "c": "Jefe de la Unidad de Tramite Documentario",
-  "t": "SR."
+  "t": "Sr."
  },
  {
   "n": "Herbert Jesús Diaz Villon",
@@ -3943,7 +3943,7 @@ const DIRECTORIO = [
  {
   "n": "Edwin Silverio Aponte Penadillo",
   "c": "Jefe de la Unidad de Ingeniería Clínica de la OSGM",
-  "t": "ING."
+  "t": "Ing."
  },
  {
   "n": "Eduardo Santos Velásquez",
@@ -3964,7 +3964,7 @@ const DIRECTORIO = [
  {
   "n": "Arturo Cirilo Rojas Gonzales",
   "c": "Jefe de la Unidad de Programación de la Oficina de Logística",
-  "t": "LIC."
+  "t": "Lic."
  },
  {
   "n": "Ana Ulianova Vargas Chancara",
@@ -3973,7 +3973,7 @@ const DIRECTORIO = [
  {
   "n": "María Lucinda Ramon Velásquez",
   "c": "Jefa de la Unidad de Informática",
-  "t": "ING."
+  "t": "Ing."
  },
  {
   "n": "María Edith Zavala Parodi",
@@ -4002,7 +4002,7 @@ const DIRECTORIO = [
  {
   "n": "Cinthya Evangelista Medina",
   "c": "Coordinadora de la Unidad de Gestión del Riesgo de Desastres",
-  "t": "DRA."
+  "t": "Dra."
  },
  {
   "n": "Mercedes Celestino Marcelo",
@@ -4027,15 +4027,17 @@ function limpiarCargoDir(cargo){
 // En los documentos el nombre va con su carrera: «Q.F. SONIA APAESTEGUI INFANZON».
 // El directorio trae los que ya se conocen; los demás se aprenden solos de lo que
 // escribes en tus memos y notas, y quedan guardados en esta computadora.
-const TITULOS_CONOCIDOS = ['Q.F.','C.P.C.','ABOG.','ING.','LIC.','DRA.','DR.','MG.','SRA.','SR.','M.C.','OBST.','ARQ.','ECON.','BLGO.','T.M.','ENF.'];
+const TITULOS_CONOCIDOS = ['Q.F.','C.P.C.','Abog.','Ing.','Lic.','Dra.','Dr.','Mg.','Sra.','Sr.','M.C.','Obst.','Arq.','Econ.','Blgo.','T.M.','Enf.'];
 // El título puede venir pegado al nombre ("ING.JORGE", "Lic.YACQUELIN") o separado
 // ("Q. F. SONIA"), así que el punto también sirve de separador. Exigir punto o
 // espacio evita que un nombre como "DRAGO" se confunda con "DR".
 const RE_TITULO = /^\s*(Q\.?\s?F|C\.?P\.?C|ABOG|ING|LIC|DRA|DR|MG|SRA|SR|M\.?C|OBST|ARQ|ECON|BLGO|T\.?M|ENF)(?:\.\s*|\s+)/i;
 function canonTitulo(t){
   const k=String(t||'').replace(/[^A-Za-zÁÉÍÓÚÑ]/g,'').toUpperCase();
-  const map={QF:'Q.F.',CPC:'C.P.C.',ABOG:'ABOG.',ING:'ING.',LIC:'LIC.',DRA:'DRA.',DR:'DR.',MG:'MG.',
-             SRA:'SRA.',SR:'SR.',MC:'M.C.',OBST:'OBST.',ARQ:'ARQ.',ECON:'ECON.',BLGO:'BLGO.',TM:'T.M.',ENF:'ENF.'};
+  // Las siglas de varias palabras van en mayuscula (Q.F., C.P.C.); las abreviaturas
+  // de una sola palabra, como el 'Ing.' del Jefe de Logistica, en minuscula.
+  const map={QF:'Q.F.',CPC:'C.P.C.',ABOG:'Abog.',ING:'Ing.',LIC:'Lic.',DRA:'Dra.',DR:'Dr.',MG:'Mg.',
+             SRA:'Sra.',SR:'Sr.',MC:'M.C.',OBST:'Obst.',ARQ:'Arq.',ECON:'Econ.',BLGO:'Blgo.',TM:'T.M.',ENF:'Enf.'};
   return map[k]||'';
 }
 function partirTitulo(nombre){
@@ -4054,6 +4056,16 @@ function clavePersona(nombre){
 // var (no let) porque estas funciones se usan desde código que corre antes de esta línea
 var titulosAprendidos={};
 try{ titulosAprendidos=JSON.parse(localStorage.getItem('hnal_titulos')||'{}')||{}; }catch(e){ titulosAprendidos={}; }
+// Los aprendidos antes se guardaban en mayúscula ("ING."); se pasan a la forma
+// ordenada ("Ing.") una sola vez, sin perder lo que ya habías enseñado.
+(function(){
+  let cambio=false;
+  Object.keys(titulosAprendidos).forEach(k=>{
+    const c=canonTitulo(titulosAprendidos[k]);
+    if(c && c!==titulosAprendidos[k]){ titulosAprendidos[k]=c; cambio=true; }
+  });
+  if(cambio){ try{ localStorage.setItem('hnal_titulos', JSON.stringify(titulosAprendidos)); }catch(e){} }
+})();
 function tituloDe(persona){
   const ap=titulosAprendidos||{};
   const k=clavePersona(persona&&persona.n||persona||'');

@@ -672,7 +672,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         <input type="text" class="no-mayus" id="n-dest-cargo" value="Director de la Oficina Ejecutiva de Planeamiento Estratégico" placeholder="Ej: Director de la Oficina Ejecutiva de Planeamiento Estratégico" style="margin-top:8px">
       </div>
       <div class="field"><label>Remitente — nombre / cargo</label>
-        <input type="text" class="no-mayus" id="n-rem-nombre" value="ING. FRANK RONALD TIPTE RUIZ">
+        <input type="text" class="no-mayus" id="n-rem-nombre" value="Ing. FRANK RONALD TIPTE RUIZ">
         <input type="text" class="no-mayus" id="n-rem-cargo" value="Jefe de la Oficina de Logística" style="margin-top:8px">
       </div>
       <div class="field"><label>Asunto — Solicito Aprobación de Certificación de Crédito Presupuestario N°</label>
@@ -3359,15 +3359,17 @@ function limpiarCargoDir(cargo){
 // En los documentos el nombre va con su carrera: «Q.F. SONIA APAESTEGUI INFANZON».
 // El directorio trae los que ya se conocen; los demás se aprenden solos de lo que
 // escribes en tus memos y notas, y quedan guardados en esta computadora.
-const TITULOS_CONOCIDOS = ['Q.F.','C.P.C.','ABOG.','ING.','LIC.','DRA.','DR.','MG.','SRA.','SR.','M.C.','OBST.','ARQ.','ECON.','BLGO.','T.M.','ENF.'];
+const TITULOS_CONOCIDOS = ['Q.F.','C.P.C.','Abog.','Ing.','Lic.','Dra.','Dr.','Mg.','Sra.','Sr.','M.C.','Obst.','Arq.','Econ.','Blgo.','T.M.','Enf.'];
 // El título puede venir pegado al nombre ("ING.JORGE", "Lic.YACQUELIN") o separado
 // ("Q. F. SONIA"), así que el punto también sirve de separador. Exigir punto o
 // espacio evita que un nombre como "DRAGO" se confunda con "DR".
 const RE_TITULO = /^\s*(Q\.?\s?F|C\.?P\.?C|ABOG|ING|LIC|DRA|DR|MG|SRA|SR|M\.?C|OBST|ARQ|ECON|BLGO|T\.?M|ENF)(?:\.\s*|\s+)/i;
 function canonTitulo(t){
   const k=String(t||'').replace(/[^A-Za-zÁÉÍÓÚÑ]/g,'').toUpperCase();
-  const map={QF:'Q.F.',CPC:'C.P.C.',ABOG:'ABOG.',ING:'ING.',LIC:'LIC.',DRA:'DRA.',DR:'DR.',MG:'MG.',
-             SRA:'SRA.',SR:'SR.',MC:'M.C.',OBST:'OBST.',ARQ:'ARQ.',ECON:'ECON.',BLGO:'BLGO.',TM:'T.M.',ENF:'ENF.'};
+  // Las siglas de varias palabras van en mayuscula (Q.F., C.P.C.); las abreviaturas
+  // de una sola palabra, como el 'Ing.' del Jefe de Logistica, en minuscula.
+  const map={QF:'Q.F.',CPC:'C.P.C.',ABOG:'Abog.',ING:'Ing.',LIC:'Lic.',DRA:'Dra.',DR:'Dr.',MG:'Mg.',
+             SRA:'Sra.',SR:'Sr.',MC:'M.C.',OBST:'Obst.',ARQ:'Arq.',ECON:'Econ.',BLGO:'Blgo.',TM:'T.M.',ENF:'Enf.'};
   return map[k]||'';
 }
 function partirTitulo(nombre){
@@ -3386,6 +3388,16 @@ function clavePersona(nombre){
 // var (no let) porque estas funciones se usan desde código que corre antes de esta línea
 var titulosAprendidos={};
 try{ titulosAprendidos=JSON.parse(localStorage.getItem('hnal_titulos')||'{}')||{}; }catch(e){ titulosAprendidos={}; }
+// Los aprendidos antes se guardaban en mayúscula ("ING."); se pasan a la forma
+// ordenada ("Ing.") una sola vez, sin perder lo que ya habías enseñado.
+(function(){
+  let cambio=false;
+  Object.keys(titulosAprendidos).forEach(k=>{
+    const c=canonTitulo(titulosAprendidos[k]);
+    if(c && c!==titulosAprendidos[k]){ titulosAprendidos[k]=c; cambio=true; }
+  });
+  if(cambio){ try{ localStorage.setItem('hnal_titulos', JSON.stringify(titulosAprendidos)); }catch(e){} }
+})();
 function tituloDe(persona){
   const ap=titulosAprendidos||{};
   const k=clavePersona(persona&&persona.n||persona||'');
