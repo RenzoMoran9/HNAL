@@ -364,6 +364,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .carta-fila .cf-head .t{font-weight:700;color:var(--azul);font-size:.9rem;}
 .carta-grid{display:grid;grid-template-columns:140px 1fr 90px 120px 120px 130px;gap:8px;align-items:end;}
 @media (max-width:900px){.carta-grid{grid-template-columns:1fr 1fr;}}
+.chk-hist{display:flex;align-items:center;gap:9px;font-size:.93rem;cursor:pointer;}
+.chk-hist input{width:17px;height:17px;cursor:pointer;}
 .ca-total{margin-top:12px;text-align:right;font-weight:800;color:var(--azul);font-size:1.02rem;}
 </style>
 </head>
@@ -569,6 +571,23 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       </div>
       <div id="cc-concl-m2" style="display:none">
         <p class="hint" style="margin:0;line-height:1.5">El <b>Modelo 2</b> genera el pie del cuadro automáticamente y <b>todo en MAYÚSCULAS</b>: el <b>guión 2</b> jala el <i>Documento de solicitud</i> ingresado arriba, y el <b>guión 3</b> jala la <i>Denominación</i> (“ADQUISICIÓN DE…”). Este modelo <b>no lleva firma de especialista</b>.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Fuente 2 · Precios históricos de la entidad <span class="hint">— opcional</span></h2>
+      <p class="hint" style="margin:-6px 0 12px;line-height:1.5">El cuadro trae esta columna con <b>“NO APLICA”</b>. Márcala solo cuando el expediente necesite mostrar una <b>compra anterior del hospital</b> (una orden de compra ya adjudicada) como precio de referencia.</p>
+      <label class="chk-hist"><input type="checkbox" id="cc-hist"> <b>Usar la Fuente 2 en este cuadro</b></label>
+      <div id="cc-hist-campos" style="display:none;margin-top:14px">
+        <div class="grid2">
+          <div class="field"><label>Entidad</label><input type="text" id="cc-hist-entidad" value="HOSPITAL NACIONAL ARZOBISPO LOAYZA"></div>
+          <div class="field"><label>Tipo y N° de proceso de selección</label><input type="text" id="cc-hist-proceso" placeholder="Ej: O/C 197"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Fecha de consentimiento de la buena pro</label><input type="date" id="cc-hist-fecha"></div>
+          <div class="field"><label>Nombre o razón social del adjudicatario</label><input type="text" id="cc-hist-adj" list="dl-proveedores" placeholder="Ej: QS CONSUMO SAC"></div>
+        </div>
+        <p class="hint" style="margin:2px 0 10px">El <b>precio histórico de cada ítem</b> se escribe abajo, en la tarjeta del ítem.</p>
       </div>
     </div>
 
@@ -1001,7 +1020,7 @@ async function generarValidacion(datos){
   });
 
   const prefijo = TITULOS[datos.tipo === 'servicio' ? 'servicio' : 'bien'];
-  setv(5,2, prefijo + String(datos.adquisicion||'').trim().toUpperCase());
+  setv(5,2, prefijo + sinPrefijoObjeto(datos.adquisicion).toUpperCase());
 
   // Limpiar zona de postores (encabezado + filas de items)
   for (let f=11; f<=lastItem; f++)
@@ -1478,6 +1497,7 @@ async function generarCuadroComparativo(datos){
   const items=(datos.items||[]).filter(it=>(it.descripcion||'').trim()!=='' || (it.precios||[]).some(x=>String(x).trim()!==''));
   if(items.length<1) throw new Error('Agrega al menos un item.');
   const esServicio = String(datos.objeto||'bien')==='servicio';
+  const hist = !!(datos.historico);   // FUENTE 2: precios históricos de la entidad
   const nI=items.length, OFF=nI-1;
   const ITEM=20, FOOT_TOP=21, FOOT_BOT=45, WMAX=25;
   const setv=(r,c,v)=>{ ws.getRow(r).getCell(c).value=v; };
@@ -1495,7 +1515,7 @@ async function generarCuadroComparativo(datos){
     ['A7:B7','D7:U7','A7:U7'].forEach(rng=>{ try{ ws.unMergeCells(rng); }catch(e){} });
     ws.getRow(7).getCell(4).value=null;   // limpiar el "ADQ. DE " que iba suelto en D7
     const a7=ws.getRow(7).getCell(1);
-    a7.value='DENOMINACIÓN DE LA CONTRATACIÓN: '+(esServicio?'SERVICIO DE ':'ADQ. DE ')+den;
+    a7.value='DENOMINACIÓN DE LA CONTRATACIÓN: '+(esServicio?'SERVICIO DE ':'ADQ. DE ')+sinPrefijoObjeto(den);
     a7.alignment=Object.assign({},a7.alignment,{horizontal:'left',vertical:'middle',wrapText:true});
     try{ ws.mergeCells('A7:U7'); }catch(e){}
   })();
@@ -1540,7 +1560,14 @@ async function generarCuadroComparativo(datos){
         ws.getRow(r).getCell(b).numFmt=fmtUnit; ws.getRow(r).getCell(b+1).numFmt=fmtTot;
       } else { setv(r,b,null); setv(r,b+1,null); setv(r,b+2,null); }
     }
-    setv(r,18,null); setv(r,19,null); setv(r,20,null); // FUENTE 2 no se usa
+    // FUENTE 2 (precios históricos de la entidad): solo si el usuario la activó
+    if(hist){
+      const pu=ccNum(it.precioHist);
+      setv(r,18,pu);
+      setv(r,19, pu==null?null:{formula:'E'+r+'*'+colLetter(18)+r});
+      setv(r,20, esServicio?null:String(it.marcaHist||'').trim()||null);
+      ws.getRow(r).getCell(18).numFmt=fmtUnit; ws.getRow(r).getCell(19).numFmt=fmtTot;
+    } else { setv(r,18,null); setv(r,19,null); setv(r,20,null); }
     // metodologia con el numero del postor ganador
     setv(r,21,'SE TOMO COMO V.ESTIMADO  LA COTIZACIÓN('+('0'+(g+1)).slice(-2)+') DE LA FUENTE 1:COTIZACIONES ACTUALIZADAS');
     setv(r,22,{formula:colLetter(gb)+r}); setv(r,23,{formula:'V'+r+'*E'+r}); // valor unit/estimado del item
@@ -1604,8 +1631,17 @@ async function generarCuadroComparativo(datos){
   for(let c=1;c<=20;c++) sinRelleno(totalRow,c);
   [gb,gb+1,gb+2].forEach(c=>setFill(totalRow,c,GRIS));
 
-  // Limpiar datos de FUENTE 2 en la cabecera
-  [[15,19],[16,19],[18,19]].forEach(a=> setv(a[0],a[1],null));
+  // Cabecera de FUENTE 2: se llena solo si se activó; si no, se deja en blanco
+  if(hist){
+    const h=datos.historico;
+    if(String(h.entidad||'').trim()) setv(13,19,String(h.entidad).trim().toUpperCase());
+    setv(15,19,String(h.proceso||'').trim()||null);
+    const fh=ccFecha(h.fecha);
+    setv(16,19,fh); if(fh) ws.getRow(16).getCell(19).numFmt='dd/mm/yyyy';
+    setv(18,19,String(h.adjudicatario||'').trim().toUpperCase()||null);
+  } else {
+    [[15,19],[16,19],[18,19]].forEach(a=> setv(a[0],a[1],null));
+  }
 
   // Reconstruir merges del pie (desplazados)
   footMerges.forEach(a=>{ try{ ws.mergeCells(a[0]+(a[1]+OFF)+':'+a[2]+(a[3]+OFF)); }catch(e){} });
@@ -1708,7 +1744,7 @@ function ccTextoPunto1(){
 }
 function syncPunto1(){ if(ccP1Auto){ const el=document.getElementById('cc-p1'); if(el) el.value=ccTextoPunto1(); } }
 function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',fecha_recepcion:'',se_dedica:'SI',verifica:'SI',cumple_rtm:'',se_tomo:''};}
-function nuevoItemCC(){return{descripcion:'',medida:'UNIDAD',cantidad:'',precios:ccPostores?ccPostores.map(()=> ''):['',''],marcas:ccPostores?ccPostores.map(()=> ''):['','']};}
+function nuevoItemCC(){return{descripcion:'',medida:'UNIDAD',cantidad:'',precios:ccPostores?ccPostores.map(()=> ''):['',''],marcas:ccPostores?ccPostores.map(()=> ''):['',''],precioHist:'',marcaHist:''};}
 
 function nombreItemCC(k){ const d=(ccItems[k]&&ccItems[k].descripcion||'').trim(); return 'Ítem '+(k+1)+(d?' — '+d:''); }
 function esServicioCC(){ return ((document.getElementById('cc-objeto')||{}).value||'bien')==='servicio'; }
@@ -1795,6 +1831,14 @@ document.getElementById('cc-agregar').addEventListener('click',()=>{
 });
 
 // ---- Ítems del CC (solo descripción / medida / cantidad; el precio va con cada postor) ----
+// ¿Se va a usar la columna de precios históricos de la entidad (FUENTE 2)?
+function histActiva(){ const c=document.getElementById('cc-hist'); return !!(c && c.checked); }
+function aplicarHistCC(){
+  const on=histActiva();
+  const campos=document.getElementById('cc-hist-campos');
+  if(campos) campos.style.display=on?'':'none';
+  document.querySelectorAll('.cii-hist').forEach(el=>{ el.style.display=on?'':'none'; });
+}
 function renderCCItems(){
   const cont=document.getElementById('cc-items'); cont.innerHTML='';
   ccItems.forEach((it,k)=>{
@@ -1808,12 +1852,20 @@ function renderCCItems(){
         <div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cii-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"><div class="hist-hint"></div></div>
         <div class="field" style="margin:0"><label>Medida <span class="hint">— elige o escribe</span></label><input type="text" class="cii-medida" list="dl-medidas" value="UNIDAD"></div>
         <div class="field" style="margin:0"><label>Cantidad</label><input type="number" min="0" class="cii-cant" placeholder="Ej: 1200"></div>
+      </div>
+      <div class="cii-hist" style="display:${histActiva()?'':'none'};margin-top:12px">
+        <div class="grid2">
+          <div class="field" style="margin:0"><label>Fuente 2 · precio unitario histórico <span class="hint">— de la compra anterior</span></label><input type="text" class="cii-phist" inputmode="decimal" placeholder="Ej: 444.86"></div>
+          <div class="field" style="margin:0"><label>Fuente 2 · marca <span class="hint">— opcional</span></label><input type="text" class="cii-mhist" placeholder="Ej: ZAVICEFTA"></div>
+        </div>
       </div>`;
     const q=s=>card.querySelector(s);
     q('.cii-desc').value=it.descripcion; q('.cii-desc').addEventListener('input',e=>{ it.descripcion=e.target.value; actualizarLabelsItemsEnPostores(); pistaHistorial(q('.cii-desc'), q('.hist-hint')); });
     pistaHistorial(q('.cii-desc'), q('.hist-hint'));
     q('.cii-medida').value=it.medida; q('.cii-medida').addEventListener('input',e=>it.medida=e.target.value);
     q('.cii-cant').value=it.cantidad; q('.cii-cant').addEventListener('input',e=>it.cantidad=e.target.value);
+    q('.cii-phist').value=it.precioHist||''; q('.cii-phist').addEventListener('input',e=>it.precioHist=e.target.value);
+    q('.cii-mhist').value=it.marcaHist||''; q('.cii-mhist').addEventListener('input',e=>it.marcaHist=e.target.value);
     card.querySelector('.cii-quitar').addEventListener('click',()=>{ if(ccItems.length<=1) return; ccItems.splice(k,1); renderCCItems(); renderCC(); });
     cont.appendChild(card);
   });
@@ -1832,6 +1884,8 @@ function pistaHistorial(input, cont){
 }
 function actualizarLabelsItemsEnPostores(){ document.querySelectorAll('#cc-postores .cc-cot').forEach(el=>{ const t=el.querySelector('.cc-cot-t'); if(t) t.textContent=nombreItemCC(+el.dataset.k); }); }
 document.getElementById('cc-agregar-item').addEventListener('click',()=>{ ccItems.push(nuevoItemCC()); renderCCItems(); renderCC(); });
+document.getElementById('cc-hist').addEventListener('change', ()=>{ aplicarHistCC(); scheduleSave(); });
+aplicarHistCC();
 // Punto 1): al escribir manualmente deja de autocompletarse (si se vacía, vuelve a auto)
 document.getElementById('cc-p1').addEventListener('input', function(){ ccP1Auto = (this.value.trim()===''); });
 // Modelo 1 / Modelo 2: alterna el pie del cuadro
@@ -1870,6 +1924,7 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
   const itemsData = itemsUsed.map(it=>({
     descripcion:it.descripcion, medida:it.medida, cantidad:it.cantidad,
     precios: usedIdx.map(i=>it.precios[i]), marcas: usedIdx.map(i=>it.marcas[i]),
+    precioHist: it.precioHist||'', marcaHist: it.marcaHist||'',
   }));
   const ganadorRemap = Math.max(0, usedIdx.indexOf(ccGanador));
   const datos={
@@ -1878,6 +1933,10 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
     items:itemsData, postores:postoresUsed, ganador:ganadorRemap,
     punto1:val('cc-p1'), punto2:val('cc-p2'), punto3:val('cc-p3'),
     especialista:val('cc-esp'), cargo:val('cc-cargo'), fecha:val('cc-fecha'),
+    historico: histActiva() ? {
+      entidad:val('cc-hist-entidad'), proceso:val('cc-hist-proceso'),
+      fecha:val('cc-hist-fecha'), adjudicatario:val('cc-hist-adj'),
+    } : null,
   };
   const gName=(postoresUsed[ganadorRemap]||{}).nombre||'—';
   const rucMalCC = postoresUsed.some(p=>String(p.ruc||'').trim() && !rucValido(p.ruc));
@@ -1994,6 +2053,12 @@ function conPrefijoObjeto(txt, esServicio){
   if(!t) return '';
   if(/^(ADQUISICI[OÓ]N|CONTRATACI[OÓ]N|SERVICIO|SUMINISTRO|ALQUILER)\b/i.test(t)) return t;
   return (esServicio ? 'SERVICIO DE ' : 'ADQUISICIÓN DE ') + t;
+}
+// Quita "ADQUISICIÓN DE" / "SERVICIO DE" del inicio, para no repetirlo donde la
+// plantilla ya lo pone ("ADQ. DE …", "…PARA LA ADQUISICION DE …").
+function sinPrefijoObjeto(txt){
+  return String(txt||'').trim()
+    .replace(/^(ADQ\.?\s*DE|ADQUISICI[OÓ]N\s+DE|CONTRATACI[OÓ]N\s+DE|SERVICIO\s+DE|SUMINISTRO\s+DE|ALQUILER\s+DE)\s+/i,'').trim();
 }
 function articuloObjeto(txt){
   return /^(SERVICIO|SUMINISTRO|ALQUILER)\b/i.test(String(txt||'').trim()) ? 'el' : 'la';
@@ -2306,8 +2371,7 @@ function fechaCarta(iso){
 // ya empieza con "ADQUISICIÓN DE", se quita para no decirlo dos veces
 // ("ADQ. ADQUISICIÓN DE …" repite la misma palabra abreviada y completa).
 function asuntoCarta(den, esServicio, area){
-  const base=String(den||'').trim()
-    .replace(/^(ADQ\.?\s*DE|ADQUISICI[OÓ]N\s+DE|CONTRATACI[OÓ]N\s+DE|SERVICIO\s+DE)\s+/i,'').trim();
+  const base=sinPrefijoObjeto(den);
   const cab=esServicio?'SERVICIO DE ':'ADQ. DE ';
   const ar=String(area||'').trim();
   return (cab+base+(ar?', SOLICITADO POR '+ar+' PARA EL HNAL':'')).toUpperCase();
@@ -2963,7 +3027,9 @@ function setTrabajoActivo(id,nombre){
 }
 function snapshot(){
   const inputs={};
-  document.querySelectorAll('#app input[id], #app select[id], #app textarea[id]').forEach(el=>{ inputs[el.id]=el.value; });
+  // en las casillas lo que importa es si están marcadas, no su .value
+  document.querySelectorAll('#app input[id], #app select[id], #app textarea[id]').forEach(el=>{
+    inputs[el.id] = (el.type==='checkbox') ? (el.checked?'1':'') : el.value; });
   return { v:4, ts:Date.now(), tipo, postores, items, ccPostores, ccGanador, ccItems, memoFilas, notaFilas, cartaFilas, inputs };
 }
 function guardarYa(){ if(!saveReady) return; try{
@@ -2992,13 +3058,15 @@ function restore(d){
     items.forEach(it=>{ while(it.marcas.length<postores.length) it.marcas.push(''); it.marcas.length=postores.length; });
     if(Array.isArray(d.ccPostores)&&d.ccPostores.length) ccPostores=d.ccPostores.map(p=>Object.assign(nuevoPostorCC(),p));
     if(typeof d.ccGanador==='number') ccGanador=Math.min(Math.max(d.ccGanador,0),ccPostores.length-1);
-    if(Array.isArray(d.ccItems)&&d.ccItems.length) ccItems=d.ccItems.map(it=>({descripcion:it.descripcion||'',medida:it.medida||'UNIDAD',cantidad:it.cantidad||'',precios:(it.precios||[]).slice(),marcas:(it.marcas||[]).slice()}));
+    if(Array.isArray(d.ccItems)&&d.ccItems.length) ccItems=d.ccItems.map(it=>({descripcion:it.descripcion||'',medida:it.medida||'UNIDAD',cantidad:it.cantidad||'',precios:(it.precios||[]).slice(),marcas:(it.marcas||[]).slice(),precioHist:it.precioHist||'',marcaHist:it.marcaHist||''}));
     ccItems.forEach(it=>{ while(it.precios.length<ccPostores.length) it.precios.push(''); it.precios.length=ccPostores.length; while(it.marcas.length<ccPostores.length) it.marcas.push(''); it.marcas.length=ccPostores.length; });
     if(Array.isArray(d.memoFilas)&&d.memoFilas.length) memoFilas=d.memoFilas.map(f=>({empresa:f.empresa||'',ruc:f.ruc||'',obs:f.obs||'NINGUNA OBSERVACION'}));
     if(Array.isArray(d.notaFilas)&&d.notaFilas.length) notaFilas=d.notaFilas.map(f=>({ccmn:f.ccmn||'',ccpsiaf:f.ccpsiaf||'',descripcion:f.descripcion||'',meta:f.meta||'',especifica:f.especifica||'',ff:f.ff||'DyT 4-13',monto:f.monto||''}));
     if(Array.isArray(d.cartaFilas)&&d.cartaFilas.length) cartaFilas=d.cartaFilas.map(f=>({codigo:f.codigo||'',descripcion:f.descripcion||'',cantidad:f.cantidad||'',unidad:f.unidad||'UNIDAD',precio:f.precio||''}));
     renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas(); renderCartaFilas();
-    if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(el) el.value=d.inputs[id]; }); }
+    if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(!el) return;
+      if(el.type==='checkbox') el.checked = !!d.inputs[id]; else el.value=d.inputs[id]; }); }
+    if(typeof aplicarHistCC==='function') aplicarHistCC();
     if(typeof normalizarCargosEnFormulario==='function') normalizarCargosEnFormulario();
     if(typeof aplicarModeloCC==='function') aplicarModeloCC();
     if(typeof aplicarObjetoCC==='function') aplicarObjetoCC();
