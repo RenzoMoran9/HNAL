@@ -618,7 +618,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
           <button type="button" class="btn-mini dest-save" data-target="m">＋ Guardar</button>
           <button type="button" class="btn-mini danger dest-del" data-target="m" title="Quitar de la lista">🗑</button>
         </div>
-        <input type="text" id="m-dest-nombre" placeholder="Ej: ING. JORGE LUIS TAKAMI OBLITAS">
+        <input type="text" class="grado" id="m-dest-nombre" placeholder="Ej: Ing. JORGE LUIS TAKAMI OBLITAS">
         <input type="text" class="no-mayus" id="m-dest-cargo" placeholder="Ej: Jefe de la Oficina de Servicios Generales y Mantenimiento" style="margin-top:8px">
       </div>
       <div class="field"><label>Remitente — nombre / cargo</label>
@@ -687,7 +687,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
           <button type="button" class="btn-mini dest-save" data-target="n">＋ Guardar</button>
           <button type="button" class="btn-mini danger dest-del" data-target="n" title="Quitar de la lista">🗑</button>
         </div>
-        <input type="text" id="n-dest-nombre" value="M.C. JOSÉ RAÚL CARPIO BARBIERI" placeholder="Ej: M.C. JOSÉ RAÚL CARPIO BARBIERI">
+        <input type="text" class="grado" id="n-dest-nombre" value="M.C. JOSÉ RAÚL CARPIO BARBIERI" placeholder="Ej: M.C. JOSÉ RAÚL CARPIO BARBIERI">
         <input type="text" class="no-mayus" id="n-dest-cargo" value="Director de la Oficina Ejecutiva de Planeamiento Estratégico" placeholder="Ej: Director de la Oficina Ejecutiva de Planeamiento Estratégico" style="margin-top:8px">
       </div>
       <div class="field"><label>Remitente — nombre / cargo</label>
@@ -3487,7 +3487,8 @@ const DIRECTORIO = [
  },
  {
   "n": "Luis Sandro Florian Tutaya",
-  "c": "Jefe del Departamento de Pediatría"
+  "c": "Jefe del Departamento de Pediatría",
+  "t": "Dr."
  },
  {
   "n": "Pierino Humberto Álvarez Bedoya",
@@ -4355,10 +4356,22 @@ document.addEventListener('keydown', (e)=>{
 // para que el valor ya esté en mayúscula cuando los campos guardan su estado.
 // Excepción: los cargos ("Jefe de la Oficina de…") y el nombre del remitente
 // conservan su formato normal, no se pasan a mayúsculas.
+// El nombre de un funcionario va en mayúsculas pero su grado NO:
+// "Dr. IVÁN BERNUY RODRÍGUEZ", no "DR. IVÁN BERNUY RODRÍGUEZ".
+function mayusConGrado(v){
+  const txt=String(v||'');
+  const m=txt.match(RE_TITULO);
+  if(!m) return txt.toUpperCase();
+  const t=canonTitulo(m[1]);
+  if(!t) return txt.toUpperCase();
+  const sep=m[0].slice(m[1].length);          // se respeta el punto/espacio que escribió
+  return t.replace(/\.$/,'') + sep + txt.slice(m[0].length).toUpperCase();
+}
 document.addEventListener('input', (e)=>{
   const t=e.target;
   if(t && t.matches && t.matches('#app input[type=text]:not(.no-mayus), #app textarea:not(.no-mayus)')){
-    const s=t.selectionStart, en=t.selectionEnd, up=t.value.toUpperCase();
+    const s=t.selectionStart, en=t.selectionEnd;
+    const up = t.classList.contains('grado') ? mayusConGrado(t.value) : t.value.toUpperCase();
     if(up!==t.value){ t.value=up; try{ t.setSelectionRange(s,en); }catch(_){} }
   }
 }, true);
