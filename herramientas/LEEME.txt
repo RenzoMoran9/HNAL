@@ -1,0 +1,51 @@
+PDF AUTOMATICO · HNAL
+=====================
+
+Convierte a PDF, solo, cada Word o Excel que la app deja en tus carpetas.
+Usa el propio Word/Excel, asi que el PDF sale igual que si lo guardaras a
+mano: con el membrete, el logo y el area de impresion ya configurada.
+
+
+1) PONER TUS CARPETAS
+---------------------
+Abre PDF_AUTOMATICO.ps1 con el Bloc de notas y cambia la lista de arriba
+por las carpetas que vinculaste en la app (las que eliges con el boton
+"Vincular carpeta" de cada documento).
+
+Para copiar la ruta de una carpeta: abrela en el Explorador, haz clic en la
+barra de direcciones y copia lo que dice (ej: C:\Users\Renzo\Documents\HNAL\Memos).
+
+
+2) PROBARLO
+-----------
+Doble clic en INICIAR_PDF_AUTOMATICO.bat
+Se abre una ventana negra que dice "Vigilando: ..." y ahi se queda.
+Genera un documento desde la app y en unos segundos aparece el PDF al lado.
+Para detenerlo: cierra la ventana.
+
+
+3) QUE ARRANQUE SOLO CON WINDOWS
+--------------------------------
+- Tecla Windows + R
+- Escribe:  shell:startup   y Enter
+- Arrastra INICIAR_PDF_AUTOMATICO.bat a esa carpeta con el boton derecho y
+  elige "Crear iconos de acceso directo aqui"
+
+Desde la proxima vez que enciendas la PC arranca solo.
+
+
+DETALLES
+--------
+- Si el PDF ya existe y el documento no cambio, no lo vuelve a hacer.
+- Si el archivo todavia se esta escribiendo, espera y lo reintenta.
+- Lo que va haciendo queda anotado en pdf_automatico.log, en esta carpeta.
+- Revisa cada 10 segundos. Se cambia con $CadaSegundos.
+- Para dejar todos los PDF en una sola carpeta, pon la ruta en $CarpetaPDF.
+
+
+SI NO FUNCIONA
+--------------
+- "No se puede cargar el archivo ... ejecucion de scripts esta deshabilitada":
+  la PC del hospital bloquea scripts. Usa Power Automate Desktop (viene con
+  Windows): flujo "cuando se cree un archivo en una carpeta" -> "convertir a PDF".
+- Necesita Word y Excel instalados en la PC.
