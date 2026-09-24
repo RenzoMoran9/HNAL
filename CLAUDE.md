@@ -20,6 +20,10 @@ Hospital Nacional Arzobispo Loayza.
 - `python web/aplicar_titulos.py <memos.docx>` saca los grados profesionales
   (Dr., Ing., Q.F.) de documentos ya emitidos y los guarda en
   `web/directorio.json`.
+- **El catálogo SIGA no se sube al repo.** Son las compras del hospital: el
+  usuario carga sus "REPORTE DE OC" (.xlsx) desde la pantalla *Buscar* y la app
+  los lee en el navegador y los guarda ahí (IndexedDB, store `siga`).
+  `build_html.py` deja siempre el catálogo vacío.
 - Commit y push a la rama `claude/excel-validation-model-ogwy3i`.
 
 ## Estructura
@@ -29,6 +33,9 @@ Hospital Nacional Arzobispo Loayza.
   base64, el directorio y las fuentes → `docs/index.html` (GitHub Pages).
 - `plantilla/` — los .xlsx y .docx oficiales que se rellenan.
 - `web/directorio.json` — 151 personas del hospital con su área y su grado.
+- `datos/` — los "REPORTE DE OC" del SIGA para probar en local. Está en
+  `.gitignore`: **nunca se commitean**, llevan precios y proveedores del
+  hospital.
 
 ## Documentos que genera
 

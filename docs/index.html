@@ -233,6 +233,26 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .area-hint:empty{display:none;}
 .hist-hint{font-size:.76rem;color:var(--verde);font-weight:600;margin-top:5px;line-height:1.4;}
 .hist-hint:empty{display:none;}
+
+/* Catalogo SIGA: sugerencias mientras se escribe el item */
+.sg-caja{position:relative;}
+.sg-lista{position:absolute;z-index:60;left:0;right:0;top:calc(100% + 4px);min-width:340px;background:#fff;
+  border:1px solid var(--azul-bd);border-radius:10px;box-shadow:0 10px 28px rgba(13,59,102,.16);
+  max-height:290px;overflow-y:auto;padding:4px;}
+.sg-op{padding:7px 10px;border-radius:7px;cursor:pointer;line-height:1.35;}
+.sg-op:hover,.sg-op.sel{background:var(--azul-suave);}
+.sg-op .n{font-size:.84rem;font-weight:600;color:var(--texto);}
+.sg-op .m{font-size:.72rem;color:var(--muted);margin-top:2px;}
+.sg-op .c{font-family:ui-monospace,Consolas,monospace;font-size:.72rem;color:var(--azul-claro);font-weight:700;}
+.sg-nada{padding:9px 10px;font-size:.8rem;color:var(--muted);}
+.sg-pie{padding:6px 10px;font-size:.72rem;color:var(--muted);border-top:1px solid var(--borde);margin-top:3px;}
+.siga-hint{font-size:.76rem;color:var(--azul-claro);font-weight:600;margin-top:5px;line-height:1.4;}
+.siga-hint:empty{display:none;}
+.siga-estado{background:var(--gris);border:1px solid var(--borde);border-radius:9px;padding:11px 13px;font-size:.87rem;}
+.siga-estado b{color:var(--azul);}
+.siga-estado.vacio{background:var(--oro-bg);border-color:var(--oro-bd);color:var(--oro-tx);}
+.sg-tab td{font-size:.8rem;}
+.sg-tab .cod{font-family:ui-monospace,Consolas,monospace;font-size:.76rem;white-space:nowrap;}
 .tr-chip{display:inline-block;background:#e8f6f0;border:1px solid #b9e2d2;color:#0a5c46;border-radius:999px;
   padding:2px 10px;font-size:.66rem;font-weight:700;margin-left:8px;vertical-align:middle;white-space:nowrap;}
 
@@ -809,8 +829,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   <div id="panel-buscar" class="panel oculto">
     <div class="card">
       <h2>🔎 Buscar en todo</h2>
-      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">Busca en tus <b>expedientes guardados</b> y en el <b>histórico de precios</b>. Sirve para responder “¿a cuánto compramos esto la vez pasada?” o “¿en qué expediente estaba tal proveedor?”.</p>
-      <div class="field" style="margin:0"><input type="text" id="bus-q" placeholder="Ej: GASA QUIRURGICA, EGUSQFARMA, 20604200131…"></div>
+      <p class="hint" style="margin:-6px 0 14px;line-height:1.5">Busca en el <b>catálogo SIGA del hospital</b>, en tus <b>expedientes guardados</b> y en el <b>histórico de precios</b>. Sirve para responder “¿cuál es el código SIGA de esto?”, “¿a cuánto lo compramos la vez pasada?” o “¿en qué expediente estaba tal proveedor?”.</p>
+      <div class="field" style="margin:0"><input type="text" id="bus-q" placeholder="Ej: GASA QUIRURGICA, 495100093287, EGUSQFARMA…"></div>
       <div class="atajos">
         <b>Atajos de teclado:</b>
         <span><kbd>Enter</kbd> siguiente campo</span>
@@ -822,7 +842,22 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       </div>
     </div>
     <div class="card">
-      <h2>Histórico de precios</h2>
+      <h2>📦 Catálogo SIGA</h2>
+      <p class="hint" style="margin:-6px 0 12px;line-height:1.5">Los códigos, los ítems y los precios salen de los <b>“REPORTE DE OC”</b> que bajas del SIGA. <b>Se quedan en esta computadora</b> — no se suben a internet ni viajan dentro de la app. Cárgalos una vez y sirven para autocompletar los cuadros.</p>
+      <div class="siga-estado" id="siga-estado"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <button type="button" class="btn btn-azul" id="siga-cargar">📥 Cargar reportes del SIGA (.xlsx)</button>
+        <input type="file" id="siga-cargar-file" accept=".xlsx,.xls" multiple style="display:none">
+        <button type="button" class="btn btn-sec" id="siga-exportar">💾 Guardar catálogo para pasarlo a otra PC</button>
+        <button type="button" class="btn btn-sec" id="siga-importar">📂 Cargar catálogo (.json)</button>
+        <input type="file" id="siga-importar-file" accept=".json,application/json" style="display:none">
+        <button type="button" class="btn-mini danger" id="siga-quitar">🗑 Quitar de esta PC</button>
+      </div>
+      <div id="msg-siga"></div>
+      <div id="bus-siga" style="margin-top:14px"></div>
+    </div>
+    <div class="card">
+      <h2>Histórico de precios <span class="hint">— de los cuadros que has emitido</span></h2>
       <div id="bus-hist"></div>
     </div>
     <div class="card">
@@ -1165,6 +1200,249 @@ async function generarValidacion(datos){
   return await wb.xlsx.writeBuffer();
 }
 
+// ====================== CATÁLOGO SIGA ======================
+// Sale de los "REPORTE DE OC" que se bajan del SIGA (web/make_siga.py). No es el
+// catálogo nacional: son los ítems que el hospital realmente compró, con su
+// código, su nombre oficial, su unidad y el precio de cada compra.
+//   items: [ [codigo, nombre, unidad, [[fecha, precio, iProveedor, cantidad], …]] ]
+//   la primera compra de la lista es la más reciente.
+// El catálogo NO viaja dentro de la app: los reportes son del hospital y se
+// quedan en la computadora. Se cargan una vez desde "Buscar" y se guardan en el
+// navegador (IndexedDB). En la versión publicada va vacío.
+let SIGA = {v:1, gen:'', fuente:[], prov:[], items:[]};
+const SIGA_LOCAL = null;
+if(SIGA_LOCAL && SIGA_LOCAL.items) SIGA = SIGA_LOCAL;
+function sigaHay(){ return !!(SIGA && SIGA.items && SIGA.items.length); }
+
+const SIGA_I_COD=0, SIGA_I_NOM=1, SIGA_I_UND=2, SIGA_I_COMPRAS=3;
+let sigaIndice=null;   // se arma la primera vez que se busca, no al abrir la app
+
+function sigaNorm(s){
+  return String(s||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^A-Z0-9]+/g,' ').trim();
+}
+function sigaCargar(){
+  if(sigaIndice && sigaIndice.para===SIGA) return sigaIndice;
+  const porCodigo={}, norm=[];
+  (SIGA.items||[]).forEach((it,i)=>{ porCodigo[it[SIGA_I_COD]]=it; norm[i]=sigaNorm(it[SIGA_I_NOM]); });
+  sigaIndice={porCodigo, norm, para:SIGA};
+  return sigaIndice;
+}
+function sigaPorCodigo(cod){
+  if(!sigaHay()) return null;
+  const c=String(cod||'').replace(/\D/g,'');
+  return c.length===12 ? (sigaCargar().porCodigo[c]||null) : null;
+}
+// Busca por palabras sueltas y en cualquier orden: "gasa 10" encuentra
+// "GASA QUIRURGICA X 10". Primero lo que más se ha comprado, que es lo más probable.
+function sigaBuscar(texto, tope){
+  if(!sigaHay()) return [];
+  const q=sigaNorm(texto);
+  if(q.length<3) return [];
+  const porCod=sigaPorCodigo(texto);
+  if(porCod) return [porCod];
+  const palabras=q.split(' ').filter(w=>w);
+  const idx=sigaCargar(), res=[];
+  for(let i=0;i<SIGA.items.length;i++){
+    const n=idx.norm[i];
+    let ok=true;
+    for(let j=0;j<palabras.length;j++){ if(n.indexOf(palabras[j])<0){ ok=false; break; } }
+    if(!ok) continue;
+    const it=SIGA.items[i];
+    // puntaje: empieza igual > palabra completa al inicio > contiene
+    let pt = n.indexOf(q)===0 ? 0 : (n.indexOf(' '+q)>=0 ? 1 : 2);
+    res.push([pt, -(it[SIGA_I_COMPRAS]||[]).length, -(sigaUltima(it)||{f:0}).f, it]);
+  }
+  res.sort((a,b)=> a[0]-b[0] || a[1]-b[1] || a[2]-b[2]);
+  return res.slice(0, tope||12).map(r=>r[3]);
+}
+// Coincidencia exacta por nombre (para los ítems que ya estaban escritos)
+function sigaPorNombre(txt){
+  if(!sigaHay()) return null;
+  const q=sigaNorm(txt); if(q.length<4) return null;
+  const idx=sigaCargar();
+  for(let i=0;i<SIGA.items.length;i++){ if(idx.norm[i]===q) return SIGA.items[i]; }
+  return null;
+}
+function sigaUltima(it){
+  const c=(it&&it[SIGA_I_COMPRAS])||[];
+  if(!c.length) return null;
+  return {f:c[0][0], precio:c[0][1], proveedor:(SIGA.prov||[])[c[0][2]]||'', cantidad:c[0][3], veces:c.length};
+}
+function sigaFecha(n){
+  const t=String(n||''); if(t.length!==8) return '';
+  return t.slice(6,8)+'/'+t.slice(4,6)+'/'+t.slice(0,4);
+}
+// "S/ 37.20 · BITNET S.A.C. · 20/08/2026" para el aviso bajo el campo
+function sigaResumen(it){
+  const u=sigaUltima(it); if(!u) return '';
+  return montoSoles(u.precio)+(u.proveedor?' · '+u.proveedor:'')+' · '+sigaFecha(u.f)
+    + (u.veces>1?' · '+u.veces+' compras':'');
+}
+function pintarSigaHint(el, it){
+  if(!el) return;
+  const r=it?sigaResumen(it):'';
+  el.textContent = r ? ('📦 SIGA · última compra: '+r) : '';
+}
+// La validación abrevia la unidad ("UND"); el resto de documentos la escribe entera.
+function sigaUnidad(it, corta){
+  const u=String((it&&it[SIGA_I_UND])||'').trim();
+  return (corta && u==='UNIDAD') ? 'UND' : u;
+}
+
+// ---- El catálogo se guarda en este navegador, nunca sale de la computadora ----
+function sigaOp(modo, fn){
+  return idbAbrir().then(db=>new Promise((res,rej)=>{
+    const t=db.transaction('siga',modo);
+    let req; try{ req=fn(t.objectStore('siga')); }catch(e){ rej(e); return; }
+    t.oncomplete=()=>res(req?req.result:undefined);
+    t.onerror=()=>rej(t.error);
+  }));
+}
+async function sigaGuardarLocal(cat){
+  await sigaOp('readwrite', st=>st.put(cat,'catalogo'));
+}
+async function sigaRestaurar(){
+  try{
+    const cat=await sigaOp('readonly', st=>st.get('catalogo'));
+    if(cat && cat.items && cat.items.length){ SIGA=cat; sigaIndice=null; }
+  }catch(e){ /* navegador sin IndexedDB: se sigue sin catálogo */ }
+  pintarEstadoSiga();
+}
+async function sigaBorrarLocal(){
+  try{ await sigaOp('readwrite', st=>st.delete('catalogo')); }catch(e){}
+  SIGA={v:1, gen:'', fuente:[], prov:[], items:[]}; sigaIndice=null;
+  pintarEstadoSiga();
+}
+
+// ---- Leer los "REPORTE DE OC" del SIGA (.xlsx) aquí mismo, en el navegador ----
+// Mismas columnas que exporta el SIGA; el archivo no se sube a ningún lado.
+const SIGA_COLS={fecha:2, prov:3, codigo:10, nombre:11, cant:13, precio:14, unidad:19};
+function sigaTxt(v){
+  if(v==null) return '';
+  if(typeof v==='object'){
+    // En el reporte el código SIGA es una fórmula (CONCATENATE de grupo/clase/
+    // familia/ítem) y la mayoría son fórmulas COMPARTIDAS: esas no traen el
+    // campo "formula", solo el resultado ya calculado.
+    if(v.richText) v=v.richText.map(t=>t.text).join('');
+    else if(v.result!==undefined) v=v.result;
+    else if(v.formula!==undefined) v='';
+    else if(v.text!==undefined) v=v.text;
+  }
+  return String(v).replace(/\s+/g,' ').trim().replace(/^["']+|["']+$/g,'').trim();
+}
+function sigaFechaNum(v){
+  if(v instanceof Date) return v.getFullYear()*10000+(v.getMonth()+1)*100+v.getDate();
+  const m=String(sigaTxt(v)).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  return m ? (+m[3])*10000+(+m[2])*100+(+m[1]) : 0;
+}
+function sigaNum(v){
+  const n=parseFloat(String(sigaTxt(v)).replace(/,/g,''));
+  return isFinite(n)?n:0;
+}
+async function sigaLeerReportes(archivos){
+  const items={}, prov=[], iProv={};
+  let filas=0, saltadas=0;
+  const fuentes=[];
+  for(const f of archivos){
+    const wb=new ExcelJS.Workbook();
+    await wb.xlsx.load(await f.arrayBuffer());
+    const ws=wb.worksheets[0];
+    if(!ws) throw new Error('El archivo “'+f.name+'” está vacío.');
+    const cab=sigaTxt(ws.getRow(1).getCell(1).value).toLowerCase();
+    if(cab!=='nro_orden') throw new Error('“'+f.name+'” no parece un REPORTE DE OC del SIGA '
+      +'(la primera columna debería decir “nro_orden”).');
+    fuentes.push(f.name);
+    ws.eachRow((row,n)=>{
+      if(n===1) return;
+      const cod=sigaTxt(row.getCell(SIGA_COLS.codigo).value).replace(/\D/g,'');
+      const nom=sigaTxt(row.getCell(SIGA_COLS.nombre).value);
+      if(cod.length!==12 || !nom){ saltadas++; return; }
+      let it=items[cod];
+      if(!it) it=items[cod]={c:cod, n:nom, u:sigaTxt(row.getCell(SIGA_COLS.unidad).value), h:[]};
+      if(nom.length>it.n.length) it.n=nom;   // el nombre más largo es el completo
+      const pr=sigaTxt(row.getCell(SIGA_COLS.prov).value);
+      if(!(pr in iProv)){ iProv[pr]=prov.length; prov.push(pr); }
+      it.h.push([sigaFechaNum(row.getCell(SIGA_COLS.fecha).value),
+                 sigaNum(row.getCell(SIGA_COLS.precio).value),
+                 iProv[pr],
+                 sigaNum(row.getCell(SIGA_COLS.cant).value)]);
+      filas++;
+    });
+  }
+  const codigos=Object.keys(items).sort();
+  if(!codigos.length) throw new Error('No se encontró ningún ítem con código SIGA.');
+  const lista=codigos.map(c=>{
+    const it=items[c];
+    it.h.sort((a,b)=> b[0]-a[0]);          // la compra más reciente primero
+    return [it.c, it.n, it.u, it.h];
+  });
+  return {v:1, gen:new Date().toISOString().slice(0,10), fuente:fuentes,
+          prov, items:lista, compras:filas, saltadas};
+}
+
+// ---- Sugerencias mientras se escribe (lista desplegable propia) ----
+// Se usa una lista propia y no un <datalist> porque hay que mostrar el código y
+// el precio de la última compra, y porque cinco ítems distintos comparten nombre.
+function sigaAutocompletar(input, alElegir){
+  if(!input || input._sgOk) return;
+  input._sgOk=true;
+  const caja=document.createElement('div'); caja.className='sg-caja';
+  input.parentNode.insertBefore(caja, input); caja.appendChild(input);
+  let lista=null, opciones=[], sel=-1;
+
+  const cerrar=()=>{ if(lista){ lista.remove(); lista=null; } opciones=[]; sel=-1; };
+  const elegir=(it)=>{ cerrar(); alElegir(it); };
+  const pintar=()=>{
+    if(!lista) return;
+    [...lista.querySelectorAll('.sg-op')].forEach((el,i)=> el.classList.toggle('sel', i===sel));
+    const act=lista.querySelector('.sg-op.sel'); if(act && act.scrollIntoView) act.scrollIntoView({block:'nearest'});
+  };
+  const abrir=()=>{
+    const res=sigaBuscar(input.value, 12);
+    cerrar();                       // cerrar() limpia opciones, por eso se asigna después
+    if(!res.length) return;
+    opciones=res;
+    lista=document.createElement('div'); lista.className='sg-lista';
+    lista.innerHTML=opciones.map(it=>{
+      const r=sigaResumen(it);
+      return '<div class="sg-op"><div class="n">'+escH(it[SIGA_I_NOM])+'</div>'
+        +'<div class="m"><span class="c">'+escH(it[SIGA_I_COD])+'</span> · '+escH(it[SIGA_I_UND])
+        +(r?' · última compra: '+escH(r):'')+'</div></div>';
+    }).join('')+'<div class="sg-pie">↑↓ para moverte · Enter para elegir · Esc para cerrar</div>';
+    [...lista.querySelectorAll('.sg-op')].forEach((el,i)=>{
+      el.addEventListener('mousedown', e=>{ e.preventDefault(); elegir(opciones[i]); });
+    });
+    caja.appendChild(lista); sel=-1;
+  };
+
+  input.addEventListener('input', ()=>{
+    clearTimeout(input._sgT);
+    input._sgT=setTimeout(abrir, 180);
+  });
+  input.addEventListener('keydown', (e)=>{
+    if(!lista) return;
+    if(e.key==='ArrowDown'){ e.preventDefault(); sel=Math.min(sel+1, opciones.length-1); pintar(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(sel-1, 0); pintar(); }
+    else if(e.key==='Enter'){
+      if(sel>=0){ e.preventDefault(); e.stopPropagation(); elegir(opciones[sel]); }
+      else cerrar();
+    }
+    else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); cerrar(); }
+    else if(e.key==='Tab'){ cerrar(); }
+  }, true);   // en captura: si la lista está abierta, el Enter no salta de campo
+  input.addEventListener('blur', ()=> setTimeout(cerrar, 120));
+}
+// Pegar o escribir los 12 dígitos del código también trae el ítem
+function sigaPorCodigoEnCampo(input, alElegir){
+  if(!input || input._sgCod) return;
+  input._sgCod=true;
+  input.addEventListener('input', ()=>{
+    const it=sigaPorCodigo(input.value);
+    if(it) alElegir(it);
+  });
+}
+
 // ====================== FORMULARIO (estado reactivo) ======================
 let tipo = 'bien';
 let postores = [{nombre:''},{nombre:''}];
@@ -1251,7 +1529,7 @@ function renderItems(){
         <div class="field" style="margin:0"><label>Unidad <span class="hint">— elige o escribe</span></label><input type="text" class="i-unidad" list="dl-unidades" value="UND"></div>
         <div class="field" style="margin:0"><label>Cantidad</label><input type="number" class="i-cantidad" min="0" placeholder="Ej: 150"></div>
       </div>
-      <div class="field" style="margin:12px 0 0"><label>Denominación</label><input type="text" class="i-denom" placeholder="Ej: TOKEN DE SEGURIDAD CON CONECTOR USB"></div>
+      <div class="field" style="margin:12px 0 0"><label>Denominación <span class="hint">— escribe y salen los ítems del SIGA</span></label><input type="text" class="i-denom" placeholder="Ej: TOKEN DE SEGURIDAD CON CONECTOR USB"><div class="siga-hint"></div></div>
       <div class="marcas-title">${servicio?'Plazo de ejecución ofertado por cada postor:':'Marca ofertada por cada postor:'}</div>
       <div class="marcas-grid">${marcas}</div>`;
 
@@ -1260,6 +1538,17 @@ function renderItems(){
     q('.i-unidad').value = it.unidad;   q('.i-unidad').addEventListener('input', e=> it.unidad = e.target.value);
     q('.i-cantidad').value = it.cantidad; q('.i-cantidad').addEventListener('input', e=> it.cantidad = e.target.value);
     q('.i-denom').value = it.denom;     q('.i-denom').addEventListener('input', e=> it.denom = e.target.value);
+    // Catálogo SIGA: al elegir un ítem se llenan código, denominación y unidad
+    const ponerSiga = (sg)=>{
+      it.codigo = sg[SIGA_I_COD];                q('.i-codigo').value = it.codigo;
+      it.denom  = sg[SIGA_I_NOM].toUpperCase();  q('.i-denom').value  = it.denom;
+      it.unidad = sigaUnidad(sg, true);          q('.i-unidad').value = it.unidad;
+      pintarSigaHint(q('.siga-hint'), sg);
+      scheduleSave();
+    };
+    sigaAutocompletar(q('.i-denom'), ponerSiga);
+    sigaPorCodigoEnCampo(q('.i-codigo'), ponerSiga);
+    pintarSigaHint(q('.siga-hint'), sigaPorCodigo(it.codigo));
     card.querySelectorAll('.i-marca').forEach(inp=>{
       const i = parseInt(inp.dataset.i,10);
       inp.value = it.marcas[i] || '';
@@ -1789,7 +2078,7 @@ function ccTextoPunto1(){
 }
 function syncPunto1(){ if(ccP1Auto){ const el=document.getElementById('cc-p1'); if(el) el.value=ccTextoPunto1(); } }
 function nuevoPostorCC(){return{nombre:'',ruc:'',contacto:'',telefono:'',email:'',garantia:'',plazo_entrega:'',fecha_solicitud:'',fecha_recepcion:'',se_dedica:'SI',verifica:'SI',cumple_rtm:'',se_tomo:''};}
-function nuevoItemCC(){return{descripcion:'',medida:'UNIDAD',cantidad:'',precios:ccPostores?ccPostores.map(()=> ''):['',''],marcas:ccPostores?ccPostores.map(()=> ''):['',''],precioHist:'',marcaHist:''};}
+function nuevoItemCC(){return{codigo:'',descripcion:'',medida:'UNIDAD',cantidad:'',precios:ccPostores?ccPostores.map(()=> ''):['',''],marcas:ccPostores?ccPostores.map(()=> ''):['',''],precioHist:'',marcaHist:''};}
 
 function nombreItemCC(k){ const d=(ccItems[k]&&ccItems[k].descripcion||'').trim(); return 'Ítem '+(k+1)+(d?' — '+d:''); }
 function esServicioCC(){ return ((document.getElementById('cc-objeto')||{}).value||'bien')==='servicio'; }
@@ -1894,7 +2183,7 @@ function renderCCItems(){
         <button type="button" class="btn-quitar cii-quitar" title="Quitar">✕</button>
       </div>
       <div class="grid3">
-        <div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cii-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"><div class="hist-hint"></div></div>
+        <div class="field" style="margin:0"><label>Descripción <span class="hint">— escribe y salen los ítems del SIGA</span></label><input type="text" class="cii-desc" placeholder="Ej: CLIP DE TITANIO ML X 6"><div class="hist-hint"></div></div>
         <div class="field" style="margin:0"><label>Medida <span class="hint">— elige o escribe</span></label><input type="text" class="cii-medida" list="dl-medidas" value="UNIDAD"></div>
         <div class="field" style="margin:0"><label>Cantidad</label><input type="number" min="0" class="cii-cant" placeholder="Ej: 1200"></div>
       </div>
@@ -1911,6 +2200,20 @@ function renderCCItems(){
     q('.cii-cant').value=it.cantidad; q('.cii-cant').addEventListener('input',e=>it.cantidad=e.target.value);
     q('.cii-phist').value=it.precioHist||''; q('.cii-phist').addEventListener('input',e=>it.precioHist=e.target.value);
     q('.cii-mhist').value=it.marcaHist||''; q('.cii-mhist').addEventListener('input',e=>it.marcaHist=e.target.value);
+    // Catálogo SIGA: llena descripción y medida, y guarda el código para la carta.
+    // Si la Fuente 2 está activa y aún no hay precio, pone el de la última compra.
+    sigaAutocompletar(q('.cii-desc'), (sg)=>{
+      it.codigo=sg[SIGA_I_COD];
+      it.descripcion=sg[SIGA_I_NOM].toUpperCase(); q('.cii-desc').value=it.descripcion;
+      it.medida=sigaUnidad(sg,false);              q('.cii-medida').value=it.medida;
+      const u=sigaUltima(sg);
+      if(u && !String(it.precioHist||'').trim()){
+        it.precioHist=u.precio.toFixed(2); q('.cii-phist').value=it.precioHist;
+      }
+      actualizarLabelsItemsEnPostores();
+      pistaHistorial(q('.cii-desc'), q('.hist-hint'));
+      scheduleSave();
+    });
     card.querySelector('.cii-quitar').addEventListener('click',()=>{ if(ccItems.length<=1) return; ccItems.splice(k,1); renderCCItems(); renderCC(); });
     cont.appendChild(card);
   });
@@ -1921,7 +2224,12 @@ function pistaHistorial(input, cont){
   clearTimeout(input._histT);
   input._histT=setTimeout(async ()=>{
     const r=await histUltimo(input.value);
-    if(!r){ cont.textContent=''; return; }
+    if(!r){
+      // sin registros propios: se mira lo que el hospital compró según el SIGA
+      const sg=sigaPorNombre(input.value), u2=sg&&sigaUltima(sg);
+      cont.textContent = u2 ? ('📦 SIGA · última compra: '+sigaResumen(sg)) : '';
+      return;
+    }
     const u=r.ultimo, f=new Date(u.ts).toLocaleDateString('es-PE',{month:'short',year:'numeric'});
     cont.textContent='💡 Última compra: '+montoSoles(u.precio)+(u.proveedor?' — '+u.proveedor:'')+' ('+f+')'
       + (r.veces>1?' · '+r.veces+' registros':'');
@@ -2447,6 +2755,15 @@ function renderCartaFilas(){
     const set=(sel,key)=>{ const el=div.querySelector(sel); el.value=f[key]||'';
       el.addEventListener('input',()=>{ f[key]=el.value; pintarMontoCarta(div,f); pintarTotalCarta(); scheduleSave(); }); };
     ['codigo','descripcion','cantidad','unidad','precio'].forEach(k=>set('.cf-'+k,k));
+    // Catálogo SIGA: por descripción o pegando el código de 12 dígitos
+    const ponerSigaCarta=(sg)=>{
+      f.codigo=sg[SIGA_I_COD];                     div.querySelector('.cf-codigo').value=f.codigo;
+      f.descripcion=sg[SIGA_I_NOM].toUpperCase();  div.querySelector('.cf-descripcion').value=f.descripcion;
+      f.unidad=sigaUnidad(sg,false);               div.querySelector('.cf-unidad').value=f.unidad;
+      pintarMontoCarta(div,f); pintarTotalCarta(); scheduleSave();
+    };
+    sigaAutocompletar(div.querySelector('.cf-descripcion'), ponerSigaCarta);
+    sigaPorCodigoEnCampo(div.querySelector('.cf-codigo'), ponerSigaCarta);
     pintarMontoCarta(div,f);
     div.querySelector('.cf-quitar').addEventListener('click',()=>{
       if(cartaFilas.length<=1) return;
@@ -2558,7 +2875,8 @@ function jalarCartaDesdeCC(){
     filas=(ccItems||[]).filter(it=>(it.descripcion||'').trim()!=='').map(it=>{
       const desc=(it.descripcion||'').trim();
       const eq=(items||[]).find(x=>(x.denom||'').trim().toUpperCase()===desc.toUpperCase());
-      return {codigo:(eq&&eq.codigo)||'', descripcion:desc.toUpperCase(),
+      // el código sale de la validación; si no está, del que se eligió en el catálogo SIGA
+      return {codigo:(eq&&eq.codigo)||it.codigo||'', descripcion:desc.toUpperCase(),
               cantidad:String(it.cantidad||''), unidad:(it.medida||'UNIDAD'),
               precio:String((it.precios||[])[eleg.i]||'')};
     });
@@ -2708,7 +3026,7 @@ const dirHandles = {};   // 'val' | 'memo' | 'cc' | 'nota'  ->  carpeta vinculad
 
 function idbAbrir(){
   return new Promise((res,rej)=>{
-    const r=indexedDB.open('hnal_fs',2);
+    const r=indexedDB.open('hnal_fs',3);
     r.onupgradeneeded=(e)=>{
       const db=r.result;
       if(!db.objectStoreNames.contains('carpetas')) db.createObjectStore('carpetas');
@@ -2716,6 +3034,8 @@ function idbAbrir(){
         const st=db.createObjectStore('historial',{keyPath:'id',autoIncrement:true});
         st.createIndex('desc','descNorm',{unique:false});
       }
+      // el catálogo del SIGA que carga el usuario (no sale de esta computadora)
+      if(!db.objectStoreNames.contains('siga')) db.createObjectStore('siga');
     };
     r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
   });
@@ -3059,6 +3379,7 @@ renderDestSelects();
 document.getElementById('cc-area').addEventListener('input', vincularDesdeArea);
 vincularDesdeArea();
 cargarCarpetas();   // recuperar las carpetas vinculadas de sesiones anteriores
+sigaRestaurar();    // el catálogo del SIGA que se cargó en este navegador
 
 // ====================== AUTOGUARDADO (borrador) ======================
 let saveReady=false, pendingDraft=null, draftMostrado=false, saveTimer=null;
@@ -3103,7 +3424,7 @@ function restore(d){
     items.forEach(it=>{ while(it.marcas.length<postores.length) it.marcas.push(''); it.marcas.length=postores.length; });
     if(Array.isArray(d.ccPostores)&&d.ccPostores.length) ccPostores=d.ccPostores.map(p=>Object.assign(nuevoPostorCC(),p));
     if(typeof d.ccGanador==='number') ccGanador=Math.min(Math.max(d.ccGanador,0),ccPostores.length-1);
-    if(Array.isArray(d.ccItems)&&d.ccItems.length) ccItems=d.ccItems.map(it=>({descripcion:it.descripcion||'',medida:it.medida||'UNIDAD',cantidad:it.cantidad||'',precios:(it.precios||[]).slice(),marcas:(it.marcas||[]).slice(),precioHist:it.precioHist||'',marcaHist:it.marcaHist||''}));
+    if(Array.isArray(d.ccItems)&&d.ccItems.length) ccItems=d.ccItems.map(it=>({codigo:it.codigo||'',descripcion:it.descripcion||'',medida:it.medida||'UNIDAD',cantidad:it.cantidad||'',precios:(it.precios||[]).slice(),marcas:(it.marcas||[]).slice(),precioHist:it.precioHist||'',marcaHist:it.marcaHist||''}));
     ccItems.forEach(it=>{ while(it.precios.length<ccPostores.length) it.precios.push(''); it.precios.length=ccPostores.length; while(it.marcas.length<ccPostores.length) it.marcas.push(''); it.marcas.length=ccPostores.length; });
     if(Array.isArray(d.memoFilas)&&d.memoFilas.length) memoFilas=d.memoFilas.map(f=>({empresa:f.empresa||'',ruc:f.ruc||'',obs:f.obs||'NINGUNA OBSERVACION'}));
     if(Array.isArray(d.notaFilas)&&d.notaFilas.length) notaFilas=d.notaFilas.map(f=>({ccmn:f.ccmn||'',ccpsiaf:f.ccpsiaf||'',descripcion:f.descripcion||'',meta:f.meta||'',especifica:f.especifica||'',ff:f.ff||'DyT 4-13',monto:f.monto||''}));
@@ -4230,24 +4551,29 @@ async function exportarTodo(){
     borrador: borrador,
     precarga: localStorage.getItem('hnal_dest_precarga')||null,
     titulos: titulosAprendidos||{},
+    siga: sigaHay()? SIGA : null,
   };
   const f=new Date(), z=n=>('0'+n).slice(-2);
   const nombre='RESPALDO_HNAL_'+f.getFullYear()+'-'+z(f.getMonth()+1)+'-'+z(f.getDate())+'.json';
   descargarBlob(new Blob([JSON.stringify(payload)],{type:'application/json'}), nombre, null);
   msgTr('✓ Respaldo descargado: '+payload.trabajos.length+' expediente(s), '+payload.destinatarios.length
-        +' destinatario(s), '+payload.proveedores.length+' proveedor(es) y '+payload.historial.length+' precio(s) del histórico.', true);
+        +' destinatario(s), '+payload.proveedores.length+' proveedor(es), '+payload.historial.length+' precio(s) del histórico'
+        +(payload.siga?' y el catálogo SIGA':'')+'.', true);
 }
 async function importarTodo(file){
   const obj=JSON.parse(await file.text());
   if(!obj || obj.formato!=='hnal-respaldo') throw new Error('Ese archivo no es un respaldo de esta app.');
   const t=(obj.trabajos||[]).length, d=(obj.destinatarios||[]).length,
         pr=(obj.proveedores||[]).length, h=(obj.historial||[]).length;
-  if(!confirm('El respaldo trae:\n· '+t+' expediente(s)\n· '+d+' destinatario(s)\n· '+pr+' proveedor(es)\n· '+h+' precio(s) del histórico\n\n'
+  const sg=(obj.siga && (obj.siga.items||[]).length)||0;
+  if(!confirm('El respaldo trae:\n· '+t+' expediente(s)\n· '+d+' destinatario(s)\n· '+pr+' proveedor(es)\n· '+h+' precio(s) del histórico'
+    +(sg?'\n· el catálogo SIGA con '+sg+' ítems':'')+'\n\n'
     +'Se REEMPLAZARÁ lo que tengas guardado en esta computadora.\n¿Continuar?')) return null;
   guardarTrabajos(obj.trabajos||[]);
   destinatarios=(obj.destinatarios||[]); guardarDest();
   proveedores=(obj.proveedores||[]); guardarProvStore();
   await histReemplazar(obj.historial||[]);
+  if(sg){ try{ await sigaGuardarLocal(obj.siga); SIGA=obj.siga; sigaIndice=null; pintarEstadoSiga(); }catch(e){} }
   try{
     if(obj.borrador) localStorage.setItem('hnal_borrador', JSON.stringify(obj.borrador));
     else localStorage.removeItem('hnal_borrador');
@@ -4278,6 +4604,7 @@ async function renderBusqueda(){
   const q=normTexto((document.getElementById('bus-q')||{}).value||'');
   const ch=document.getElementById('bus-hist'), ct=document.getElementById('bus-trab');
   if(!ch||!ct) return;
+  renderBusquedaSiga(document.getElementById('bus-q').value||'');
 
   // --- histórico de precios ---
   let hist=await histTodos();
@@ -4313,6 +4640,121 @@ async function renderBusqueda(){
       +'<button type="button" class="btn-mini tr-abrir" data-id="'+escH(t.id)+'">📂 Abrir</button></div>').join('');
   }
 }
+// ---- Catálogo SIGA dentro del buscador ----
+// Una fila por ítem; al pulsarla se abren todas sus compras, para ver cómo se
+// ha movido el precio. El código se copia con un clic.
+function renderBusquedaSiga(texto){
+  const cont=document.getElementById('bus-siga');
+  if(!cont) return;
+  if(!sigaHay()){ cont.innerHTML=''; return; }
+  const t=String(texto||'').trim();
+  if(t.length<3){
+    cont.innerHTML='<div class="tr-vacio">Escribe al menos 3 letras del ítem, o pega su código SIGA.</div>';
+    return;
+  }
+  const res=sigaBuscar(t, 40);
+  if(!res.length){ cont.innerHTML='<div class="tr-vacio">Ningún ítem del SIGA coincide.</div>'; return; }
+  cont.innerHTML='<table class="pv-tab sg-tab"><thead><tr><th>Código SIGA</th><th>Ítem</th><th>Unidad</th>'
+    +'<th>Última compra</th><th>Proveedor</th></tr></thead><tbody>'
+    + res.map(it=>{
+        const u=sigaUltima(it)||{};
+        return '<tr class="sg-fila" data-cod="'+escH(it[SIGA_I_COD])+'" title="Clic para ver todas las compras">'
+          +'<td class="cod">'+escH(it[SIGA_I_COD])+'</td><td>'+escH(it[SIGA_I_NOM])+'</td>'
+          +'<td>'+escH(it[SIGA_I_UND])+'</td>'
+          +'<td>'+escH(u.precio!=null?montoSoles(u.precio):'—')+'<br><span class="hint">'+escH(sigaFecha(u.f))+'</span></td>'
+          +'<td>'+escH(u.proveedor||'—')+(u.veces>1?' <span class="hint">('+u.veces+' compras)</span>':'')+'</td></tr>';
+      }).join('')
+    + '</tbody></table>'
+    + (res.length>=40?'<div class="tr-vacio">Mostrando los 40 más comprados. Escribe algo más preciso para ver el resto.</div>':'');
+}
+document.getElementById('bus-siga').addEventListener('click', (e)=>{
+  const fila=e.target.closest('.sg-fila'); if(!fila) return;
+  const it=sigaPorCodigo(fila.dataset.cod); if(!it) return;
+  const sig=fila.nextElementSibling;
+  if(sig && sig.classList.contains('sg-detalle')){ sig.remove(); return; }
+  const filas=(it[SIGA_I_COMPRAS]||[]).map(c=>
+    '<tr><td class="cod">'+escH(sigaFecha(c[0]))+'</td><td>'+escH(montoSoles(c[1]))
+    +'</td><td>'+escH(String(c[3]||''))+'</td><td>'+escH((SIGA.prov||[])[c[2]]||'')+'</td></tr>').join('');
+  const tr=document.createElement('tr');
+  tr.className='sg-detalle';
+  tr.innerHTML='<td colspan="5"><b>'+escH(it[SIGA_I_NOM])+'</b> — código '+escH(it[SIGA_I_COD])
+    +'<table class="pv-tab sg-tab" style="margin-top:8px"><thead><tr><th>Fecha</th><th>Precio unit.</th>'
+    +'<th>Cantidad</th><th>Proveedor</th></tr></thead><tbody>'+filas+'</tbody></table></td>';
+  fila.parentNode.insertBefore(tr, fila.nextSibling);
+});
+// ---- Estado del catálogo y botones para cargarlo / pasarlo a otra PC ----
+function msgSiga(txt, ok){
+  const m=document.getElementById('msg-siga'); if(!m) return;
+  m.className=ok?'msg-ok':'msg-error'; m.textContent=txt;
+  if(ok) setTimeout(()=>{ if(m.textContent===txt){ m.textContent=''; m.className=''; } }, 6000);
+}
+function pintarEstadoSiga(){
+  const el=document.getElementById('siga-estado'); if(!el) return;
+  if(!sigaHay()){
+    el.className='siga-estado vacio';
+    el.innerHTML='⚠ <b>Todavía no has cargado el catálogo.</b> Baja del SIGA el “REPORTE DE OC” '
+      +'de cada año, guárdalo en tu PC y pulsa <b>“Cargar reportes del SIGA”</b>. '
+      +'Mientras tanto los cuadros se llenan a mano, como antes.';
+  } else {
+    const compras=(SIGA.items||[]).reduce((n,i)=>n+(i[SIGA_I_COMPRAS]||[]).length,0);
+    el.className='siga-estado';
+    el.innerHTML='✅ <b>'+(SIGA.items||[]).length+' ítems</b> · '+compras+' compras · '
+      +(SIGA.prov||[]).length+' proveedores'
+      +((SIGA.fuente||[]).length?'<br><span class="hint">De: '+escH(SIGA.fuente.join(', '))+'</span>':'')
+      +'<br><span class="hint">Cargado el '+escH(SIGA.gen||'')+' · guardado solo en este navegador</span>';
+  }
+  const btn=document.getElementById('siga-exportar'); if(btn) btn.disabled=!sigaHay();
+  const q=document.getElementById('siga-quitar'); if(q) q.style.display=sigaHay()?'':'none';
+}
+function sigaAplicar(cat, comoLlego){
+  SIGA=cat; sigaIndice=null;
+  pintarEstadoSiga();
+  renderBusquedaSiga((document.getElementById('bus-q')||{}).value||'');
+  sigaGuardarLocal(cat)
+    .then(()=> msgSiga('✓ Catálogo listo: '+cat.items.length+' ítems '+comoLlego
+                       +'. Queda guardado en esta computadora.', true))
+    .catch(()=> msgSiga('✓ Catálogo cargado, pero no se pudo guardar en este navegador: '
+                        +'habrá que volver a cargarlo la próxima vez.', false));
+}
+document.getElementById('siga-cargar').addEventListener('click', ()=> document.getElementById('siga-cargar-file').click());
+document.getElementById('siga-cargar-file').addEventListener('change', async (e)=>{
+  const fs=[...(e.target.files||[])]; e.target.value='';
+  if(!fs.length) return;
+  msgSiga('Leyendo '+fs.length+' archivo(s)… puede tardar unos segundos.', true);
+  try{
+    const cat=await sigaLeerReportes(fs);
+    sigaAplicar(cat, '('+cat.compras+' compras leídas)');
+  }catch(err){ msgSiga('⚠ '+(err.message||'No se pudo leer el archivo.'), false); console.error(err); }
+});
+document.getElementById('siga-exportar').addEventListener('click', ()=>{
+  if(!sigaHay()){ msgSiga('⚠ Primero carga los reportes del SIGA.', false); return; }
+  const payload=Object.assign({formato:'hnal-siga'}, SIGA);
+  descargarBlob(new Blob([JSON.stringify(payload)],{type:'application/json'}),
+                'CATALOGO_SIGA_HNAL.json', null);
+  msgSiga('✓ Se descargó CATALOGO_SIGA_HNAL.json. Pásalo por USB o por la red del '
+          +'hospital y que lo carguen con “Cargar catálogo (.json)”.', true);
+});
+document.getElementById('siga-importar').addEventListener('click', ()=> document.getElementById('siga-importar-file').click());
+document.getElementById('siga-importar-file').addEventListener('change', (e)=>{
+  const f=e.target.files && e.target.files[0]; e.target.value='';
+  if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const cat=JSON.parse(rd.result);
+      if(!cat || !Array.isArray(cat.items) || !cat.items.length) throw new Error('formato');
+      sigaAplicar(cat, '(de un catálogo ya armado)');
+    }catch(err){ msgSiga('⚠ Ese archivo no es un catálogo del SIGA de esta app.', false); }
+  };
+  rd.readAsText(f);
+});
+document.getElementById('siga-quitar').addEventListener('click', async ()=>{
+  if(!confirm('¿Quitar el catálogo del SIGA de esta computadora?\n\nLos cuadros se seguirán '
+    +'llenando a mano. Puedes volver a cargarlo cuando quieras.')) return;
+  await sigaBorrarLocal();
+  renderBusquedaSiga('');
+  msgSiga('Catálogo quitado de esta computadora.', true);
+});
 document.getElementById('bus-q').addEventListener('input', ()=>{ clearTimeout(renderBusqueda._t); renderBusqueda._t=setTimeout(renderBusqueda,250); });
 document.getElementById('bus-trab').addEventListener('click',(e)=>{
   const b=e.target.closest('.tr-abrir'); if(b) abrirTrabajo(b.dataset.id);

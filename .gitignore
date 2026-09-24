@@ -4,3 +4,7 @@ __pycache__/
 VALIDACION_*.xlsx
 *.pdf
 .~lock.*
+
+# Datos del SIGA: se quedan en la PC, no se publican
+datos/
+web/siga.json

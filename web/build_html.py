@@ -53,6 +53,10 @@ def main():
     html = html.replace("__TEMPLATE_NOTA_B64__", b64nota)
     html = html.replace("__TEMPLATE_CARTA_B64__", b64carta)
     html = html.replace("__DIRECTORIO__", DIRECTORIO.read_text(encoding="utf-8"))
+    # El catalogo SIGA no se incrusta nunca: son las compras del hospital y se
+    # cargan desde la propia PC (pantalla "Buscar"), que las guarda en el
+    # navegador. Aqui va siempre vacio para que no acabe publicado.
+    html = html.replace("__SIGA__", "null")
     for token, nombre in FUENTES.items():
         b64f = base64.b64encode((FONTS / nombre).read_bytes()).decode("ascii")
         html = html.replace(token, b64f)
