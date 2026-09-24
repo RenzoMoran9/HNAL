@@ -3,6 +3,7 @@
 Construye el archivo HTML autonomo (docs/index.html) incrustando:
   - la libreria ExcelJS (web/vendor/exceljs.min.js)
   - la plantilla base en base64 (plantilla/FORMATO_VALIDACIONES_DE_BIENES.xlsx)
+  - el catalogo de items (web/siga.json, lo arma web/make_siga.py)
 dentro de la plantilla web/shell.html.
 
 Ejecutar cada vez que cambie la plantilla o el formulario:
@@ -23,6 +24,7 @@ PLANTILLA_MEMO = BASE / "plantilla" / "MEMO_VALIDACION.docx"
 PLANTILLA_NOTA = BASE / "plantilla" / "NOTA_INFORMATIVA.docx"
 PLANTILLA_CARTA = BASE / "plantilla" / "CARTA_URGENTE.docx"
 DIRECTORIO = BASE / "web" / "directorio.json"
+SIGA = BASE / "web" / "siga.json"
 FONTS = BASE / "web" / "fonts"
 FUENTES = {
     "__FONT_SS700__": "source-serif-4-latin-700-normal.woff2",
@@ -53,10 +55,10 @@ def main():
     html = html.replace("__TEMPLATE_NOTA_B64__", b64nota)
     html = html.replace("__TEMPLATE_CARTA_B64__", b64carta)
     html = html.replace("__DIRECTORIO__", DIRECTORIO.read_text(encoding="utf-8"))
-    # El catalogo SIGA no se incrusta nunca: son las compras del hospital y se
-    # cargan desde la propia PC (pantalla "Buscar"), que las guarda en el
-    # navegador. Aqui va siempre vacio para que no acabe publicado.
-    html = html.replace("__SIGA__", "null")
+    # Catalogo de items (web/siga.json, lo arma web/make_siga.py). Si no esta,
+    # la app arranca vacia y el usuario carga sus reportes desde "Buscar".
+    siga = SIGA.read_text(encoding="utf-8") if SIGA.exists() else "null"
+    html = html.replace("__SIGA__", siga)
     for token, nombre in FUENTES.items():
         b64f = base64.b64encode((FONTS / nombre).read_bytes()).decode("ascii")
         html = html.replace(token, b64f)
