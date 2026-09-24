@@ -377,7 +377,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .carta-fila{background:var(--gris);border:1px solid var(--borde);border-radius:10px;padding:13px;margin-bottom:10px;}
 .carta-fila .cf-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .carta-fila .cf-head .t{font-weight:700;color:var(--azul);font-size:.9rem;}
-.carta-grid{display:grid;grid-template-columns:140px 1fr 90px 120px 120px 130px;gap:8px;align-items:end;}
+.carta-grid{display:grid;grid-template-columns:112px minmax(150px,1fr) 112px 74px 94px 100px 124px;gap:8px;align-items:end;}
 @media (max-width:900px){.carta-grid{grid-template-columns:1fr 1fr;}}
 .chk-hist{display:flex;align-items:center;gap:9px;font-size:.93rem;cursor:pointer;}
 .chk-hist input{width:17px;height:17px;cursor:pointer;}
@@ -750,7 +750,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   <!-- ==================== CARTA AL PROVEEDOR (URGENTE) ==================== -->
   <div id="panel-carta" class="panel oculto">
   <form id="form-carta" novalidate>
-    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto</b> cuando la adquisición es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con sus precios del <b>Cuadro Comparativo</b> y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
+    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto</b> cuando la adquisición es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con su precio y su marca del <b>Cuadro Comparativo</b> y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
 
     <div class="card">
       <h2>1. Empresa a la que se le escribe</h2>
@@ -1381,6 +1381,10 @@ async function sigaLeerReportes(archivos){
 // ---- Sugerencias mientras se escribe (lista desplegable propia) ----
 // Se usa una lista propia y no un <datalist> porque hay que mostrar el código y
 // el precio de la última compra, y porque cinco ítems distintos comparten nombre.
+let sigaCerrarAbierta=null;    // solo puede haber una lista abierta a la vez
+document.addEventListener('mousedown', (e)=>{
+  if(sigaCerrarAbierta && !(e.target.closest && e.target.closest('.sg-caja'))) sigaCerrarAbierta();
+});
 function sigaAutocompletar(input, alElegir){
   if(!input || input._sgOk) return;
   input._sgOk=true;
@@ -1388,7 +1392,11 @@ function sigaAutocompletar(input, alElegir){
   input.parentNode.insertBefore(caja, input); caja.appendChild(input);
   let lista=null, opciones=[], sel=-1;
 
-  const cerrar=()=>{ if(lista){ lista.remove(); lista=null; } opciones=[]; sel=-1; };
+  const cerrar=()=>{
+    if(lista){ lista.remove(); lista=null; }
+    opciones=[]; sel=-1;
+    if(sigaCerrarAbierta===cerrar) sigaCerrarAbierta=null;
+  };
   const elegir=(it)=>{ cerrar(); alElegir(it); };
   const pintar=()=>{
     if(!lista) return;
@@ -1397,6 +1405,7 @@ function sigaAutocompletar(input, alElegir){
   };
   const abrir=()=>{
     const res=sigaBuscar(input.value, 12);
+    if(sigaCerrarAbierta && sigaCerrarAbierta!==cerrar) sigaCerrarAbierta();   // otra caja abierta
     cerrar();                       // cerrar() limpia opciones, por eso se asigna después
     if(!res.length) return;
     opciones=res;
@@ -1411,6 +1420,7 @@ function sigaAutocompletar(input, alElegir){
       el.addEventListener('mousedown', e=>{ e.preventDefault(); elegir(opciones[i]); });
     });
     caja.appendChild(lista); sel=-1;
+    sigaCerrarAbierta=cerrar;
   };
 
   input.addEventListener('input', ()=>{
@@ -2726,7 +2736,7 @@ function asuntoCarta(den, esServicio, area){
   const ar=String(area||'').trim();
   return (cab+base+(ar?', SOLICITADO POR '+ar+' PARA EL HNAL':'')).toUpperCase();
 }
-function nuevaFilaCarta(){ return {codigo:'',descripcion:'',cantidad:'',unidad:'UNIDAD',precio:''}; }
+function nuevaFilaCarta(){ return {codigo:'',descripcion:'',marca:'',cantidad:'',unidad:'UNIDAD',precio:''}; }
 let cartaFilas=[nuevaFilaCarta()];
 function totalCarta(){
   let t=0;
@@ -2744,6 +2754,7 @@ function renderCartaFilas(){
       +'<div class="carta-grid">'
       +'<div class="field" style="margin:0"><label>Código SIGA</label><input type="text" class="cf-codigo"></div>'
       +'<div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cf-descripcion"></div>'
+      +'<div class="field" style="margin:0"><label>Marca</label><input type="text" class="cf-marca" placeholder="Ej: TROME"></div>'
       +'<div class="field" style="margin:0"><label>Cantidad</label><input type="text" class="cf-cantidad" inputmode="decimal"></div>'
       +'<div class="field" style="margin:0"><label>Unidad</label><input type="text" class="cf-unidad" list="dl-medidas"></div>'
       +'<div class="field" style="margin:0"><label>Precio unitario</label><input type="text" class="cf-precio" inputmode="decimal"></div>'
@@ -2751,7 +2762,7 @@ function renderCartaFilas(){
       +'</div>';
     const set=(sel,key)=>{ const el=div.querySelector(sel); el.value=f[key]||'';
       el.addEventListener('input',()=>{ f[key]=el.value; pintarMontoCarta(div,f); pintarTotalCarta(); scheduleSave(); }); };
-    ['codigo','descripcion','cantidad','unidad','precio'].forEach(k=>set('.cf-'+k,k));
+    ['codigo','descripcion','marca','cantidad','unidad','precio'].forEach(k=>set('.cf-'+k,k));
     // Catálogo SIGA: por descripción o pegando el código de 12 dígitos
     const ponerSigaCarta=(sg)=>{
       f.codigo=sg[SIGA_I_COD];                     div.querySelector('.cf-codigo').value=f.codigo;
@@ -2874,6 +2885,7 @@ function jalarCartaDesdeCC(){
       const eq=(items||[]).find(x=>(x.denom||'').trim().toUpperCase()===desc.toUpperCase());
       // el código sale de la validación; si no está, del que se eligió en el catálogo SIGA
       return {codigo:(eq&&eq.codigo)||it.codigo||'', descripcion:desc.toUpperCase(),
+              marca:String((it.marcas||[])[eleg.i]||(eq&&(eq.marcas||[])[eleg.i])||'').trim(),
               cantidad:String(it.cantidad||''), unidad:(it.medida||'UNIDAD'),
               precio:String((it.precios||[])[eleg.i]||'')};
     });
@@ -2881,6 +2893,7 @@ function jalarCartaDesdeCC(){
     // del cuadro de validación: sin precios, los pone el usuario
     filas=(items||[]).filter(it=>(it.denom||'').trim()!=='').map(it=>({
       codigo:(it.codigo||''), descripcion:(it.denom||'').trim().toUpperCase(),
+      marca:String((it.marcas||[])[eleg.i]||'').trim(),
       cantidad:String(it.cantidad||''), unidad:(it.unidad||'UNIDAD'), precio:''}));
   }
   if(!filas.length) return 0;
@@ -2931,7 +2944,12 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     articulo: articuloObjeto(val('ca-denom')),   // la “ADQUISICIÓN…” / el “SERVICIO…”
     filas: filas.map(f=>{
       const c=parseMonto(f.cantidad), p=parseMonto(f.precio);
-      return {codigo:(f.codigo||'').trim(), descripcion:(f.descripcion||'').trim().toUpperCase(),
+      const desc=(f.descripcion||'').trim().toUpperCase();
+      const mar=(f.marca||'').trim().toUpperCase();
+      return {codigo:(f.codigo||'').trim(),
+              // la marca va debajo de la descripción, dentro de la misma celda
+              descripcion: desc + (mar ? '\nMARCA: '+mar : ''),
+              marca: mar,
               cantidad:String(f.cantidad||'').trim(), unidad:(f.unidad||'').trim().toUpperCase(),
               precio:p>0?montoCarta(p):'', monto:(c>0&&p>0)?montoCarta(c*p):''};
     }),
@@ -2950,9 +2968,9 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     ['Fecha', datos.fecha],
     ['Se solicita', 'INMEDIATA '+datos.articulo+' “'+datos.denominacion+'”'],
   ]) + '<div class="pv-sub">Detalle</div>' + pvTabla(
-    ['Código SIGA','Descripción','Cant.','Unidad','P. unitario','Monto'],
-    datos.filas.map(f=>[f.codigo, f.descripcion, f.cantidad, f.unidad, f.precio, f.monto])
-    .concat(total>0?[['','','','','TOTAL', montoCarta(total)]]:[]));
+    ['Código SIGA','Descripción','Marca','Cant.','Unidad','P. unitario','Monto'],
+    datos.filas.map(f=>[f.codigo, f.descripcion.split('\n')[0], f.marca||'—', f.cantidad, f.unidad, f.precio, f.monto])
+    .concat((filas.length>1 && total>0)?[['','','','','','TOTAL', montoCarta(total)]]:[]));
 
   abrirPreview('Carta al proveedor', resumen, ()=>{
     msg.className=''; msg.textContent='Generando…';
@@ -3425,7 +3443,7 @@ function restore(d){
     ccItems.forEach(it=>{ while(it.precios.length<ccPostores.length) it.precios.push(''); it.precios.length=ccPostores.length; while(it.marcas.length<ccPostores.length) it.marcas.push(''); it.marcas.length=ccPostores.length; });
     if(Array.isArray(d.memoFilas)&&d.memoFilas.length) memoFilas=d.memoFilas.map(f=>({empresa:f.empresa||'',ruc:f.ruc||'',obs:f.obs||'NINGUNA OBSERVACION'}));
     if(Array.isArray(d.notaFilas)&&d.notaFilas.length) notaFilas=d.notaFilas.map(f=>({ccmn:f.ccmn||'',ccpsiaf:f.ccpsiaf||'',descripcion:f.descripcion||'',meta:f.meta||'',especifica:f.especifica||'',ff:f.ff||'DyT 4-13',monto:f.monto||''}));
-    if(Array.isArray(d.cartaFilas)&&d.cartaFilas.length) cartaFilas=d.cartaFilas.map(f=>({codigo:f.codigo||'',descripcion:f.descripcion||'',cantidad:f.cantidad||'',unidad:f.unidad||'UNIDAD',precio:f.precio||''}));
+    if(Array.isArray(d.cartaFilas)&&d.cartaFilas.length) cartaFilas=d.cartaFilas.map(f=>({codigo:f.codigo||'',descripcion:f.descripcion||'',marca:f.marca||'',cantidad:f.cantidad||'',unidad:f.unidad||'UNIDAD',precio:f.precio||''}));
     renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas(); renderCartaFilas();
     if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(!el) return;
       if(el.type==='checkbox') el.checked = !!d.inputs[id]; else el.value=d.inputs[id]; }); }
