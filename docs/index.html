@@ -182,6 +182,9 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .ruc-row{display:flex;gap:6px;align-items:stretch;}
 .ruc-row input{flex:1;min-width:0;}
 .ruc-row .btn-mini{padding:6px 10px;font-size:.74rem;}
+.consultas{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:6px;}
+.consultas span{font-size:.72rem;color:var(--muted);font-weight:600;margin-right:1px;}
+.consultas .btn-mini{padding:4px 9px;font-size:.72rem;}
 
 /* Barra de pasos del flujo */
 .flowbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 30px 0;}
@@ -763,7 +766,8 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
       <div class="field"><label>Razón social</label><input type="text" id="ca-empresa" list="dl-proveedores" placeholder="Ej: INDUSTRIA &amp; LABORATORIO SOL S.A.C. (INDUSOL)"></div>
       <div class="grid2">
         <div class="field"><label>RUC</label>
-          <div class="ruc-row"><input type="text" id="ca-ruc" inputmode="numeric" maxlength="11" placeholder="Ej: 20550350166"><button type="button" class="btn-mini" id="ca-sunat" title="Copia el RUC y abre la consulta oficial de SUNAT">SUNAT ↗</button></div>
+          <div class="ruc-row"><input type="text" id="ca-ruc" inputmode="numeric" maxlength="11" placeholder="Ej: 20550350166"></div>
+          <div class="consultas"><span>Consultar:</span><button type="button" class="btn-mini btn-consulta" data-consulta="sunat" title="Copia el RUC y abre la Consulta RUC de SUNAT">SUNAT ↗</button><button type="button" class="btn-mini btn-consulta" data-consulta="rnp" title="Copia el RUC y abre la consulta de proveedores sancionados por el Tribunal (RNP)">Sancionados RNP ↗</button><button type="button" class="btn-mini btn-consulta" data-consulta="rnssc" title="Abre el Registro Nacional de Sanciones contra Servidores Civiles (busca personas por DNI)">RNSSC ↗</button></div>
           <div class="ruc-msg" id="ca-ruc-msg"></div>
           <div class="sunat-hint" id="ca-sunat-hint" style="display:none"></div></div>
         <div class="field"><label>Correo electrónico</label><input type="text" id="ca-email" placeholder="Ej: ventas@empresa.com"></div>
@@ -2111,7 +2115,8 @@ function renderCC(){
       <div class="field" style="margin:0 0 12px"><label>Nombre de la empresa</label><input type="text" class="c-nombre" placeholder="Ej: LABMEDIC SAFE SAC"></div>
       <div class="cc-grid">
         <div class="field" style="margin:0"><label>RUC</label>
-          <div class="ruc-row"><input type="text" class="c-ruc" placeholder="11 dígitos" inputmode="numeric"><button type="button" class="btn-mini c-sunat" title="Copia el RUC y abre la consulta oficial de SUNAT">SUNAT ↗</button></div>
+          <div class="ruc-row"><input type="text" class="c-ruc" placeholder="11 dígitos" inputmode="numeric"></div>
+          <div class="consultas"><span>Consultar:</span><button type="button" class="btn-mini btn-consulta" data-consulta="sunat" title="Copia el RUC y abre la Consulta RUC de SUNAT">SUNAT ↗</button><button type="button" class="btn-mini btn-consulta" data-consulta="rnp" title="Copia el RUC y abre la consulta de proveedores sancionados por el Tribunal (RNP)">Sancionados RNP ↗</button><button type="button" class="btn-mini btn-consulta" data-consulta="rnssc" title="Abre el Registro Nacional de Sanciones contra Servidores Civiles (busca personas por DNI)">RNSSC ↗</button></div>
           <div class="ruc-msg c-ruc-msg"></div>
           <div class="sunat-hint c-sunat-hint" style="display:none"></div></div>
         <div class="field" style="margin:0"><label>Contacto</label><input type="text" class="c-contacto"></div>
@@ -2136,7 +2141,6 @@ function renderCC(){
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
     set('.c-email','email'); set('.c-garantia','garantia');
     wireRuc(card.querySelector('.c-ruc'), card.querySelector('.c-ruc-msg'));
-    card.querySelector('.c-sunat').addEventListener('click',()=> abrirSunat(card.querySelector('.c-ruc').value, card.querySelector('.c-sunat'), card.querySelector('.c-sunat-hint')));
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-frec','fecha_recepcion');
     set('.c-dedica','se_dedica'); set('.c-verifica','verifica'); set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
     card.querySelector('.c-nombre').addEventListener('input', syncPunto1);
@@ -2370,7 +2374,8 @@ function renderMemoFilas(){
       <div class="num">${('0'+(i+1)).slice(-2)}</div>
       <div class="field" style="margin:0"><label>Empresa</label><input type="text" class="mf-empresa" placeholder="Ej: EGUSQFARMA EIRL"></div>
       <div class="field" style="margin:0"><label>RUC</label>
-        <div class="ruc-row"><input type="text" class="mf-ruc" placeholder="Ej: 20604200131" inputmode="numeric"><button type="button" class="btn-mini mf-sunat" title="Copia el RUC y abre la consulta oficial de SUNAT">SUNAT ↗</button></div>
+        <div class="ruc-row"><input type="text" class="mf-ruc" placeholder="Ej: 20604200131" inputmode="numeric"></div>
+        <div class="consultas"><span>Consultar:</span><button type="button" class="btn-mini btn-consulta" data-consulta="sunat" title="Copia el RUC y abre la Consulta RUC de SUNAT">SUNAT ↗</button><button type="button" class="btn-mini btn-consulta" data-consulta="rnp" title="Copia el RUC y abre la consulta de proveedores sancionados por el Tribunal (RNP)">Sancionados RNP ↗</button><button type="button" class="btn-mini btn-consulta" data-consulta="rnssc" title="Abre el Registro Nacional de Sanciones contra Servidores Civiles (busca personas por DNI)">RNSSC ↗</button></div>
         <div class="ruc-msg mf-ruc-msg"></div>
         <div class="sunat-hint mf-sunat-hint" style="display:none"></div></div>
       <div class="field" style="margin:0"><label>Observación</label>
@@ -2389,8 +2394,6 @@ function renderMemoFilas(){
     });
     ruc.addEventListener('input',()=>f.ruc=ruc.value);
     wireRuc(ruc, div.querySelector('.mf-ruc-msg'));
-    div.querySelector('.mf-sunat').addEventListener('click',()=>
-      abrirSunat(ruc.value, div.querySelector('.mf-sunat'), div.querySelector('.mf-sunat-hint')));
     obs.addEventListener('change',()=>f.obs=obs.value);
     div.querySelector('.btn-quitar').addEventListener('click',()=>{
       if(memoFilas.length<=1) return;
@@ -2793,10 +2796,6 @@ function pintarTotalCarta(){
 document.getElementById('ca-agregar').addEventListener('click',()=>{ cartaFilas.push(nuevaFilaCarta()); renderCartaFilas(); scheduleSave(); });
 renderCartaFilas();
 wireRuc(document.getElementById('ca-ruc'), document.getElementById('ca-ruc-msg'));
-document.getElementById('ca-sunat').addEventListener('click',()=>
-  abrirSunat(document.getElementById('ca-ruc').value,
-             document.getElementById('ca-sunat'),
-             document.getElementById('ca-sunat-hint')));
 // Si escribes una empresa que ya está en el directorio, se completan sus datos
 document.getElementById('ca-empresa').addEventListener('input',()=>{
   const prov=provPorNombre(document.getElementById('ca-empresa').value); if(!prov) return;
@@ -3015,17 +3014,56 @@ function wireRuc(inp, msgEl){
 // Abre la consulta RUC oficial de SUNAT en otra pestaña y copia el RUC para pegarlo.
 // (No se puede llegar con el RUC ya puesto en su buscador: SUNAT protege su
 // formulario con un token anti-robots y el navegador impide llenarlo desde fuera.)
-function abrirSunat(ruc, btn, hintEl){
-  const t=String(ruc||'').trim();
-  if(t && navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).catch(()=>{}); }
-  if(btn){ const o=btn.textContent; btn.textContent=t?'✓ RUC copiado':'↗ abierta'; setTimeout(()=>{ btn.textContent=o; },1500); }
-  if(hintEl && t){
-    hintEl.textContent='✓ RUC copiado. En la página de SUNAT: clic en el buscador, pega con Ctrl+V y pulsa Buscar.';
-    hintEl.style.display='';
-    clearTimeout(abrirSunat._t); abrirSunat._t=setTimeout(()=>{ hintEl.style.display='none'; }, 9000);
+// ---- Consultas oficiales del postor: SUNAT, sancionados del RNP y RNSSC ----
+// Ninguna de las tres deja buscar desde fuera: SUNAT y el RNP piden un código
+// de imagen y no leen el RUC de la dirección, y el RNSSC es una página que no
+// recibe datos. Por eso se copia el dato y se abre la página para pegarlo.
+const CONSULTAS={
+  sunat:{url:'https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/FrameCriterioBusquedaWeb.jsp'},
+  rnp:  {url:'https://www.rnp.gob.pe/consultasenlinea/inhabilitados/busqueda_vnv.asp'},
+  rnssc:{url:'https://www.sanciones.gob.pe/rnssc/#/transparencia/acceso'},
+};
+function abrirConsulta(tipo, ruc, btn, hintEl){
+  const t=String(ruc||'').replace(/\D/g,'');
+  let copiar='', aviso='', boton='↗ abierta';
+  if(tipo==='sunat' && t){
+    copiar=t; boton='✓ RUC copiado';
+    aviso='✓ RUC copiado. En SUNAT: clic en el buscador, pega con Ctrl+V y pulsa Buscar.';
+  } else if(tipo==='rnp' && t){
+    copiar=t; boton='✓ RUC copiado';
+    aviso='✓ RUC copiado. En el RNP: pégalo en «Buscar por RUC», escribe el código de la imagen y pulsa Buscar.';
+  } else if(tipo==='rnssc'){
+    // el RNSSC busca personas por DNI; en un RUC de persona natural (10…) el DNI
+    // son los ocho dígitos del medio
+    if(/^10\d{9}$/.test(t)){
+      copiar=t.slice(2,10); boton='✓ DNI copiado';
+      aviso='✓ DNI '+copiar+' copiado (sale del RUC). En el RNSSC: pégalo en DNI y consulta.';
+    } else if(t){
+      aviso='El RNSSC busca personas por DNI, no empresas: para una empresa se consulta a su representante legal.';
+    }
   }
-  window.open('https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/FrameCriterioBusquedaWeb.jsp','_blank','noopener');
+  if(copiar && navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(copiar).catch(()=>{}); }
+  if(btn){
+    clearTimeout(btn._t);
+    if(!btn._txt) btn._txt=btn.textContent;
+    btn.textContent=boton;
+    btn._t=setTimeout(()=>{ btn.textContent=btn._txt; }, 1600);
+  }
+  if(hintEl){
+    hintEl.textContent=aviso;
+    hintEl.style.display=aviso?'':'none';
+    clearTimeout(hintEl._t); hintEl._t=setTimeout(()=>{ hintEl.style.display='none'; }, 10000);
+  }
+  window.open(CONSULTAS[tipo].url,'_blank','noopener');
 }
+function abrirSunat(ruc, btn, hintEl){ abrirConsulta('sunat', ruc, btn, hintEl); }
+// Un solo manejador para los botones de consulta del comparativo, el memo y la carta
+document.addEventListener('click',(e)=>{
+  const btn=e.target.closest && e.target.closest('.btn-consulta'); if(!btn) return;
+  const campo=btn.closest('.field');
+  const inp=campo && campo.querySelector('.ruc-row input');
+  abrirConsulta(btn.dataset.consulta, inp?inp.value:'', btn, campo && campo.querySelector('.sunat-hint'));
+});
 function pvDL(rows){
   return '<dl class="pv-dl">'+rows.filter(Boolean).map(r=>'<dt>'+escH(r[0])+'</dt><dd>'+escH((r[1]==null||r[1]==='')?'—':r[1])+'</dd>').join('')+'</dl>';
 }
