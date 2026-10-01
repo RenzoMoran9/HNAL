@@ -179,6 +179,11 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
 .ruc-msg{color:var(--rojo);font-size:.74rem;font-weight:600;margin-top:4px;}
 .ruc-msg:empty{display:none;}
 .sunat-hint{color:var(--verde);font-size:.74rem;font-weight:600;margin-top:4px;line-height:1.4;}
+.saludo-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.saludo-row label{margin:0;font-size:.8rem;}
+.saludo-row select{width:auto;padding:6px 10px;font-size:.82rem;}
+.saludo-hint{font-size:.76rem;font-weight:600;color:var(--verde);}
+.saludo-hint.dudoso{color:var(--oro-tx);}
 .ruc-row{display:flex;gap:6px;align-items:stretch;}
 .ruc-row input{flex:1;min-width:0;}
 .ruc-row .btn-mini{padding:6px 10px;font-size:.74rem;}
@@ -637,6 +642,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         </div>
         <input type="text" class="grado" id="m-dest-nombre" placeholder="Ej: Ing. JORGE LUIS TAKAMI OBLITAS">
         <input type="text" class="no-mayus" id="m-dest-cargo" placeholder="Ej: Jefe de la Oficina de Servicios Generales y Mantenimiento" style="margin-top:8px">
+        <div class="saludo-row"><label for="m-saludo">Saludo</label><select id="m-saludo"><option value="auto">Según el cargo</option><option value="lo">para saludarlo (hombre)</option><option value="la">para saludarla (mujer)</option></select><span class="saludo-hint" id="m-saludo-hint"></span></div>
       </div>
       <div class="field"><label>Remitente — nombre / cargo</label>
         <input type="text" class="no-mayus" id="m-rem-nombre" value="Ing. FRANK RONALD TIPTE RUIZ">
@@ -706,6 +712,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         </div>
         <input type="text" class="grado" id="n-dest-nombre" value="M.C. JOSÉ RAÚL CARPIO BARBIERI" placeholder="Ej: M.C. JOSÉ RAÚL CARPIO BARBIERI">
         <input type="text" class="no-mayus" id="n-dest-cargo" value="Director de la Oficina Ejecutiva de Planeamiento Estratégico" placeholder="Ej: Director de la Oficina Ejecutiva de Planeamiento Estratégico" style="margin-top:8px">
+        <div class="saludo-row"><label for="n-saludo">Saludo</label><select id="n-saludo"><option value="auto">Según el cargo</option><option value="lo">para saludarlo (hombre)</option><option value="la">para saludarla (mujer)</option></select><span class="saludo-hint" id="n-saludo-hint"></span></div>
       </div>
       <div class="field"><label>Remitente — nombre / cargo</label>
         <input type="text" class="no-mayus" id="n-rem-nombre" value="Ing. FRANK RONALD TIPTE RUIZ">
@@ -1655,6 +1662,7 @@ function irA(t){
   document.getElementById('panel-buscar').classList.toggle('oculto', t!=='buscar');
   document.getElementById('panel-directorio').classList.toggle('oculto', t!=='directorio');
   if(t==='carta' && typeof renderCartaPostores==='function') renderCartaPostores();
+  if((t==='memo'||t==='nota') && typeof pintarSaludo==='function') pintarSaludo(t==='memo'?'m':'n');
   if(t==='directorio' && typeof renderDirectorio==='function') renderDirectorio();
   if(t==='buscar' && typeof renderBusqueda==='function') renderBusqueda();
   if(t==='trabajos' && typeof renderTrabajos==='function'){ renderTrabajos(); if(typeof renderProvLista==='function') renderProvLista(); }
@@ -2401,6 +2409,7 @@ document.getElementById('btn-emitir-memo').addEventListener('click',()=>{
   const objeto = conPrefijoObjeto(adq, tipo==='servicio').toUpperCase();
   if(otroExpediente(memoOrigen, objeto, 'la referencia, el destinatario, la fecha y los EXP.')){
     limpiarCampos(['m-ref','m-dest-nombre','m-dest-cargo','m-expdir','m-explog','m-folios','m-fecha']);
+    { const sa=document.getElementById('m-saludo'); if(sa) sa.value='auto'; pintarSaludo('m'); }
     memoFilas=[];
     const mm=document.getElementById('msg-memo');
     if(mm){ mm.className='msg-ok'; mm.textContent='✓ Se limpió lo del expediente anterior. Completa el destinatario, la referencia y los EXP. de este.'; }
@@ -2443,6 +2452,7 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
     anio: val('m-anio').trim() || '2026',
     destNombre: val('m-dest-nombre').trim(),
     destCargo: val('m-dest-cargo').trim(),
+    saludo: saludoDe('m').texto,
     remNombre: val('m-rem-nombre').trim(),
     remCargo: val('m-rem-cargo').trim(),
     asunto: esET ? 'Especificaciones Técnicas.' : 'Términos de Referencia.',
@@ -2465,9 +2475,12 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
     iniciales: val('m-iniciales').trim().toUpperCase(),
   };
   const rucMal = filas.some(f=>f.ruc && !rucValido(f.ruc));
-  const aviso = rucMal ? '<p class="pv-note" style="color:#c0392b">⚠ Hay RUC no válidos (11 dígitos y verificador). Revisa las filas marcadas en rojo antes de descargar.</p>' : '';
+  const sm = saludoDe('m');
+  const aviso = (rucMal ? '<p class="pv-note" style="color:#c0392b">⚠ Hay RUC no válidos (11 dígitos y verificador). Revisa las filas marcadas en rojo antes de descargar.</p>' : '')
+    + (sm.seguro ? '' : '<p class="pv-note" style="color:#8a6d1e">⚠ El cargo no dice si es hombre o mujer, así que saldrá «para '+sm.texto+'». Si no corresponde, vuelve y elige el saludo.</p>');
   const resumen = aviso + pvDL([
     ['Dirigido a', val('m-dest-nombre')+(val('m-dest-cargo')?' — '+val('m-dest-cargo'):'')],
+    ['Saludo', '…me dirijo a usted, para '+sm.texto+' cordialmente…'],
     ['Asunto', 'Cumplimiento de '+(esET?'Especificaciones Técnicas.':'Términos de Referencia.')],
     ['Referencia', val('m-ref')],
     ['Fecha', datos.fecha],
@@ -2618,6 +2631,49 @@ document.getElementById('n-jalar-cc').addEventListener('click',()=>{
   else { msg.className='msg-error'; msg.textContent='⚠ Aún no hay ítems en el cuadro comparativo. Llénalo primero y vuelve.'; }
 });
 
+// ---- Saludo según quién recibe: "saludarlo" o "saludarla" ----
+// Se deduce del grado (Dra./Dr., Sra./Sr.) o de la primera palabra del cargo
+// (Jefa/Jefe, Directora/Director…), que es lo que el propio documento dice, así
+// el saludo nunca contradice al cargo. Si no hay cómo saberlo, se pide elegirlo.
+// (las listas van dentro de la función: irA puede llamarla antes de llegar aquí)
+function generoDestinatario(nombre, cargo){
+  const n=String(nombre||'').trim();
+  if(/^(dra|sra|srta)\b/i.test(n)) return 'f';
+  if(/^(dr|sr)\b/i.test(n)) return 'm';
+  const c=String(cargo||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/^sub[\s-]*/,'');          // "Sub Directora" / "Subdirector"
+  if(/^(jefa|directora|coordinadora|asesora|supervisora|administradora|encargada|secretaria|tesorera|contadora|presidenta|gerenta|decana)\b/.test(c)) return 'f';
+  if(/^(jefe|director|coordinador|asesor|supervisor|administrador|encargado|secretario|tesorero|contador|decano)\b/.test(c)) return 'm';
+  return '';
+}
+// pref: 'm' (memo) o 'n' (nota). Si no se puede saber, se usa lo que decía antes
+// cada plantilla, pero avisando.
+function saludoDe(pref){
+  const v=id=>((document.getElementById(id)||{}).value||'');
+  const modo=v(pref+'-saludo')||'auto';
+  if(modo==='lo') return {texto:'saludarlo', seguro:true};
+  if(modo==='la') return {texto:'saludarla', seguro:true};
+  const g=generoDestinatario(v(pref+'-dest-nombre'), v(pref+'-dest-cargo'));
+  if(g) return {texto:g==='f'?'saludarla':'saludarlo', seguro:true};
+  return {texto:pref==='m'?'saludarla':'saludarlo', seguro:false,
+          vacio:!v(pref+'-dest-nombre').trim() && !v(pref+'-dest-cargo').trim()};
+}
+function pintarSaludo(pref){
+  const h=document.getElementById(pref+'-saludo-hint'); if(!h) return;
+  const s=saludoDe(pref);
+  h.textContent = s.seguro ? '→ «para '+s.texto+'»'
+                : (s.vacio ? '' : '⚠ El cargo no dice si es hombre o mujer: elige el saludo.');
+  h.classList.toggle('dudoso', !s.seguro);
+}
+['m','n'].forEach(pref=>{
+  ['-dest-nombre','-dest-cargo','-saludo'].forEach(suf=>{
+    const el=document.getElementById(pref+suf); if(!el) return;
+    el.addEventListener('input', ()=>pintarSaludo(pref));
+    el.addEventListener('change', ()=>pintarSaludo(pref));
+  });
+  pintarSaludo(pref);
+});
+
 function mostrarErrorNota(t){ const m=document.getElementById('msg-nota'); m.className='msg-error'; m.textContent='⚠ '+t; }
 document.getElementById('form-nota').addEventListener('submit',(e)=>{
   e.preventDefault();
@@ -2631,6 +2687,7 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
     anio: val('n-anio').trim() || '2026',
     destNombre: val('n-dest-nombre').trim(),
     destCargo: val('n-dest-cargo').trim(),
+    saludo: saludoDe('n').texto,
     remNombre: val('n-rem-nombre').trim(),
     remCargo: val('n-rem-cargo').trim(),
     asuntoNum: val('n-asunto-num').trim(),
@@ -2644,8 +2701,11 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
     elaborado: val('n-elaborado').trim(),
     iniciales: val('n-iniciales').trim().toUpperCase(),
   };
-  const resumen = pvDL([
+  const sn = saludoDe('n');
+  const resumen = (sn.seguro ? '' : '<p class="pv-note" style="color:#8a6d1e">⚠ El cargo no dice si es hombre o mujer, así que saldrá «para '+sn.texto+'». Si no corresponde, vuelve y elige el saludo.</p>')
+    + pvDL([
     ['Dirigido a', val('n-dest-nombre')+(val('n-dest-cargo')?' — '+val('n-dest-cargo'):'')],
+    ['Saludo', '…dirigirme a usted para '+sn.texto+' cordialmente…'],
     ['Asunto (N° Certificación)', 'N°'+val('n-asunto-num')],
     ['Referencia', val('n-ref')],
     ['Fecha', datos.fecha],
@@ -3346,7 +3406,7 @@ function vincularDesdeArea(){
   if(!d){ if(hint) hint.textContent=''; return; }
   if(hint) hint.textContent='🔗 Jefe: '+d.nombre+(d.cargo?' — '+d.cargo:'')+fuente;
   const en=document.getElementById('m-dest-nombre'), ec=document.getElementById('m-dest-cargo');
-  if(en && !en.value.trim()){ en.value=d.nombre; ec.value=normalizarCargo(d.cargo||''); en.classList.remove('campo-error'); }
+  if(en && !en.value.trim()){ en.value=d.nombre; ec.value=normalizarCargo(d.cargo||''); en.classList.remove('campo-error'); pintarSaludo('m'); }
 }
 document.querySelectorAll('.dest-select').forEach(sel=>{
   sel.addEventListener('change',()=>{
@@ -3356,6 +3416,7 @@ document.querySelectorAll('.dest-select').forEach(sel=>{
     const en=document.getElementById(map.nombre), ec=document.getElementById(map.cargo);
     en.value=d.nombre; ec.value=normalizarCargo(d.cargo||'');
     en.classList.remove('campo-error');
+    pintarSaludo(sel.dataset.target);
     // si ese jefe tiene un área usuaria enlazada, se completa sola
     const ar=document.getElementById('cc-area');
     if(d.area && ar && !ar.value.trim()){ ar.value=d.area; vincularDesdeArea(); }
@@ -3452,6 +3513,7 @@ function restore(d){
     const ccN=(document.getElementById('cc-denom').value||'').trim().toUpperCase();
     notaOrigen=[ccD,ccN].filter(Boolean).join(' — ');
     notaRefAuto='';   // una referencia escrita a mano se respeta
+    if(typeof pintarSaludo==='function'){ pintarSaludo('m'); pintarSaludo('n'); }
     const p1el=document.getElementById('cc-p1'); if(p1el) ccP1Auto=(p1el.value.trim()===''||p1el.value===ccTextoPunto1());
   }catch(e){ console.error('restore', e); }
 }

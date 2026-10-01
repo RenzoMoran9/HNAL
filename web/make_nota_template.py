@@ -166,7 +166,7 @@ def tabla_datos():
     return "<w:tbl>%s%s%s%s%s</w:tbl>" % (tblpr, grid, header, datos, total)
 
 
-CTX1 = ("Tengo el agrado de dirigirme a usted para saludarlo cordialmente y a "
+CTX1 = ("Tengo el agrado de dirigirme a usted para {saludo} cordialmente y a "
         "través del presente, solicitarle la aprobación de Certificación de "
         "Crédito Presupuestal, a fin de proseguir con el trámite "
         "correspondiente, según el siguiente detalle:")

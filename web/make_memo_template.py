@@ -186,7 +186,7 @@ def tabla_postores():
     return "<w:tbl>%s%s%s%s</w:tbl>" % (tblpr, grid, header, datos)
 
 
-CONTEXTO_PRE = ("Por medio del presente me dirijo a usted, para saludarla "
+CONTEXTO_PRE = ("Por medio del presente me dirijo a usted, para {saludo} "
                 "cordialmente, y en atención al documento de la referencia, "
                 "mediante el cual se solicita ")
 CONTEXTO_MID = " al rubro en materia de convocatoria, obteniendo "
