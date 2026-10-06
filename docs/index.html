@@ -2793,6 +2793,15 @@ function fechaCarta(iso){
 // El asunto usa "ADQ. DE …" igual que el cuadro comparativo. Si la denominación
 // ya empieza con "ADQUISICIÓN DE", se quita para no decirlo dos veces
 // ("ADQ. ADQUISICIÓN DE …" repite la misma palabra abreviada y completa).
+// El asunto de la carta siempre empieza con el objeto: "ADQ. DE …" o "SERVICIO DE …".
+// Si al campo le falta (p. ej. quedó "DE PAÑO…" al editarlo), se completa al emitir.
+function asuntoConPrefijo(txt, esServicio){
+  const t=String(txt||'').trim();
+  if(!t) return t;
+  if(/^(ADQ\.?\s|ADQUISICI[OÓ]N\b|CONTRATACI[OÓ]N\b|SERVICIO\b|SUMINISTRO\b|ALQUILER\b)/i.test(t)) return t;
+  if(/^DE\s/i.test(t)) return (esServicio?'SERVICIO ':'ADQ. ')+t;     // perdió solo la primera palabra
+  return (esServicio?'SERVICIO DE ':'ADQ. DE ')+t;
+}
 function asuntoCarta(den, esServicio, area){
   const base=sinPrefijoObjeto(den);
   const cab=esServicio?'SERVICIO DE ':'ADQ. DE ';
@@ -2996,7 +3005,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     ruc: val('ca-ruc').trim(),
     direccion: val('ca-direccion').trim(),
     email: val('ca-email').trim(),
-    asunto: val('ca-asunto').trim().toUpperCase(),
+    asunto: asuntoConPrefijo(val('ca-asunto'), /^SERVICIO\b/i.test(val('ca-denom').trim())).toUpperCase(),
     referencia: val('ca-ref').trim(),
     fecha: fechaCarta(val('ca-fecha')),
     denominacion: val('ca-denom').trim().toUpperCase(),
@@ -3016,6 +3025,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     montoTotal: total>0?montoCarta(total):'',
     elaborado: val('ca-elaborado').trim().toUpperCase(),
   };
+  { const asuEl=document.getElementById('ca-asunto'); if(asuEl && asuEl.value.trim().toUpperCase()!==datos.asunto) asuEl.value=datos.asunto; }
   const rucMal = datos.ruc && !rucValido(datos.ruc);
   const aviso = rucMal ? '<p class="pv-note" style="color:#c0392b">⚠ El RUC no es válido (11 dígitos y verificador). Revísalo antes de descargar.</p>' : '';
   const resumen = aviso + pvDL([
