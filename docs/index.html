@@ -790,7 +790,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
         <input type="text" id="ca-ref" placeholder="Ej: NOTA INFORMATIVA N° 0291-2026-UL-OSGM-OEA">
         <p class="hint" id="ca-ref-hint" style="margin:7px 0 0"></p></div>
       <div class="field"><label>Denominación <span class="hint">— la que va entre comillas en el cuerpo de la carta</span></label><input type="text" id="ca-denom" placeholder="Ej: ADQUISICIÓN DE INSUMO (JABÓN GRANULADO EN ESCAMA)"></div>
-      <div class="field"><label>Fecha</label><input type="date" id="ca-fecha"></div>
+      <div class="field"><label>Fecha <span class="hint">— se pone sola con la de hoy; si la cambias, se respeta</span></label><input type="date" id="ca-fecha"></div>
     </div>
 
     <div class="card">
@@ -1385,7 +1385,7 @@ async function sigaLeerReportes(archivos){
     it.h.sort((a,b)=> b[0]-a[0]);          // la compra más reciente primero
     return [it.c, it.n, it.u, it.h];
   });
-  return {v:1, gen:new Date().toISOString().slice(0,10), fuente:fuentes,
+  return {v:1, gen:hoyLocal(), fuente:fuentes,
           prov, items:lista, compras:filas, saltadas};
 }
 
@@ -1707,6 +1707,7 @@ function irA(t){
   document.getElementById('panel-buscar').classList.toggle('oculto', t!=='buscar');
   document.getElementById('panel-directorio').classList.toggle('oculto', t!=='directorio');
   if(t==='carta' && typeof renderCartaPostores==='function') renderCartaPostores();
+  if(t==='carta' && typeof fechaHoyCarta==='function') fechaHoyCarta();
   if((t==='memo'||t==='nota') && typeof pintarSaludo==='function') pintarSaludo(t==='memo'?'m':'n');
   if(t==='directorio' && typeof renderDirectorio==='function') renderDirectorio();
   if(t==='buscar' && typeof renderBusqueda==='function') renderBusqueda();
@@ -2362,6 +2363,12 @@ function numeroATexto(n){
   const dosDig = ('0'+n).slice(-2);
   return palabra + ' (' + dosDig + ')';
 }
+// La fecha de hoy según el reloj de la computadora. toISOString() da la fecha
+// en UTC, que en Lima ya es "mañana" desde las 7 de la noche.
+function hoyLocal(){
+  const d=new Date(), z=n=>('0'+n).slice(-2);
+  return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());
+}
 function fechaLima(iso){
   if(!iso) return '';
   const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -2474,7 +2481,7 @@ document.getElementById('btn-emitir-memo').addEventListener('click',()=>{
   }
   renderMemoFilas();
   if(!document.getElementById('m-fecha').value){
-    document.getElementById('m-fecha').value = new Date().toISOString().slice(0,10);
+    document.getElementById('m-fecha').value = hoyLocal();
   }
   if(objeto) memoOrigen = objeto;
   irA('memo');
@@ -2665,7 +2672,7 @@ function jalarNotaDesdeCC(){
 }
 document.getElementById('btn-emitir-nota').addEventListener('click',()=>{
   jalarNotaDesdeCC();
-  if(!document.getElementById('n-fecha').value){ document.getElementById('n-fecha').value=new Date().toISOString().slice(0,10); }
+  if(!document.getElementById('n-fecha').value){ document.getElementById('n-fecha').value=hoyLocal(); }
   irA('nota');
   window.scrollTo(0,0);
 });
@@ -2914,6 +2921,15 @@ function renderCartaPostores(){
     : 'Sale del Cuadro de Validación (aún no hay comparativo), así que los precios los escribes tú.';
 }
 // Trae los datos del postor elegido + los ítems, con el código SIGA de la validación
+// La carta lleva la fecha del día en que se genera. Una fecha que vino de un
+// borrador o de un trabajo guardado otro día se reemplaza; solo se respeta la
+// que el usuario cambió a mano en esta sesión.
+var cartaFechaManual=false;
+function fechaHoyCarta(){
+  const el=document.getElementById('ca-fecha');
+  if(el && !cartaFechaManual) el.value=hoyLocal();
+}
+document.getElementById('ca-fecha').addEventListener('input', ()=>{ cartaFechaManual=true; });
 function jalarCartaDesdeCC(){
   const v=id=>{ const el=document.getElementById(id); return el?String(el.value||'').trim():''; };
   const s=(id,val)=>{ const el=document.getElementById(id); if(el && val){ el.value=val; } };
@@ -2943,7 +2959,7 @@ function jalarCartaDesdeCC(){
     refHint.textContent = v('ca-ref') ? '' :
       '⚠ No se pudo jalar: el Cuadro Comparativo no tiene “Documento de solicitud”. Escríbela a mano.';
   }
-  if(!v('ca-fecha')) s('ca-fecha', new Date().toISOString().slice(0,10));
+  fechaHoyCarta();
 
   let filas=[];
   if(eleg.fuente==='cc'){
@@ -2995,6 +3011,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
   e.preventDefault();
   const msg=document.getElementById('msg-carta'); msg.className=''; msg.textContent='';
   const val=id=>document.getElementById(id).value;
+  fechaHoyCarta();
   if(!validarReq(['ca-empresa','ca-asunto','ca-ref','ca-denom','ca-fecha'])){ mostrarErrorCarta('Completa los campos marcados en rojo.'); return; }
   const filas=cartaFilas.filter(f=>(f.descripcion||'').trim()!=='');
   if(filas.length===0){ mostrarErrorCarta('Agrega al menos un ítem con descripción.'); return; }
@@ -3569,6 +3586,7 @@ function restore(d){
     notaOrigen=[ccD,ccN].filter(Boolean).join(' — ');
     notaRefAuto='';   // una referencia escrita a mano se respeta
     if(typeof pintarSaludo==='function'){ pintarSaludo('m'); pintarSaludo('n'); }
+    if(typeof fechaHoyCarta==='function') fechaHoyCarta();   // una carta guardada otro día se emite con la fecha de hoy
     const p1el=document.getElementById('cc-p1'); if(p1el) ccP1Auto=(p1el.value.trim()===''||p1el.value===ccTextoPunto1());
   }catch(e){ console.error('restore', e); }
 }
