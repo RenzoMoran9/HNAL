@@ -760,7 +760,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   <!-- ==================== CARTA AL PROVEEDOR (URGENTE) ==================== -->
   <div id="panel-carta" class="panel oculto">
   <form id="form-carta" novalidate>
-    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto</b> cuando la adquisición es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con su precio y su marca del <b>Cuadro Comparativo</b> (en servicios, la garantía la escribes tú) y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
+    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto</b> cuando la adquisición es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con su precio y su marca del <b>Cuadro Comparativo</b> (en servicios, el plazo de ejecución sale de la validación y la garantía la escribes tú) y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
 
     <div class="card">
       <h2>1. Empresa a la que se le escribe</h2>
@@ -2815,15 +2815,22 @@ function asuntoCarta(den, esServicio, area){
   const ar=String(area||'').trim();
   return (cab+base+(ar?', SOLICITADO POR '+ar+' PARA EL HNAL':'')).toUpperCase();
 }
-// en servicios no hay marca: ese campo (f.marca) guarda la garantía
-function cartaEsServicio(){ return /^SERVICIO\b/i.test(((document.getElementById('ca-denom')||{}).value||'').trim()); }
+// Servicio o bien: lo dice la denominación de la carta; si aún está vacía, los
+// cuadros (el de validación o el comparativo marcados como servicio).
+function cuadrosSonServicio(){ return tipo==='servicio' || esServicioCC(); }
+function cartaEsServicio(){
+  const den=((document.getElementById('ca-denom')||{}).value||'').trim();
+  return den ? /^SERVICIO\b/i.test(den) : cuadrosSonServicio();
+}
+// en servicios no hay marca: f.marca guarda la garantía y aparece el plazo de ejecución
 function etiquetaMarcaCarta(){ return cartaEsServicio() ? {lbl:'Garantía', ph:'Ej: 6 MESES'} : {lbl:'Marca', ph:'Ej: TROME'}; }
 function pintarEtiquetaMarcaCarta(){
-  const e=etiquetaMarcaCarta();
+  const e=etiquetaMarcaCarta(), serv=cartaEsServicio();
   document.querySelectorAll('#ca-items .cf-marca').forEach(inp=>{
     inp.placeholder=e.ph; const l=inp.parentNode.querySelector('label'); if(l) l.textContent=e.lbl; });
+  document.querySelectorAll('#ca-items .cf-plazo').forEach(inp=>{ inp.parentNode.style.display=serv?'':'none'; });
 }
-function nuevaFilaCarta(){ return {codigo:'',descripcion:'',marca:'',cantidad:'',unidad:'UNIDAD',precio:''}; }
+function nuevaFilaCarta(){ return {codigo:'',descripcion:'',marca:'',plazo:'',cantidad:'',unidad:'UNIDAD',precio:''}; }
 let cartaFilas=[nuevaFilaCarta()];
 function totalCarta(){
   let t=0;
@@ -2842,6 +2849,7 @@ function renderCartaFilas(){
       +'<div class="field" style="margin:0"><label>Código SIGA</label><input type="text" class="cf-codigo"></div>'
       +'<div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cf-descripcion"></div>'
       +'<div class="field" style="margin:0"><label>'+etiquetaMarcaCarta().lbl+'</label><input type="text" class="cf-marca" placeholder="'+etiquetaMarcaCarta().ph+'"></div>'
+      +'<div class="field" style="margin:0'+(cartaEsServicio()?'':';display:none')+'"><label>Plazo de ejecución</label><input type="text" class="cf-plazo" placeholder="Ej: 15 (sale «15 DIAS CALENDARIO»)"></div>'
       +'<div class="field" style="margin:0"><label>Cantidad</label><input type="text" class="cf-cantidad" inputmode="decimal"></div>'
       +'<div class="field" style="margin:0"><label>Unidad</label><input type="text" class="cf-unidad" list="dl-medidas"></div>'
       +'<div class="field" style="margin:0"><label>Precio unitario</label><input type="text" class="cf-precio" inputmode="decimal"></div>'
@@ -2849,7 +2857,7 @@ function renderCartaFilas(){
       +'</div>';
     const set=(sel,key)=>{ const el=div.querySelector(sel); el.value=f[key]||'';
       el.addEventListener('input',()=>{ f[key]=el.value; pintarMontoCarta(div,f); pintarTotalCarta(); scheduleSave(); }); };
-    ['codigo','descripcion','marca','cantidad','unidad','precio'].forEach(k=>set('.cf-'+k,k));
+    ['codigo','descripcion','marca','plazo','cantidad','unidad','precio'].forEach(k=>set('.cf-'+k,k));
     // Catálogo SIGA: por descripción o pegando el código de 12 dígitos
     const ponerSigaCarta=(sg)=>{
       f.codigo=sg[SIGA_I_COD];                     div.querySelector('.cf-codigo').value=f.codigo;
@@ -2878,6 +2886,8 @@ function pintarTotalCarta(){
   el.textContent=t>0?('Total: '+montoCarta(t)):'';
 }
 document.getElementById('ca-denom').addEventListener('input', pintarEtiquetaMarcaCarta);
+document.getElementById('cc-objeto').addEventListener('change', pintarEtiquetaMarcaCarta);
+document.querySelectorAll('input[name=tipo]').forEach(r=> r.addEventListener('change', pintarEtiquetaMarcaCarta));
 document.getElementById('ca-agregar').addEventListener('click',()=>{ cartaFilas.push(nuevaFilaCarta()); renderCartaFilas(); scheduleSave(); });
 renderCartaFilas();
 wireRuc(document.getElementById('ca-ruc'), document.getElementById('ca-ruc-msg'));
@@ -2955,7 +2965,7 @@ function jalarCartaDesdeCC(){
 
   const den=v('cc-denom') || v('adquisicion');
   if(den){
-    const esServ=esServicioCC();
+    const esServ=cuadrosSonServicio();
     s('ca-denom', conPrefijoObjeto(den, esServ).toUpperCase());
     const asu=document.getElementById('ca-asunto');
     if(asu && !asu.value.trim()) asu.value=asuntoCarta(den, esServ, v('cc-area'));
@@ -2971,7 +2981,12 @@ function jalarCartaDesdeCC(){
   fechaHoyCarta();
 
   let filas=[];
-  const servCarta=cartaEsServicio();   // la garantía no está en los cuadros: la escribe el usuario
+  // en servicios: sin marca; la garantía no está en los cuadros (la escribe el usuario)
+  // y el plazo de ejecución sale de la validación, del postor con el mismo nombre
+  const servCarta=cartaEsServicio();
+  const iVal = eleg.fuente==='val' ? eleg.i
+    : (postores||[]).findIndex(p=>(p.nombre||'').trim().toUpperCase()===eleg.nombre.toUpperCase());
+  const plazoDe=it=> (servCarta && it && iVal>=0) ? fmtPlazo((it.marcas||[])[iVal]) : '';
   if(eleg.fuente==='cc'){
     // del comparativo: descripción/cantidad/unidad + los precios de ESA empresa
     filas=(ccItems||[]).filter(it=>(it.descripcion||'').trim()!=='').map(it=>{
@@ -2980,6 +2995,7 @@ function jalarCartaDesdeCC(){
       // el código sale de la validación; si no está, del que se eligió en el catálogo SIGA
       return {codigo:(eq&&eq.codigo)||it.codigo||'', descripcion:desc.toUpperCase(),
               marca:servCarta?'':String((it.marcas||[])[eleg.i]||(eq&&(eq.marcas||[])[eleg.i])||'').trim(),
+              plazo:plazoDe(eq),
               cantidad:String(it.cantidad||''), unidad:(it.medida||'UNIDAD'),
               precio:String((it.precios||[])[eleg.i]||'')};
     });
@@ -2988,6 +3004,7 @@ function jalarCartaDesdeCC(){
     filas=(items||[]).filter(it=>(it.denom||'').trim()!=='').map(it=>({
       codigo:(it.codigo||''), descripcion:(it.denom||'').trim().toUpperCase(),
       marca:servCarta?'':String((it.marcas||[])[eleg.i]||'').trim(),
+      plazo:plazoDe(it),
       cantidad:String(it.cantidad||''), unidad:(it.unidad||'UNIDAD'), precio:''}));
   }
   if(!filas.length) return 0;
@@ -3026,7 +3043,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
   const filas=cartaFilas.filter(f=>(f.descripcion||'').trim()!=='');
   if(filas.length===0){ mostrarErrorCarta('Agrega al menos un ítem con descripción.'); return; }
   const total=totalCarta();
-  const lblMarca=cartaEsServicio()?'GARANTÍA':'MARCA';
+  const servCarta=cartaEsServicio(), lblMarca=servCarta?'GARANTÍA':'MARCA';
   const datos={
     anio: val('ca-anio').trim() || '2026',
     empresa: val('ca-empresa').trim().toUpperCase(),
@@ -3042,10 +3059,11 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
       const c=parseMonto(f.cantidad), p=parseMonto(f.precio);
       const desc=(f.descripcion||'').trim().toUpperCase();
       const mar=(f.marca||'').trim().toUpperCase();
+      const plz=servCarta ? fmtPlazo(f.plazo).toUpperCase() : '';
       return {codigo:(f.codigo||'').trim(),
-              // la marca (o la garantía, en servicios) va debajo de la descripción, en la misma celda
-              descripcion: desc + (mar ? '\n'+lblMarca+': '+mar : ''),
-              marca: mar,
+              // marca (o plazo y garantía, en servicios) van debajo de la descripción, en la misma celda
+              descripcion: desc + (plz ? '\nPLAZO DE EJECUCIÓN: '+plz : '') + (mar ? '\n'+lblMarca+': '+mar : ''),
+              marca: mar, plazo: plz,
               cantidad:String(f.cantidad||'').trim(), unidad:(f.unidad||'').trim().toUpperCase(),
               precio:p>0?montoCarta(p):'', monto:(c>0&&p>0)?montoCarta(c*p):''};
     }),
@@ -3065,9 +3083,10 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     ['Fecha', datos.fecha],
     ['Se solicita', 'INMEDIATA '+datos.articulo+' “'+datos.denominacion+'”'],
   ]) + '<div class="pv-sub">Detalle</div>' + pvTabla(
-    ['Código SIGA','Descripción',lblMarca==='MARCA'?'Marca':'Garantía','Cant.','Unidad','P. unitario','Monto'],
-    datos.filas.map(f=>[f.codigo, f.descripcion.split('\n')[0], f.marca||'—', f.cantidad, f.unidad, f.precio, f.monto])
-    .concat((filas.length>1 && total>0)?[['','','','','','TOTAL', montoCarta(total)]]:[]));
+    ['Código SIGA','Descripción'].concat(servCarta?['Plazo','Garantía']:['Marca'],['Cant.','Unidad','P. unitario','Monto']),
+    datos.filas.map(f=>[f.codigo, f.descripcion.split('\n')[0]].concat(servCarta?[f.plazo||'—',f.marca||'—']:[f.marca||'—'],
+      [f.cantidad, f.unidad, f.precio, f.monto]))
+    .concat((filas.length>1 && total>0)?[(servCarta?['','','','','','','TOTAL']:['','','','','','TOTAL']).concat([montoCarta(total)])]:[]));
 
   abrirPreview('Carta al proveedor', resumen, ()=>{
     msg.className=''; msg.textContent='Generando…';
@@ -3580,7 +3599,7 @@ function restore(d){
     ccItems.forEach(it=>{ while(it.precios.length<ccPostores.length) it.precios.push(''); it.precios.length=ccPostores.length; while(it.marcas.length<ccPostores.length) it.marcas.push(''); it.marcas.length=ccPostores.length; });
     if(Array.isArray(d.memoFilas)&&d.memoFilas.length) memoFilas=d.memoFilas.map(f=>({empresa:f.empresa||'',ruc:f.ruc||'',obs:f.obs||'NINGUNA OBSERVACION'}));
     if(Array.isArray(d.notaFilas)&&d.notaFilas.length) notaFilas=d.notaFilas.map(f=>({ccmn:f.ccmn||'',ccpsiaf:f.ccpsiaf||'',descripcion:f.descripcion||'',meta:f.meta||'',especifica:f.especifica||'',ff:f.ff||'DyT 4-13',monto:f.monto||''}));
-    if(Array.isArray(d.cartaFilas)&&d.cartaFilas.length) cartaFilas=d.cartaFilas.map(f=>({codigo:f.codigo||'',descripcion:f.descripcion||'',marca:f.marca||'',cantidad:f.cantidad||'',unidad:f.unidad||'UNIDAD',precio:f.precio||''}));
+    if(Array.isArray(d.cartaFilas)&&d.cartaFilas.length) cartaFilas=d.cartaFilas.map(f=>({codigo:f.codigo||'',descripcion:f.descripcion||'',marca:f.marca||'',plazo:f.plazo||'',cantidad:f.cantidad||'',unidad:f.unidad||'UNIDAD',precio:f.precio||''}));
     renderPostores(); renderItems(); renderCC(); renderCCItems(); renderMemoFilas(); renderNotaFilas(); renderCartaFilas();
     if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(!el) return;
       if(el.type==='checkbox') el.checked = !!d.inputs[id]; else el.value=d.inputs[id]; }); }
