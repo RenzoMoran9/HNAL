@@ -760,7 +760,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   <!-- ==================== CARTA AL PROVEEDOR (URGENTE) ==================== -->
   <div id="panel-carta" class="panel oculto">
   <form id="form-carta" novalidate>
-    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto</b> cuando la adquisición es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con su precio y su marca del <b>Cuadro Comparativo</b> y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
+    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto</b> cuando la adquisición es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con su precio y su marca del <b>Cuadro Comparativo</b> (en servicios, la garantía la escribes tú) y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
 
     <div class="card">
       <h2>1. Empresa a la que se le escribe</h2>
@@ -2815,6 +2815,14 @@ function asuntoCarta(den, esServicio, area){
   const ar=String(area||'').trim();
   return (cab+base+(ar?', SOLICITADO POR '+ar+' PARA EL HNAL':'')).toUpperCase();
 }
+// en servicios no hay marca: ese campo (f.marca) guarda la garantía
+function cartaEsServicio(){ return /^SERVICIO\b/i.test(((document.getElementById('ca-denom')||{}).value||'').trim()); }
+function etiquetaMarcaCarta(){ return cartaEsServicio() ? {lbl:'Garantía', ph:'Ej: 6 MESES'} : {lbl:'Marca', ph:'Ej: TROME'}; }
+function pintarEtiquetaMarcaCarta(){
+  const e=etiquetaMarcaCarta();
+  document.querySelectorAll('#ca-items .cf-marca').forEach(inp=>{
+    inp.placeholder=e.ph; const l=inp.parentNode.querySelector('label'); if(l) l.textContent=e.lbl; });
+}
 function nuevaFilaCarta(){ return {codigo:'',descripcion:'',marca:'',cantidad:'',unidad:'UNIDAD',precio:''}; }
 let cartaFilas=[nuevaFilaCarta()];
 function totalCarta(){
@@ -2833,7 +2841,7 @@ function renderCartaFilas(){
       +'<div class="carta-grid">'
       +'<div class="field" style="margin:0"><label>Código SIGA</label><input type="text" class="cf-codigo"></div>'
       +'<div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cf-descripcion"></div>'
-      +'<div class="field" style="margin:0"><label>Marca</label><input type="text" class="cf-marca" placeholder="Ej: TROME"></div>'
+      +'<div class="field" style="margin:0"><label>'+etiquetaMarcaCarta().lbl+'</label><input type="text" class="cf-marca" placeholder="'+etiquetaMarcaCarta().ph+'"></div>'
       +'<div class="field" style="margin:0"><label>Cantidad</label><input type="text" class="cf-cantidad" inputmode="decimal"></div>'
       +'<div class="field" style="margin:0"><label>Unidad</label><input type="text" class="cf-unidad" list="dl-medidas"></div>'
       +'<div class="field" style="margin:0"><label>Precio unitario</label><input type="text" class="cf-precio" inputmode="decimal"></div>'
@@ -2869,6 +2877,7 @@ function pintarTotalCarta(){
   const t=totalCarta();
   el.textContent=t>0?('Total: '+montoCarta(t)):'';
 }
+document.getElementById('ca-denom').addEventListener('input', pintarEtiquetaMarcaCarta);
 document.getElementById('ca-agregar').addEventListener('click',()=>{ cartaFilas.push(nuevaFilaCarta()); renderCartaFilas(); scheduleSave(); });
 renderCartaFilas();
 wireRuc(document.getElementById('ca-ruc'), document.getElementById('ca-ruc-msg'));
@@ -2962,6 +2971,7 @@ function jalarCartaDesdeCC(){
   fechaHoyCarta();
 
   let filas=[];
+  const servCarta=cartaEsServicio();   // la garantía no está en los cuadros: la escribe el usuario
   if(eleg.fuente==='cc'){
     // del comparativo: descripción/cantidad/unidad + los precios de ESA empresa
     filas=(ccItems||[]).filter(it=>(it.descripcion||'').trim()!=='').map(it=>{
@@ -2969,7 +2979,7 @@ function jalarCartaDesdeCC(){
       const eq=(items||[]).find(x=>(x.denom||'').trim().toUpperCase()===desc.toUpperCase());
       // el código sale de la validación; si no está, del que se eligió en el catálogo SIGA
       return {codigo:(eq&&eq.codigo)||it.codigo||'', descripcion:desc.toUpperCase(),
-              marca:String((it.marcas||[])[eleg.i]||(eq&&(eq.marcas||[])[eleg.i])||'').trim(),
+              marca:servCarta?'':String((it.marcas||[])[eleg.i]||(eq&&(eq.marcas||[])[eleg.i])||'').trim(),
               cantidad:String(it.cantidad||''), unidad:(it.medida||'UNIDAD'),
               precio:String((it.precios||[])[eleg.i]||'')};
     });
@@ -2977,7 +2987,7 @@ function jalarCartaDesdeCC(){
     // del cuadro de validación: sin precios, los pone el usuario
     filas=(items||[]).filter(it=>(it.denom||'').trim()!=='').map(it=>({
       codigo:(it.codigo||''), descripcion:(it.denom||'').trim().toUpperCase(),
-      marca:String((it.marcas||[])[eleg.i]||'').trim(),
+      marca:servCarta?'':String((it.marcas||[])[eleg.i]||'').trim(),
       cantidad:String(it.cantidad||''), unidad:(it.unidad||'UNIDAD'), precio:''}));
   }
   if(!filas.length) return 0;
@@ -3016,6 +3026,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
   const filas=cartaFilas.filter(f=>(f.descripcion||'').trim()!=='');
   if(filas.length===0){ mostrarErrorCarta('Agrega al menos un ítem con descripción.'); return; }
   const total=totalCarta();
+  const lblMarca=cartaEsServicio()?'GARANTÍA':'MARCA';
   const datos={
     anio: val('ca-anio').trim() || '2026',
     empresa: val('ca-empresa').trim().toUpperCase(),
@@ -3032,8 +3043,8 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
       const desc=(f.descripcion||'').trim().toUpperCase();
       const mar=(f.marca||'').trim().toUpperCase();
       return {codigo:(f.codigo||'').trim(),
-              // la marca va debajo de la descripción, dentro de la misma celda
-              descripcion: desc + (mar ? '\nMARCA: '+mar : ''),
+              // la marca (o la garantía, en servicios) va debajo de la descripción, en la misma celda
+              descripcion: desc + (mar ? '\n'+lblMarca+': '+mar : ''),
               marca: mar,
               cantidad:String(f.cantidad||'').trim(), unidad:(f.unidad||'').trim().toUpperCase(),
               precio:p>0?montoCarta(p):'', monto:(c>0&&p>0)?montoCarta(c*p):''};
@@ -3054,7 +3065,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     ['Fecha', datos.fecha],
     ['Se solicita', 'INMEDIATA '+datos.articulo+' “'+datos.denominacion+'”'],
   ]) + '<div class="pv-sub">Detalle</div>' + pvTabla(
-    ['Código SIGA','Descripción','Marca','Cant.','Unidad','P. unitario','Monto'],
+    ['Código SIGA','Descripción',lblMarca==='MARCA'?'Marca':'Garantía','Cant.','Unidad','P. unitario','Monto'],
     datos.filas.map(f=>[f.codigo, f.descripcion.split('\n')[0], f.marca||'—', f.cantidad, f.unidad, f.precio, f.monto])
     .concat((filas.length>1 && total>0)?[['','','','','','TOTAL', montoCarta(total)]]:[]));
 
