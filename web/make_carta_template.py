@@ -110,10 +110,12 @@ def tabla_asunto():
 def tabla_items():
     # la descripcion es lo mas largo, asi que se le da el ancho que le sobraba
     # al codigo SIGA (un numero corto) y a "CANTIDAD"
-    cols = [1500, 2704, 900, 1100, 1150, 1150]
-    hdrs = ["CÓDIGO SIGA", "DESCRIPCIÓN", "CANTIDAD", "UNIDAD DE MEDIDA",
+    cols = [1500, 2604, 1000, 1100, 1150, 1150]
+    # columnas 3 y 4: CANTIDAD / UNIDAD DE MEDIDA en bienes,
+    # PLAZO DE EJECUCION / CANTIDAD en servicios (como la carta de servicio real)
+    hdrs = ["CÓDIGO SIGA", "DESCRIPCIÓN", "{hdr3}", "{hdr4}",
             "PRECIO UNITARIO", "MONTO TOTAL"]
-    campos = ["{codigo}", "{descripcion}", "{cantidad}", "{unidad}",
+    campos = ["{codigo}", "{descripcion}", "{c3}", "{c4}",
               "{precio}", "{monto}"]
 
     def celda(w, txt, sz, bold, fill=None, span=None, jc="center"):
@@ -198,7 +200,7 @@ def build_body():
     p.append(tabla_items())
     p.append(blank())
     p.append(para(run(COMPROMISO_1, sz=18)
-                  + run("orden de compra", sz=18, bold=True)
+                  + run("{orden}", sz=18, bold=True)
                   + run(COMPROMISO_2, sz=18), jc="both", sz=18))
     p.append(blank())
     p.append(para(run("Sin otro particular, quedo de usted.", sz=18),

@@ -760,7 +760,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--azul-cla
   <!-- ==================== CARTA AL PROVEEDOR (URGENTE) ==================== -->
   <div id="panel-carta" class="panel oculto">
   <form id="form-carta" novalidate>
-    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto</b> cuando la adquisición es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con su precio y su marca del <b>Cuadro Comparativo</b> (en servicios, el plazo de ejecución sale de la validación y la garantía la escribes tú) y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
+    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto</b> cuando la adquisición es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con su precio y su marca del <b>Cuadro Comparativo</b> (en servicios, en vez de la marca va el plazo de ejecución de la validación) y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
 
     <div class="card">
       <h2>1. Empresa a la que se le escribe</h2>
@@ -2777,12 +2777,10 @@ function cartaEsServicio(){
   const den=((document.getElementById('ca-denom')||{}).value||'').trim();
   return den ? /^SERVICIO\b/i.test(den) : cuadrosSonServicio();
 }
-// en servicios no hay marca: f.marca guarda la garantía y aparece el plazo de ejecución
-function etiquetaMarcaCarta(){ return cartaEsServicio() ? {lbl:'Garantía', ph:'Ej: 6 MESES'} : {lbl:'Marca', ph:'Ej: TROME'}; }
+// en servicios no hay marca ni unidad: va el plazo de ejecución (en su columna)
 function pintarEtiquetaMarcaCarta(){
-  const e=etiquetaMarcaCarta(), serv=cartaEsServicio();
-  document.querySelectorAll('#ca-items .cf-marca').forEach(inp=>{
-    inp.placeholder=e.ph; const l=inp.parentNode.querySelector('label'); if(l) l.textContent=e.lbl; });
+  const serv=cartaEsServicio();
+  document.querySelectorAll('#ca-items .cf-marca, #ca-items .cf-unidad').forEach(inp=>{ inp.parentNode.style.display=serv?'none':''; });
   document.querySelectorAll('#ca-items .cf-plazo').forEach(inp=>{ inp.parentNode.style.display=serv?'':'none'; });
 }
 function nuevaFilaCarta(){ return {codigo:'',descripcion:'',marca:'',plazo:'',cantidad:'',unidad:'UNIDAD',precio:''}; }
@@ -2803,10 +2801,10 @@ function renderCartaFilas(){
       +'<div class="carta-grid">'
       +'<div class="field" style="margin:0"><label>Código SIGA</label><input type="text" class="cf-codigo"></div>'
       +'<div class="field" style="margin:0"><label>Descripción</label><input type="text" class="cf-descripcion"></div>'
-      +'<div class="field" style="margin:0"><label>'+etiquetaMarcaCarta().lbl+'</label><input type="text" class="cf-marca" placeholder="'+etiquetaMarcaCarta().ph+'"></div>'
-      +'<div class="field" style="margin:0'+(cartaEsServicio()?'':';display:none')+'"><label>Plazo de ejecución</label><input type="text" class="cf-plazo" placeholder="Ej: 15 (sale «15 DIAS CALENDARIO»)"></div>'
+      +'<div class="field" style="margin:0'+(cartaEsServicio()?';display:none':'')+'"><label>Marca</label><input type="text" class="cf-marca" placeholder="Ej: TROME"></div>'
+      +'<div class="field" style="margin:0'+(cartaEsServicio()?'':';display:none')+'"><label>Plazo de ejecución</label><input type="text" class="cf-plazo" placeholder="Ej: 30 (sale «30 DIAS CALENDARIO»)"></div>'
       +'<div class="field" style="margin:0"><label>Cantidad</label><input type="text" class="cf-cantidad" inputmode="decimal"></div>'
-      +'<div class="field" style="margin:0"><label>Unidad</label><input type="text" class="cf-unidad" list="dl-medidas"></div>'
+      +'<div class="field" style="margin:0'+(cartaEsServicio()?';display:none':'')+'"><label>Unidad</label><input type="text" class="cf-unidad" list="dl-medidas"></div>'
       +'<div class="field" style="margin:0"><label>Precio unitario</label><input type="text" class="cf-precio" inputmode="decimal"></div>'
       +'<div class="field" style="margin:0"><label>Monto total</label><input type="text" class="cf-monto" readonly tabindex="-1"></div>'
       +'</div>';
@@ -2936,8 +2934,7 @@ function jalarCartaDesdeCC(){
   fechaHoyCarta();
 
   let filas=[];
-  // en servicios: sin marca; la garantía no está en los cuadros (la escribe el usuario)
-  // y el plazo de ejecución sale de la validación, del postor con el mismo nombre
+  // en servicios: sin marca; el plazo de ejecución sale de la validación, del postor con el mismo nombre
   const servCarta=cartaEsServicio();
   const iVal = eleg.fuente==='val' ? eleg.i
     : (postores||[]).findIndex(p=>(p.nombre||'').trim().toUpperCase()===eleg.nombre.toUpperCase());
@@ -2998,7 +2995,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
   const filas=cartaFilas.filter(f=>(f.descripcion||'').trim()!=='');
   if(filas.length===0){ mostrarErrorCarta('Agrega al menos un ítem con descripción.'); return; }
   const total=totalCarta();
-  const servCarta=cartaEsServicio(), lblMarca=servCarta?'GARANTÍA':'MARCA';
+  const servCarta=cartaEsServicio();
   const datos={
     anio: val('ca-anio').trim() || '2026',
     empresa: val('ca-empresa').trim().toUpperCase(),
@@ -3013,19 +3010,24 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     filas: filas.map(f=>{
       const c=parseMonto(f.cantidad), p=parseMonto(f.precio);
       const desc=(f.descripcion||'').trim().toUpperCase();
-      const mar=(f.marca||'').trim().toUpperCase();
+      const mar=servCarta ? '' : (f.marca||'').trim().toUpperCase();
       const plz=servCarta ? fmtPlazo(f.plazo).toUpperCase() : '';
       return {codigo:(f.codigo||'').trim(),
-              // marca (o plazo y garantía, en servicios) van debajo de la descripción, en la misma celda
-              descripcion: desc + (plz ? '\nPLAZO DE EJECUCIÓN: '+plz : '') + (mar ? '\n'+lblMarca+': '+mar : ''),
+              // la marca va debajo de la descripción, dentro de la misma celda (solo bienes)
+              descripcion: desc + (mar ? '\nMARCA: '+mar : ''),
               marca: mar, plazo: plz,
               cantidad:String(f.cantidad||'').trim(), unidad:(f.unidad||'').trim().toUpperCase(),
               precio:p>0?montoCarta(p):'', monto:(c>0&&p>0)?montoCarta(c*p):''};
     }),
+    // columnas 3 y 4 de la tabla: en servicios va el plazo en vez de la unidad, antes de la cantidad
+    hdr3: servCarta ? 'PLAZO DE EJECUCIÓN' : 'CANTIDAD',
+    hdr4: servCarta ? 'CANTIDAD' : 'UNIDAD DE MEDIDA',
+    orden: servCarta ? 'orden de servicio' : 'orden de compra',
     hayTotal: filas.length>1 ? [{}] : [],   // la fila TOTAL solo si hay varios ítems
     montoTotal: total>0?montoCarta(total):'',
     elaborado: val('ca-elaborado').trim().toUpperCase(),
   };
+  datos.filas.forEach(f=>{ f.c3 = servCarta ? f.plazo : f.cantidad; f.c4 = servCarta ? f.cantidad : f.unidad; });
   { const asuEl=document.getElementById('ca-asunto'); if(asuEl && asuEl.value.trim().toUpperCase()!==datos.asunto) asuEl.value=datos.asunto; }
   const rucMal = datos.ruc && !rucValido(datos.ruc);
   const aviso = rucMal ? '<p class="pv-note" style="color:#c0392b">⚠ El RUC no es válido (11 dígitos y verificador). Revísalo antes de descargar.</p>' : '';
@@ -3038,10 +3040,10 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     ['Fecha', datos.fecha],
     ['Se solicita', 'INMEDIATA '+datos.articulo+' “'+datos.denominacion+'”'],
   ]) + '<div class="pv-sub">Detalle</div>' + pvTabla(
-    ['Código SIGA','Descripción'].concat(servCarta?['Plazo','Garantía']:['Marca'],['Cant.','Unidad','P. unitario','Monto']),
-    datos.filas.map(f=>[f.codigo, f.descripcion.split('\n')[0]].concat(servCarta?[f.plazo||'—',f.marca||'—']:[f.marca||'—'],
-      [f.cantidad, f.unidad, f.precio, f.monto]))
-    .concat((filas.length>1 && total>0)?[(servCarta?['','','','','','','TOTAL']:['','','','','','TOTAL']).concat([montoCarta(total)])]:[]));
+    ['Código SIGA','Descripción',servCarta?'Plazo de ejecución':'Marca','Cant.'].concat(servCarta?[]:['Unidad'],['P. unitario','Monto']),
+    datos.filas.map(f=>[f.codigo, f.descripcion.split('\n')[0], (servCarta?f.plazo:f.marca)||'—', f.cantidad]
+      .concat(servCarta?[]:[f.unidad],[f.precio, f.monto]))
+    .concat((filas.length>1 && total>0)?[(servCarta?['','','','','TOTAL']:['','','','','','TOTAL']).concat([montoCarta(total)])]:[]));
 
   abrirPreview('Carta al proveedor', resumen, ()=>{
     msg.className=''; msg.textContent='Generando…';
