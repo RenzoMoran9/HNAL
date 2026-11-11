@@ -539,7 +539,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
     </div>
     <nav class="side-nav">
       <div class="side-group">
-        <div class="side-group-t">1 · Validación de EE.TT.</div>
+        <div class="side-group-t">1 · Validación de EE.TT. / TDR</div>
         <button type="button" class="side-item active" data-tab="val"><span class="si-ico">📋</span> Cuadro de Validación<span class="si-ok" aria-hidden="true"></span></button>
         <button type="button" class="side-item" data-tab="memo"><span class="si-ico">📝</span> Memo de Validación<span class="si-ok" aria-hidden="true"></span></button>
       </div>
@@ -572,7 +572,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
       <button type="button" class="side-toggle" id="sideToggle" aria-label="Menú">☰</button>
       <div class="tb-txt">
         <h1 id="tb-title">Cuadro de Validación</h1>
-        <p id="tb-sub">Valida las especificaciones técnicas y descarga el Excel oficial.</p>
+        <p id="tb-sub">Valida las especificaciones técnicas / TDR y descarga el Excel oficial.</p>
       </div>
       <span class="tb-save" id="tbSave" title="Tu trabajo se guarda solo en este navegador">💾 Guardado automático</span>
       <span class="tb-flow" id="tb-flow">Flujo 1</span>
@@ -871,7 +871,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
   <!-- ==================== CARTA AL PROVEEDOR (URGENTE) ==================== -->
   <div id="panel-carta" class="panel oculto">
   <form id="form-carta" novalidate>
-    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto</b> cuando la adquisición es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con su precio y su marca del <b>Cuadro Comparativo</b> (en servicios, en vez de la marca va el plazo de ejecución de la validación) y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
+    <div class="aviso-carta">✉️ Carta para pedirle al proveedor ganador que <b>adelante el producto o el servicio</b> cuando es muy urgente y el área usuaria ya validó. Con <b>“⬇ Jalar datos”</b> trae la empresa ganadora, la referencia y los ítems con su precio y su marca del <b>Cuadro Comparativo</b> (en servicios, en vez de la marca va el plazo de ejecución de la validación) y los códigos SIGA del <b>Cuadro de Validación</b>.</div>
 
     <div class="card">
       <h2>1. Empresa a la que se le escribe</h2>
@@ -1211,6 +1211,13 @@ async function generarValidacion(datos){
 
   const prefijo = TITULOS[datos.tipo === 'servicio' ? 'servicio' : 'bien'];
   setv(5,2, prefijo + sinPrefijoObjeto(datos.adquisicion).toUpperCase());
+  // La plantilla es la de bienes: en servicios el cuerpo habla de términos de referencia
+  if (datos.tipo === 'servicio'){
+    setv(8,2, String(ws.getRow(8).getCell(2).value||'')
+      .replace(/para verificar el cumplimiento de las especificaciones t[eé]cnicas presentadas por las empresas potenciales del mercado\./i,
+               'presentadas por las empresas potenciales del mercado, para verificar el cumplimiento de los términos de referencia.'));
+    setv(10,2,'Revisión de cotizaciones y documentación enviada por las empresas potenciales que brindan el servicio requerido, para verificar el cumplimiento de los términos de referencia, producto de la revisión se determinó lo siguiente:');
+  }
 
   // Limpiar zona de postores (encabezado + filas de items)
   for (let f=11; f<=lastItem; f++)
@@ -1236,7 +1243,7 @@ async function generarValidacion(datos){
 
   // Encabezado CUMPLE
   for (let c=FIRST; c<=ultima; c++) applyStyle(11,c, st.cumple);
-  setv(11,FIRST,'CUMPLE CON LAS ESPECIFICACIONES TECNICAS');
+  setv(11,FIRST, datos.tipo === 'servicio' ? 'CUMPLE CON LOS TERMINOS DE REFERENCIA' : 'CUMPLE CON LAS ESPECIFICACIONES TECNICAS');
   merge(11,FIRST,11,ultima);
 
   // Postores (encabezado) + marca (o plazo, en servicios) / sino por item
@@ -1763,7 +1770,7 @@ const META_TAB = {
   memo: {title:'Memo de Validación',    sub:'Emite el memorando de solicitud de revisión en Word.',                    flow:'Flujo 1 · Validación'},
   cc:   {title:'Cuadro Comparativo',    sub:'Indagación de mercado: compara cotizaciones y define el valor estimado.', flow:'Flujo 2 · Indagación'},
   nota: {title:'Nota Informativa',      sub:'Solicita la aprobación de la Certificación de Crédito Presupuestario.',    flow:'Flujo 2 · Indagación'},
-  carta:{title:'Carta al proveedor',  sub:'Pide a la empresa ganadora que adelante el producto por urgencia.',    flow:'Urgencias'},
+  carta:{title:'Carta al proveedor',  sub:'Pide a la empresa ganadora que adelante el producto o servicio por urgencia.',    flow:'Urgencias'},
   trabajos: {title:'Mis trabajos',      sub:'Guarda y vuelve a abrir tus trabajos cuando quieras.',                    flow:'Archivo'},
   buscar:   {title:'Buscar / Histórico', sub:'Busca en tus expedientes y consulta precios de compras anteriores.',      flow:'Archivo'},
   directorio:{title:'Directorio',       sub:'Jefes, áreas y proveedores con los que ya trabajaste.',                     flow:'Archivo'},
@@ -2066,7 +2073,8 @@ async function generarCuadroComparativo(datos){
       const tel=String(p.telefono||'').trim();
       setv(17,b+1, tel && tel[0]==='0' ? tel : ccNum(tel));
       setv(18,b+1,String(p.email||'').trim());
-      for(let r=22;r<=25;r++) setv(F(r),b,null);
+      // servicios: marca, modelo, procedencia y año de fabricación no aplican
+      for(let r=22;r<=25;r++) setv(F(r),b, esServicio?'NO APLICA':null);
       setv(F(26),b,String(p.garantia||'').trim());
       setv(F(27),b,fmtPlazo(p.plazo_entrega));
       setv(F(28),b,'CREDITO COMERCIAL'); setv(F(29),b,'SOLES');
@@ -2089,6 +2097,7 @@ async function generarCuadroComparativo(datos){
       cols.forEach(c=>{ ws.getColumn(c).hidden=true; });
     }
   }
+  if(esServicio) setv(F(27),5,'PLAZO DE EJECUCIÓN');   // en servicios no hay "entrega"
   ws.getColumn(22).width=40;   // VALOR UNITARIO también ancho
   ws.getRow(F(36)).height=163.5;   // "SE TOMO EN CUENTA PARA... VALOR REFERENCIAL": alto para que se vea completo
 
@@ -2133,9 +2142,12 @@ async function generarCuadroComparativo(datos){
     // Modelo 2: pie automatico en MAYUSCULAS (jala documento y denominacion)
     const doc=String(datos.documento_solicitud||'').trim().toUpperCase();
     const den=String(datos.denominacion||'').trim().toUpperCase();
-    const t1='EL CUMPLIMIENTO DE LAS EE.TT FUERON EVALUADOS POR EL AREA USUARIA MEDIANTE FORMATO DE VALIDACION DE PROPUESTAS ECONOMICAS EN CUMPLIMIENTO DE LAS EE.TT, EL CUAL SE ADJUNTA AL PRESENTE EXPEDIENTE. CONSIDERAR DE LAS EE.TT.';
+    // EE.TT. en bienes, TDR en servicios; el guión 3 repite el título del cuadro de validación
+    const t1=esServicio
+      ? 'EL CUMPLIMIENTO DE LOS TDR FUE EVALUADO POR EL AREA USUARIA MEDIANTE FORMATO DE VALIDACION DE PROPUESTAS ECONOMICAS EN CUMPLIMIENTO DE LOS TDR, EL CUAL SE ADJUNTA AL PRESENTE EXPEDIENTE. CONSIDERAR LOS TDR.'
+      : 'EL CUMPLIMIENTO DE LAS EE.TT FUERON EVALUADOS POR EL AREA USUARIA MEDIANTE FORMATO DE VALIDACION DE PROPUESTAS ECONOMICAS EN CUMPLIMIENTO DE LAS EE.TT, EL CUAL SE ADJUNTA AL PRESENTE EXPEDIENTE. CONSIDERAR DE LAS EE.TT.';
     const t2='-SEGUN '+doc+' -SE ADJUNTA';
-    const t3='-CUADRO DE VALIDACION DE ESPECIFICACIONES TECNICAS PARA LA '+den;
+    const t3='-CUADRO DE '+TITULOS[esServicio?'servicio':'bien']+sinPrefijoObjeto(den);
     setv(F(37),1,[t1,t2,t3].join('\n'));
   }else{
     // Modelo 1: puntos 1)2)3) — se antepone el número si el usuario no lo escribió
@@ -2262,7 +2274,7 @@ function renderCC(){
         <div class="field" style="margin:0"><label>Teléfono</label><input type="text" class="c-telefono"></div>
         <div class="field" style="margin:0"><label>E-mail</label><input type="text" class="c-email"></div>
         <div class="field" style="margin:0"><label>Garantía / vigencia</label><input type="text" class="c-garantia" placeholder="Ej: 12 MESES"></div>
-        <div class="field" style="margin:0"><label>Plazo de entrega <span class="hint">— solo el número; sale "DIAS CALENDARIO"</span></label><input type="text" class="c-plazo" inputmode="numeric" placeholder="Ej: 21"></div>
+        <div class="field" style="margin:0"><label>${servicio?'Plazo de ejecución':'Plazo de entrega'} <span class="hint">— solo el número; sale "DIAS CALENDARIO"</span></label><input type="text" class="c-plazo" inputmode="numeric" placeholder="Ej: 21"></div>
         <div class="field" style="margin:0"><label>Fecha de solicitud</label><input type="date" class="c-fsol"></div>
         <div class="field" style="margin:0"><label>Fecha de recepción</label><input type="date" class="c-frec"></div>
         <div class="field" style="margin:0"><label>¿Proveedor se dedica al objeto?</label>
@@ -2668,6 +2680,7 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
     articulo: articuloObjeto(tituloMemo),
     cantidad: numeroATexto(filas.length),
     solicitud: esET ? 'las Especificaciones Técnicas' : 'los Términos de Referencia',
+    requeridos: esET ? 'las Especificaciones Técnicas requeridas' : 'los Términos de Referencia requeridos',
     filas: filas.map((f,i)=>({
       num: ('0'+(i+1)).slice(-2),
       empresa: (f.empresa||'').trim(),
@@ -3223,6 +3236,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
     hdr3: servCarta ? 'PLAZO DE EJECUCIÓN' : 'CANTIDAD',
     hdr4: servCarta ? 'CANTIDAD' : 'UNIDAD DE MEDIDA',
     orden: servCarta ? 'orden de servicio' : 'orden de compra',
+    solicitado: servCarta ? 'el servicio solicitado' : 'el producto solicitado',
     hayTotal: filas.length>1 ? [{}] : [],   // la fila TOTAL solo si hay varios ítems
     montoTotal: total>0?montoCarta(total):'',
     elaborado: val('ca-elaborado').trim().toUpperCase(),

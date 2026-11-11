@@ -156,8 +156,7 @@ LEGAL = ("Mediante la presente le hago llegar mi saludo y a su vez, en atención
 COMPROMISO_1 = ("Asimismo, por lo expuesto nos comprometemos a atender lo "
                 "requerido mediante ")
 COMPROMISO_2 = (", la cual será enviada a su correo electrónico a la brevedad "
-                "posible, siendo indispensable contar con el producto "
-                "solicitado.")
+                "posible, siendo indispensable contar con {solicitado}.")
 
 
 def build_body():

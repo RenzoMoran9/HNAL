@@ -195,7 +195,7 @@ CONTEXTO_END = ", según detalle:"
 
 SOBRE = ("Sobre el particular se hace de conocimiento, que se ha enviado a "
          "diferentes empresas de los cuales se obtuvo cotizaciones, se solicita "
-         "si está de acuerdo con las especificaciones técnicas")
+         "si está de acuerdo con {solicitud}")
 ACUERDO = ("De acuerdo al Numeral 44.6 del Artículo 44° del Reglamento de la "
            "Ley General de Contrataciones públicas, señala lo siguiente: “El "
            "requerimiento no incluye exigencias desproporcionadas e innecesarias "
@@ -209,11 +209,11 @@ ACUERDO = ("De acuerdo al Numeral 44.6 del Artículo 44° del Reglamento de la "
 ASIMISMO = ("Así mismo, el área usuaria tiene la responsabilidad técnica en la "
             "elaboración del requerimiento, precisos y objetivos mediante una "
             "participación activa en la evaluación de las cotizaciones asegurando "
-            "que estas cumplan con las especificaciones técnicas, conforme al "
+            "que estas cumplan con {solicitud}, conforme al "
             "numeral 14.2 del Artículo 14º y Articulo 20 del Reglamento de la Ley "
             "de Contrataciones Públicas.")
-DELOANTERIOR = ("De lo anterior, en caso la cotización no cumpla con los "
-                "términos de referencia y/o Especificaciones Técnicas requeridos, "
+DELOANTERIOR = ("De lo anterior, en caso la cotización no cumpla con "
+                "{requeridos}, "
                 "deberá indicar el motivo de manera clara y objetiva considerando "
                 "lo consignado en el Numeral 46.4 del Artículo 46 de la LGCP, así "
                 "como los principios que rigen la contratación pública contenidos "
@@ -221,8 +221,8 @@ DELOANTERIOR = ("De lo anterior, en caso la cotización no cumpla con los "
                 "Públicas.")
 ENTALSENTIDO = ("En tal sentido, se corre el traslado del expediente en original "
                 "de la referencia con la finalidad de que, a través de su "
-                "despacho, se sirva evaluar de acuerdo con las Especificaciones "
-                "Técnicas, a fin de continuar con los trámites correspondientes y "
+                "despacho, se sirva evaluar de acuerdo con {solicitud}, "
+                "a fin de continuar con los trámites correspondientes y "
                 "ejecución del ejercicio presupuestal de acuerdo a Ley.")
 
 # Partes con formato mixto (negrita / cursiva / subrayado) como el memo manual
@@ -235,8 +235,8 @@ ACUERDO_CITA2 = (" salvo que la autoridad de la gestión administrativa haya "
                  "aprobado el correspondiente proceso de compatibilización del "
                  "requerimiento, conforme a las disposiciones que establezca la "
                  "DGA mediante directiva”")
-DELO_1 = ("De lo anterior, en caso la cotización no cumpla con los términos de "
-          "referencia y/o Especificaciones Técnicas requeridos, ")
+DELO_1 = ("De lo anterior, en caso la cotización no cumpla con "
+          "{requeridos}, ")
 DELO_3 = (" considerando lo consignado en el Numeral 46.4 del Artículo 46 de la "
           "LGCP, así como los principios que rigen la contratación pública "
           "contenidos en el Artículo 5 de la Ley General de las Contrataciones "
