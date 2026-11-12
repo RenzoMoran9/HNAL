@@ -637,7 +637,12 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
         <div class="tipo" id="tipo">
           <label class="sel"><input type="radio" name="tipo" value="bien" checked> Bien (adquisición)</label>
           <label><input type="radio" name="tipo" value="servicio"> Servicio (término de referencia)</label>
+          <label><input type="radio" name="tipo" value="alimentos"> Alimentos (acta de validación)</label>
         </div>
+      </div>
+      <div class="field" id="val-area-box" style="display:none">
+        <label>Área usuaria <span class="hint">— sale en «…, PARA EL:» y en «en los ambientes del…»</span></label>
+        <input type="text" id="val-area" list="dl-areas" placeholder="Ej: DPTO DE NUTRICION Y DIETETICA">
       </div>
       <div class="field">
         <label id="lbl-adq">Adquisición <span class="hint" id="hint-adq">— se coloca después de "…PARA LA ADQUISICIÓN DE"</span></label>
@@ -1440,6 +1445,121 @@ function aplicarNombreAnioDocx(zip){
     zip.file(n, x);
   });
 }
+// ====================== ACTA DE VALIDACIÓN DE ALIMENTOS ======================
+// Formato propio del Dpto. de Nutrición (plantilla/ACTA_VALIDACION_ALIMENTOS.xlsx,
+// la arma web/make_alimentos_template.py). Lo impreso va de J a la última
+// columna de postor. Por cada postor, dos columnas: «CUMPLE» (la marca el área
+// usuaria) y «MARCA». Los ítems empiezan en la fila 21; el pie se corre.
+const TEMPLATE_ALIM_B64 = "__TEMPLATE_ALIM_B64__";
+const esNoCotizo = t => /^\s*(NO\s*COTIZ[OÓ]|N\.?\s*C\.?)\s*$/i.test(String(t||''));
+async function generarActaAlimentos(datos){
+  const wb=new ExcelJS.Workbook();
+  await wb.xlsx.load(b64ToArrayBuffer(TEMPLATE_ALIM_B64));
+  const ws=wb.worksheets[0];
+  const postores=(datos.postores||[]).filter(p=>(p.nombre||'').trim()!=='');
+  const nP=postores.length;
+  if(nP<1) throw new Error('Agrega al menos un postor con nombre.');
+  const items=(datos.items||[]).filter(it=>(it.denominacion||'').trim()!=='' || (it.codigo_siga||'').trim()!=='' ||
+    String(it.cantidad==null?'':it.cantidad).trim()!=='');
+  if(!items.length) throw new Error('Agrega al menos un ítem.');
+  const nI=items.length;
+  const ITEM=21, FOOT_TOP=23, FOOT_BOT=33, CP=19;          // S = primer postor
+  const LAST=CP+2*nP-1, TPL_LAST=22;                        // V = fin de la plantilla
+  const ANCHO=Math.max(LAST, TPL_LAST);
+  const OFF=nI-2;                                           // la plantilla trae 2 filas de ítem
+  const F=r=>r+OFF;
+  const cp=o=>JSON.parse(JSON.stringify(o||{}));
+  const cel=(r,c)=>ws.getRow(r).getCell(c);
+  const setv=(r,c,v)=>{ cel(r,c).value=v; };
+
+  // prototipos: fila de ítem, bloque de postor (el 2.º, columnas U-V) y el pie
+  const protoItem={}; for(let c=10;c<=TPL_LAST;c++) protoItem[c]=cp(cel(ITEM,c).style);
+  const protoPost={}; for(let r=17;r<=20;r++) protoPost[r]=[cp(cel(r,21).style), cp(cel(r,22).style)];
+  const hItem=ws.getRow(ITEM).height;
+  const anchoBloque=[ws.getColumn(21).width, ws.getColumn(22).width];
+  const pie=[];
+  for(let r=FOOT_TOP;r<=FOOT_BOT;r++){
+    const cells=[]; for(let c=10;c<=TPL_LAST;c++) cells.push({c, value:cel(r,c).value, style:cp(cel(r,c).style)});
+    pie.push({r, h:ws.getRow(r).height, cells});
+  }
+  // combinaciones de los postores: se rehacen según cuántos hay
+  ((ws.model&&ws.model.merges)||[]).slice().forEach(rng=>{
+    const m=String(rng).match(/^([A-Z]+)(\d+):/); if(!m) return;
+    if(m[1]>='S' && m[1].length===1){ try{ ws.unMergeCells(rng); }catch(e){} }
+  });
+  // zona dinámica limpia
+  const filaMax=Math.max(FOOT_BOT, F(FOOT_BOT))+2;
+  for(let r=ITEM;r<=filaMax;r++){ const row=ws.getRow(r); row.height=undefined;
+    for(let c=10;c<=ANCHO+2;c++){ const x=row.getCell(c); x.value=null; x.style={}; } }
+  // pie corrido (las líneas de observaciones llegan hasta el último postor)
+  pie.forEach(fr=>{
+    const row=ws.getRow(F(fr.r)); if(fr.h) row.height=fr.h;
+    fr.cells.forEach(cc=>{ const x=row.getCell(cc.c); x.style=cp(cc.style); x.value=cc.value; });
+    const ult=fr.cells[fr.cells.length-1].style;
+    for(let c=TPL_LAST+1;c<=LAST;c++) row.getCell(c).style=cp(ult);
+  });
+
+  // encabezado de postores
+  for(let i=0;i<Math.max(nP,2);i++){
+    const cm=CP+2*i, cs=cm+1;
+    if(i>=nP){   // la plantilla trae 2 bloques: si hay un solo postor, el 2.º se quita
+      for(let r=17;r<=20;r++){ cel(r,cm).value=null; cel(r,cm).style={}; cel(r,cs).value=null; cel(r,cs).style={}; }
+      continue;
+    }
+    if(i>=2) for(let r=17;r<=20;r++){ cel(r,cm).style=cp(protoPost[r][0]); cel(r,cs).style=cp(protoPost[r][1]); }
+    setv(17,cm,'CUMPLE CON LAS EETT (colocar una X SI o NO)');
+    setv(18,cm,'POSTOR '+(i+1));
+    setv(19,cm,String(postores[i].nombre||'').trim().toUpperCase());
+    setv(20,cm,'CUMPLE CON EETT (colocar una X SI o NO)'); setv(20,cs,'MARCA');
+    [17,18,19].forEach(r=>{ try{ ws.mergeCells(r,cm,r,cs); }catch(e){} });
+    if(i>=2){ ws.getColumn(cm).width=anchoBloque[0]; ws.getColumn(cs).width=anchoBloque[1]; }
+    ws.getColumn(cm).hidden=false; ws.getColumn(cs).hidden=false;
+  }
+  for(let c=LAST+1;c<=LAST+20;c++){ const col=ws.getColumn(c); col.hidden=true; }
+
+  // ítems
+  items.forEach((it,k)=>{
+    const r=ITEM+k, row=ws.getRow(r);
+    if(hItem) row.height=hItem;
+    for(let c=10;c<=18;c++) row.getCell(c).style=cp(protoItem[c]);
+    setv(r,10,k+1);
+    setv(r,11,String(it.codigo_siga||'').trim());
+    setv(r,12,String(it.denominacion||'').trim().toUpperCase());
+    setv(r,13,String(it.unidad||'').trim().toUpperCase()||null);
+    const ct=String(it.cantidad==null?'':it.cantidad).trim(), cn=Number(ct.replace(',','.'));
+    setv(r,14, ct!=='' && isFinite(cn) ? cn : (ct||null));
+    for(let i=0;i<nP;i++){
+      const cm=CP+2*i, cs=cm+1;
+      row.getCell(cm).style=cp(protoItem[19]); row.getCell(cs).style=cp(protoItem[20]);
+      const marca=String((it.marcas||[])[i]||'').trim().toUpperCase();
+      if(esNoCotizo(marca)){ setv(r,cm,'NO COTIZO'); setv(r,cs,'-'); }
+      else { setv(r,cm,'( SI ) o ( NO) '); setv(r,cs,marca||null); }
+    }
+  });
+
+  // cabecera del acta: insumos, área usuaria, año
+  const area=String(datos.area||'').trim().toUpperCase();
+  setv(4,12, sinPrefijoObjeto(datos.adquisicion).toUpperCase());
+  setv(4,20, area); setv(7,20, area);
+  setv(7,10, String(cel(7,10).value||'').replace(/del\s+20\d\d/, 'del '+anioActual()));
+  // acuerdos: cuántas respuestas se obtuvo
+  const ac=cel(F(24),10), resp=numeroATexto(nP)+' RESPUESTA'+(nP===1?'':'S');
+  const cambiar=t=>String(t).replace(/SE OBTUVO\s+.*?RESPUESTA\s*\(s\)/i, 'SE OBTUVO '+resp);
+  if(ac.value && ac.value.richText) ac.value={richText:ac.value.richText.map(x=>Object.assign({},x,{text:cambiar(x.text)}))};
+  else if(ac.value) ac.value=cambiar(ac.value);
+
+  // impresión: una hoja apaisada con lo que va de J a la última columna de postor
+  ws.pageSetup=Object.assign({}, ws.pageSetup, {
+    orientation:'landscape', paperSize:9, fitToPage:true, fitToWidth:1, fitToHeight:1,
+    horizontalCentered:true,
+    margins:{left:0.3,right:0.3,top:0.4,bottom:0.4,header:0.2,footer:0.2},
+    printArea:'J1:'+colLetter(LAST)+F(FOOT_BOT),
+  });
+  delete ws.pageSetup.scale;
+  ws.views=[{showGridLines:false, topLeftCell:'J1', zoomScale:50, zoomScaleNormal:50, workbookViewId:0}];
+  return await wb.xlsx.writeBuffer();
+}
+
 // ====================== CATÁLOGO SIGA ======================
 // Sale de los "REPORTE DE OC" que se bajan del SIGA (web/make_siga.py). No es el
 // catálogo nacional: son los ítems que la entidad realmente compró, con su
@@ -1714,9 +1834,15 @@ document.querySelectorAll('input[name=tipo]').forEach(r=>{
     document.querySelectorAll('#tipo label').forEach(l=> l.classList.toggle('sel', l.querySelector('input').checked));
     document.getElementById('hint-adq').textContent = (tipo==='servicio')
       ? '— se coloca después de "…PARA EL SERVICIO DE"'
+      : (tipo==='alimentos') ? '— se coloca después de "INSUMOS:"'
       : '— se coloca después de "…PARA LA ADQUISICIÓN DE"';
     document.getElementById('adquisicion').placeholder = (tipo==='servicio')
-      ? 'Ej: MANTENIMIENTO DE EQUIPOS BIOMEDICOS' : 'Ej: TOKEN DE SEGURIDAD CON CONECTOR USB';
+      ? 'Ej: MANTENIMIENTO DE EQUIPOS BIOMEDICOS'
+      : (tipo==='alimentos') ? 'Ej: HOT DOG DE PAVITA Y JAMON DE PAVO' : 'Ej: TOKEN DE SEGURIDAD CON CONECTOR USB';
+    // alimentos: el acta lleva el área usuaria (se comparte con el comparativo)
+    const ab=document.getElementById('val-area-box'); if(ab) ab.style.display=(tipo==='alimentos')?'':'none';
+    if(tipo==='alimentos'){ const va=document.getElementById('val-area'), ca=document.getElementById('cc-area');
+      if(va && !va.value.trim() && ca && ca.value.trim()) va.value=ca.value; }
     renderItems();   // la columna de marca pasa a ser "plazo de ejecución" y al revés
   });
 });
@@ -1770,7 +1896,7 @@ function renderItems(){
     const marcas = postores.map((p,i)=>`
       <div class="field" style="margin:0">
         <label class="lbl-postor" data-i="${i}">${etiquetaPostor(i)}</label>
-        <input type="text" class="i-marca" data-i="${i}" placeholder="${servicio?'Ej: 15 (sale «15 DIAS CALENDARIO»)':'Marca'}">
+        <input type="text" class="i-marca" data-i="${i}" placeholder="${servicio?'Ej: 15 (sale «15 DIAS CALENDARIO»)':(tipo==='alimentos'?'Marca (o NO COTIZO)':'Marca')}">
       </div>`).join('');
     card.innerHTML = `
       <div class="item-head">
@@ -1783,7 +1909,7 @@ function renderItems(){
         <div class="field" style="margin:0"><label>Unidad <span class="hint">— elige o escribe</span></label><input type="text" class="i-unidad" list="dl-unidades" value="UND"></div>
         <div class="field" style="margin:0"><label>Cantidad</label><input type="number" class="i-cantidad" min="0" placeholder="Ej: 150"></div>
       </div>
-      <div class="marcas-title" style="margin-top:14px">${servicio?'Plazo de ejecución ofertado por cada postor:':'Marca ofertada por cada postor:'}</div>
+      <div class="marcas-title" style="margin-top:14px">${servicio?'Plazo de ejecución ofertado por cada postor:':(tipo==='alimentos'?'Marca ofertada por cada postor <span class="hint">— si no cotizó este ítem, escribe NO COTIZO</span>:':'Marca ofertada por cada postor:')}</div>
       <div class="marcas-grid">${marcas}</div>`;
 
     const q = s => card.querySelector(s);
@@ -1860,8 +1986,10 @@ document.getElementById('form').addEventListener('submit', (e)=>{
   // Re-mapear marcas a los postores CON nombre (si dejan un postor vacío en medio,
   // las marcas de los demás no deben correrse de columna)
   const usedIdxV = postores.map((p,i)=>i).filter(i=>(postores[i].nombre||'').trim()!=='');
+  const esAlim = (tipo==='alimentos');
+  if(esAlim && !validarReq(['val-area'])){ mostrarError('Escribe el área usuaria: va en el acta.'); return; }
   const datos = {
-    tipo, adquisicion,
+    tipo, adquisicion, area: (document.getElementById('val-area').value||'').trim(),
     postores: usedIdxV.map(i=>({nombre:postores[i].nombre})),
     items: itemsValid.map(it=>({
       codigo_siga: it.codigo, denominacion: it.denom, unidad: it.unidad,
@@ -1869,19 +1997,20 @@ document.getElementById('form').addEventListener('submit', (e)=>{
     })),
   };
   const resumen = pvDL([
-    ['Tipo', tipo==='servicio'?'Servicio (Término de Referencia)':'Bien (Adquisición)'],
+    ['Tipo', tipo==='servicio'?'Servicio (Término de Referencia)':(esAlim?'Alimentos (Acta de validación)':'Bien (Adquisición)')],
     ['Objeto', adquisicion],
+    ...(esAlim?[['Área usuaria', datos.area]]:[]),
     ['Postores', postValid.map(p=>p.nombre).join(' · ')],
   ]) + '<div class="pv-sub">Bienes / servicios</div>' + pvTabla(
     ['#','Código SIGA','Denominación','Und','Cant'],
     itemsValid.map((it,i)=>[i+1, it.codigo, it.denom, it.unidad, it.cantidad]));
 
-  abrirPreview('Cuadro de Validación', resumen, async ()=>{
+  abrirPreview(esAlim?'Acta de Validación (alimentos)':'Cuadro de Validación', resumen, async ()=>{
     msg.className=''; msg.textContent='Generando…';
     try{
-      const buffer = await generarValidacion(datos);
+      const buffer = esAlim ? await generarActaAlimentos(datos) : await generarValidacion(datos);
       const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-      descargarBlob(blob, nombreArchivo(adquisicion), msg, 'val');
+      descargarBlob(blob, esAlim ? 'ACTA_VALIDACION_'+abreviarObjeto(adquisicion)+'.xlsx' : nombreArchivo(adquisicion), msg, 'val');
       datos.postores.forEach(p=>upsertProveedor({nombre:p.nombre})); // alimentar el directorio desde el primer documento
     }catch(err){ mostrarError(err.message || 'Ocurrió un error al generar.'); console.error(err); }
   }, 'val');
@@ -2713,7 +2842,7 @@ function jalarCCDesdeValidacion(){
       codigo:String(it.codigo||'').trim(), descripcion:desc, medida:unidadCC(it.unidad),
       cantidad:String(it.cantidad==null?'':it.cantidad).trim(),
       precios:nuevos.map(p=> p._j>=0 ? String(((prev.precios||[])[p._j])||'') : ''),
-      marcas:usados.map((i,n)=> serv ? '' : (norm((it.marcas||[])[i]) || String(((prev.marcas||[])[nuevos[n]._j])||''))),
+      marcas:usados.map((i,n)=> serv ? '' : ((esNoCotizo((it.marcas||[])[i]) ? '' : norm((it.marcas||[])[i])) || String(((prev.marcas||[])[nuevos[n]._j])||''))),
       precioHist:prev.precioHist||'', marcaHist:prev.marcaHist||'',
     };
   }) : null;
@@ -2731,7 +2860,9 @@ function jalarCCDesdeValidacion(){
   const docEl=document.getElementById('cc-doc'), ref=(document.getElementById('m-ref').value||'').trim();
   if(ref && (limpiar || !docEl.value.trim())) docEl.value=ref;
   const areaEl=document.getElementById('cc-area');
-  if(limpiar || !areaEl.value.trim()){
+  const areaVal=(document.getElementById('val-area').value||'').trim();
+  if(tipo==='alimentos' && areaVal && (limpiar || !areaEl.value.trim())) areaEl.value=areaVal;
+  else if(limpiar || !areaEl.value.trim()){
     const dn=normTexto(document.getElementById('m-dest-nombre').value||'');
     const d=dn && destinatarios.find(x=>normTexto(x.nombre)===dn);
     if(d && d.area) areaEl.value=d.area; else if(limpiar) areaEl.value='';
@@ -3469,7 +3600,7 @@ function jalarCartaDesdeCC(){
       const eq=(items||[]).find(x=>(x.denom||'').trim().toUpperCase()===desc.toUpperCase());
       // el código sale de la validación; si no está, del que se eligió en el catálogo SIGA
       return {codigo:(eq&&eq.codigo)||it.codigo||'', descripcion:desc.toUpperCase(),
-              marca:servCarta?'':String((it.marcas||[])[eleg.i]||(eq&&(eq.marcas||[])[eleg.i])||'').trim(),
+              marca:servCarta?'':[(it.marcas||[])[eleg.i], eq&&(eq.marcas||[])[eleg.i]].map(x=>String(x||'').trim()).find(x=>x&&!esNoCotizo(x))||'',
               plazo:plazoDe(eq),
               cantidad:String(it.cantidad||''), unidad:(it.medida||'UNIDAD'),
               precio:String((it.precios||[])[eleg.i]||'')};
@@ -3478,7 +3609,7 @@ function jalarCartaDesdeCC(){
     // del cuadro de validación: sin precios, los pone el usuario
     filas=(items||[]).filter(it=>(it.denom||'').trim()!=='').map(it=>({
       codigo:(it.codigo||''), descripcion:(it.denom||'').trim().toUpperCase(),
-      marca:servCarta?'':String((it.marcas||[])[eleg.i]||'').trim(),
+      marca:servCarta||esNoCotizo((it.marcas||[])[eleg.i])?'':String((it.marcas||[])[eleg.i]||'').trim(),
       plazo:plazoDe(it),
       cantidad:String(it.cantidad||''), unidad:(it.unidad||'UNIDAD'), precio:''}));
   }
@@ -4437,6 +4568,21 @@ async function importarCuadroExcel(file){
   const buf=await file.arrayBuffer();
   const wb=new ExcelJS.Workbook(); await wb.xlsx.load(buf);
   const ws=wb.worksheets[0];
+  const esActa=/INSUMOS/i.test(celTxt(ws,4,10));
+  if(esActa){
+    const post=[]; for(let i=0;i<20;i++){ const n=celTxt(ws,19,19+2*i); if(!n) break; post.push({nombre:n}); }
+    const its=[];
+    for(let k=0;k<200;k++){ const r=21+k; if(!/^\d+$/.test(String(celTxt(ws,r,10)).trim())) break;
+      its.push({codigo:celTxt(ws,r,11), denom:celTxt(ws,r,12), unidad:celTxt(ws,r,13), cantidad:String(celTxt(ws,r,14)||''),
+        marcas:post.map((p,i)=> /NO COTIZ/i.test(celTxt(ws,r,19+2*i)) ? 'NO COTIZO' : celTxt(ws,r,20+2*i))}); }
+    if(!post.length || !its.length) throw new Error('No se encontraron postores o ítems en el acta.');
+    tipo='alimentos';
+    const rb=document.querySelector('input[name=tipo][value="alimentos"]'); if(rb){ rb.checked=true; rb.dispatchEvent(new Event('change')); }
+    document.getElementById('adquisicion').value=celTxt(ws,4,12);
+    document.getElementById('val-area').value=celTxt(ws,4,20);
+    postores=post; items=its; renderPostores(); renderItems(); scheduleSave(); irA('val');
+    return 'Acta de Validación importada: '+its.length+' ítem(s) y '+post.length+' postor(es).';
+  }
   const esVal=/^VALIDACION/i.test(celTxt(ws,5,2));
   const esCC =/ITEM/i.test(celTxt(ws,11,1)) || /CUADRO COMPARATIVO/i.test(celTxt(ws,1,1));
   if(esVal){
@@ -5042,7 +5188,7 @@ aplicarAjustes();
 // La referencia es la misma en el memo, el comparativo, la nota y la carta: al
 // escribirla en uno, pasa a los demás que estén vacíos o que tenían el mismo
 // texto. Si en alguno se puso otra cosa a propósito, ese no se toca.
-[['m-ref','cc-doc','n-ref','ca-ref']].forEach(grupo=>{
+[['m-ref','cc-doc','n-ref','ca-ref'], ['val-area','cc-area']].forEach(grupo=>{
   grupo.forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     let antes=el.value;
@@ -5063,11 +5209,12 @@ aplicarAjustes();
 // cambia en el comparativo y al revés.
 (function(){
   const sel=document.getElementById('cc-objeto');
+  const obj=()=> tipo==='servicio' ? 'servicio' : 'bien';   // alimentos = bien
   document.querySelectorAll('input[name=tipo]').forEach(r=> r.addEventListener('change', ()=>{
-    if(r.checked && sel.value!==tipo){ sel.value=tipo; aplicarObjetoCC(); }
+    if(r.checked && sel.value!==obj()){ sel.value=obj(); aplicarObjetoCC(); }
   }));
   sel.addEventListener('change', ()=>{
-    if(tipo===sel.value) return;
+    if(obj()===sel.value) return;
     const r=document.querySelector('input[name=tipo][value="'+sel.value+'"]');
     if(r){ r.checked=true; r.dispatchEvent(new Event('change')); }
   });

@@ -22,6 +22,9 @@ mantenerla neutral.
 - Después de cualquier cambio: `python web/build_html.py`.
 - Si cambia una plantilla Word: `python web/make_memo_template.py`,
   `make_nota_template.py` o `make_carta_template.py`, y luego el build.
+- El acta de validación de **alimentos** sale de `plantilla/ACTA_ALIMENTOS_EJEMPLO.xlsx`
+  (el acta real): `python web/make_alimentos_template.py` la limpia y deja
+  `plantilla/ACTA_VALIDACION_ALIMENTOS.xlsx`; luego el build.
 - `python web/aplicar_titulos.py <memos.docx>` saca los grados profesionales
   (Dr., Ing., Q.F.) de documentos ya emitidos y los guarda en
   `web/directorio.json`.
@@ -45,5 +48,5 @@ mantenerla neutral.
 
 ## Documentos que genera
 
-Validación (Excel) → Memo (Word) → Comparativo (Excel) → Nota Informativa
+Validación (Excel; en alimentos, el Acta de Validación) → Memo (Word) → Comparativo (Excel) → Nota Informativa
 (Word). Aparte: Carta al proveedor (Word), para pedir adelanto por urgencia.

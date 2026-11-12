@@ -23,6 +23,7 @@ PLANTILLA_CC = BASE / "plantilla" / "CUADRO_COMPARATIVO.xlsx"
 PLANTILLA_MEMO = BASE / "plantilla" / "MEMO_VALIDACION.docx"
 PLANTILLA_NOTA = BASE / "plantilla" / "NOTA_INFORMATIVA.docx"
 PLANTILLA_CARTA = BASE / "plantilla" / "CARTA_URGENTE.docx"
+PLANTILLA_ALIM = BASE / "plantilla" / "ACTA_VALIDACION_ALIMENTOS.xlsx"
 DIRECTORIO = BASE / "web" / "directorio.json"
 SIGA = BASE / "web" / "siga.json"
 FONTS = BASE / "web" / "fonts"
@@ -45,6 +46,7 @@ def main():
     b64memo = base64.b64encode(PLANTILLA_MEMO.read_bytes()).decode("ascii")
     b64nota = base64.b64encode(PLANTILLA_NOTA.read_bytes()).decode("ascii")
     b64carta = base64.b64encode(PLANTILLA_CARTA.read_bytes()).decode("ascii")
+    b64alim = base64.b64encode(PLANTILLA_ALIM.read_bytes()).decode("ascii")
 
     html = shell.replace("/*__EXCELJS__*/", exceljs)
     html = html.replace("/*__PIZZIP__*/", pizzip)
@@ -54,6 +56,7 @@ def main():
     html = html.replace("__TEMPLATE_MEMO_B64__", b64memo)
     html = html.replace("__TEMPLATE_NOTA_B64__", b64nota)
     html = html.replace("__TEMPLATE_CARTA_B64__", b64carta)
+    html = html.replace("__TEMPLATE_ALIM_B64__", b64alim)
     html = html.replace("__DIRECTORIO__", DIRECTORIO.read_text(encoding="utf-8"))
     # Catalogo de items (web/siga.json, lo arma web/make_siga.py). Si no esta,
     # la app arranca vacia y el usuario carga sus reportes desde "Buscar".
