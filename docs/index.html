@@ -113,6 +113,8 @@ main{max-width:940px;width:100%;margin:0 auto;padding:22px 30px 40px;}
   .app.colapsada .si-ok::before{content:'';}
   .app.colapsada .side-atajos{font-size:0;padding:8px 0;}
   .app.colapsada .side-atajos::before{content:'⌨';font-size:1rem;}
+  .app.colapsada #btnAnio::before{content:'📅';}
+  .app.colapsada .side-links{flex-direction:column;}
 }
 .side-backdrop{display:none;}
 
@@ -561,7 +563,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
     </nav>
     <div class="side-foot">
       <button type="button" class="side-home" id="btnInicio">‹ Volver al inicio</button>
-      <div class="side-links"><button type="button" class="side-atajos" id="btnAtajos" title="Atajos de teclado (tecla ?)">⌨ Atajos de teclado</button></div>
+      <div class="side-links"><button type="button" class="side-atajos" id="btnAtajos" title="Atajos de teclado (tecla ?)">⌨ Atajos</button><button type="button" class="side-atajos" id="btnAnio" title="Nombre oficial del año, para el encabezado de los documentos">📅 Año</button></div>
       <div class="side-copy">Todo se guarda en esta computadora</div>
     </div>
   </aside>
@@ -666,8 +668,10 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
     <div class="card">
       <h2>2. Ítems a cotizar</h2>
       <p class="hint" style="margin:-8px 0 12px">Define qué se cotiza (descripción, medida y cantidad). El <b>precio y la marca</b> de cada ítem se ingresan dentro de cada postor.</p>
+      <button type="button" class="btn btn-sec" id="cc-jalar-val" style="margin-bottom:12px">⬇ Jalar ítems y postores de la Validación</button>
       <div id="cc-items"></div>
       <button type="button" class="btn btn-sec" id="cc-agregar-item">＋ Agregar ítem</button>
+      <div id="msg-cc-jalar"></div>
     </div>
 
     <div class="card">
@@ -797,6 +801,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
       </div>
       <div class="bf-acciones">
         <button type="submit" class="btn btn-azul btn-generar">⬇ Generar Memo (Word)</button>
+        <button type="button" class="btn btn-memo" id="btn-emitir-cc">Siguiente: Comparativo →</button>
       </div>
       <div id="msg-memo"></div>
     </div>
@@ -1087,6 +1092,25 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
   </div>
 </div>
 
+<!-- Modal: nombre oficial del año -->
+<div class="pv-overlay" id="anioModal">
+  <div class="pv-card" style="width:min(560px,96vw)">
+    <div class="pv-head">
+      <h3>Nombre del año</h3>
+      <button type="button" id="an-x" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="pv-body">
+      <p class="hint" style="margin:0 0 14px;line-height:1.5">Sale en el encabezado de <b>todos</b> los documentos: Validación, Memo, Nota y Carta. Cuando empiece un año nuevo, cámbialo aquí una sola vez.</p>
+      <div class="field" style="margin:0"><label>Nombre del año <span class="hint" id="an-y"></span></label>
+        <input type="text" class="no-mayus" id="an-texto" placeholder="Ej: Año de la Esperanza y el Fortalecimiento de la Democracia"></div>
+    </div>
+    <div class="pv-foot">
+      <button type="button" class="btn btn-sec" id="an-cancel">Cancelar</button>
+      <button type="button" class="btn btn-azul" id="an-ok">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: atajos de teclado -->
 <div class="pv-overlay" id="atajosModal">
   <div class="pv-card" style="width:min(520px,96vw)">
@@ -1263,6 +1287,12 @@ async function generarValidacion(datos){
                'presentadas por las empresas potenciales del mercado, para verificar el cumplimiento de los términos de referencia.'));
     setv(10,2,'Revisión de cotizaciones y documentación enviada por las empresas potenciales que brindan el servicio requerido, para verificar el cumplimiento de los términos de referencia, producto de la revisión se determinó lo siguiente:');
   }
+  // Encabezado con el nombre del año vigente y el año del acta (la plantilla traía otros fijos)
+  { const na=nombreAnio(), b4=ws.getRow(4).getCell(2).value;
+    if(!na) avisoSinNombreAnio();
+    else if(typeof b4==='string') setv(4,2, b4.replace(/“\s*A[ñn]o[^”]*”/, '“'+na+'”').replace('para mujeres y Hombres','para Mujeres y Hombres'));
+    const b8=String(ws.getRow(8).getCell(2).value||'');
+    setv(8,2, b8.replace(/del\s+20\d\d,/, 'del '+anioActual()+',')); }
 
   // Limpiar zona de postores (encabezado + filas de items)
   for (let f=11; f<=lastItem; f++)
@@ -1361,6 +1391,56 @@ async function generarValidacion(datos){
   try{ ws.name='VALIDACION'; }catch(e){}
   return await wb.xlsx.writeBuffer();
 }
+
+// ====================== NOMBRE OFICIAL DEL AÑO ======================
+// Va en el encabezado de todos los documentos. Las plantillas traían uno distinto
+// cada una (2021, 2025, 2026); aquí se fija una vez y se aplica a todas.
+const NOMBRES_ANIO = { '2026':'Año de la Esperanza y el Fortalecimiento de la Democracia' };
+function anioActual(){ return hoyLocal().slice(0,4); }
+function nombreAnio(){
+  const y=anioActual();
+  try{ const o=JSON.parse(localStorage.getItem('hnal_nombre_anio')||'null');
+    if(o && o.y===y && String(o.t||'').trim()) return String(o.t).trim(); }catch(e){}
+  return NOMBRES_ANIO[y]||'';
+}
+function avisoSinNombreAnio(){
+  aviso('Falta el nombre del año '+anioActual()+': ponlo en «📅 Nombre del año» (barra lateral). Este documento salió con el de la plantilla.', 'error');
+}
+const xmlEsc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// Word: cambia el párrafo “Año de …” de los encabezados por el nombre configurado
+function aplicarNombreAnioDocx(zip){
+  const na=nombreAnio(); if(!na){ avisoSinNombreAnio(); return; }
+  Object.keys(zip.files).filter(n=>/^word\/header\d*\.xml$/.test(n)).forEach(n=>{
+    let x=zip.file(n).asText();
+    // párrafos más internos (los del cuadro de texto del membrete)
+    x=x.replace(/<w:p(?:\s[^>]*)?>(?:(?!<w:p[\s>])[\s\S])*?<\/w:p>/g, par=>{
+      const txt=(par.match(/<w:t(?:\s[^>]*)?>[^<]*<\/w:t>/g)||[]).map(t=>t.replace(/<[^>]+>/g,'')).join('');
+      if(!/^\s*[“"]?\s*A[ñn]o\s+(de|del)\b/i.test(txt)) return par;
+      const runs=par.match(/<w:r(?:\s[^>]*)?>[\s\S]*?<\/w:r>/g)||[];
+      const rAnio=runs.find(r=>/A[ñn]o/i.test(r))||runs[0]||'';
+      const rPr=(rAnio.match(/<w:rPr>[\s\S]*?<\/w:rPr>/)||[''])[0];
+      const sinRuns=par.replace(/<w:r(?:\s[^>]*)?>[\s\S]*?<\/w:r>/g,'');
+      return sinRuns.replace(/<\/w:p>$/, '<w:r>'+rPr+'<w:t xml:space="preserve">“'+xmlEsc(na)+'”</w:t></w:r></w:p>');
+    });
+    zip.file(n, x);
+  });
+}
+(function(){
+  const m=document.getElementById('anioModal'), inp=document.getElementById('an-texto');
+  const cerrar=()=> m.classList.remove('open');
+  document.getElementById('btnAnio').addEventListener('click', ()=>{
+    document.getElementById('an-y').textContent='— '+anioActual();
+    inp.value=nombreAnio(); m.classList.add('open'); setTimeout(()=>inp.focus(),50);
+  });
+  document.getElementById('an-x').addEventListener('click', cerrar);
+  document.getElementById('an-cancel').addEventListener('click', cerrar);
+  m.addEventListener('click', e=>{ if(e.target===m) cerrar(); });
+  document.getElementById('an-ok').addEventListener('click', ()=>{
+    const t=inp.value.trim().replace(/^[“"]+|[”"]+$/g,'').trim();
+    try{ localStorage.setItem('hnal_nombre_anio', JSON.stringify({y:anioActual(), t})); }catch(e){}
+    cerrar(); aviso(t ? '✓ Nombre del año guardado.' : 'Se usará el nombre que trae la app para '+anioActual()+'.');
+  });
+})();
 
 // ====================== CATÁLOGO SIGA ======================
 // Sale de los "REPORTE DE OC" que se bajan del SIGA (web/make_siga.py). No es el
@@ -2492,6 +2572,94 @@ document.getElementById('cc-objeto').addEventListener('change', aplicarObjetoCC)
 aplicarObjetoCC();
 renderCCItems(); renderCC(); syncPunto1();
 
+// ---- Validación → Comparativo: lo que ya se escribió en la validación no se repite ----
+// Trae bien/servicio, la denominación, los ítems (código, descripción, unidad,
+// cantidad), los postores (con su RUC y contacto del directorio) y la marca de
+// cada uno (en servicios, el plazo de ejecución). Lo que ya estaba en el
+// comparativo —precios, contactos, fechas— se conserva por empresa y por ítem.
+function unidadCC(u){ const t=String(u||'').trim().toUpperCase(); return (!t||/^(UND|UNID|UNIDAD)\.?$/.test(t))?'UNIDAD':t; }
+function jalarCCDesdeValidacion(){
+  const norm=x=>String(x||'').trim().toUpperCase();
+  const adq=sinPrefijoObjeto(document.getElementById('adquisicion').value).toUpperCase();
+  let usados=postores.map((p,i)=>i).filter(i=>norm(postores[i].nombre));
+  const its=items.filter(it=>norm(it.denom)||norm(it.codigo)||String(it.cantidad||'').trim());
+  if(!adq && !its.length && !usados.length) return {ok:false, msg:'El Cuadro de Validación está vacío. Llénalo primero.'};
+  const sobran=usados.length>4 ? usados.length-4 : 0;
+  usados=usados.slice(0,4);   // el comparativo admite hasta 4 postores
+  const serv=(tipo==='servicio');
+
+  // ¿el comparativo tenía otro expediente? entonces no se arrastran sus precios
+  const denEl=document.getElementById('cc-denom');
+  const denPrev=sinPrefijoObjeto(denEl.value).toUpperCase();
+  const limpiar = otroExpediente(denPrev, adq, 'los precios, contactos, fechas y el documento de solicitud');
+
+  const viejos=limpiar ? [] : ccPostores;
+  const nomGanador=norm((ccPostores[ccGanador]||{}).nombre);
+  const idxViejo=nom=>viejos.findIndex(p=>norm(p.nombre)===nom);
+  const nuevos=usados.map(i=>{
+    const nom=norm(postores[i].nombre), j=idxViejo(nom);
+    const p=Object.assign(nuevoPostorCC(), j>=0?viejos[j]:{}, {nombre:nom});
+    const prov=provPorNombre(nom)||{};
+    const mf=(memoFilas||[]).find(f=>norm(f.empresa)===nom)||{};
+    if(!String(p.ruc||'').trim()) p.ruc=prov.ruc||mf.ruc||'';
+    ['contacto','telefono','email'].forEach(k=>{ if(!String(p[k]||'').trim() && prov[k]) p[k]=prov[k]; });
+    // servicios: el plazo de ejecución de la validación es el plazo del comparativo
+    if(serv && !String(p.plazo_entrega||'').trim()){
+      const pl=its.map(it=>String((it.marcas||[])[i]||'').trim()).find(Boolean);
+      if(pl) p.plazo_entrega=pl.replace(/\s*D[IÍ]AS?\s+CALENDARIOS?\s*$/i,'');
+    }
+    p._j=j; return p;
+  });
+  const itemsViejos=limpiar ? [] : ccItems;
+  const nuevosItems=its.length ? its.map((it,k)=>{
+    const desc=norm(it.denom);
+    const prev=itemsViejos.find(c=>norm(c.descripcion)===desc && desc)
+      || (itemsViejos[k] && !norm(itemsViejos[k].descripcion) ? itemsViejos[k] : null) || {};
+    return {
+      codigo:String(it.codigo||'').trim(), descripcion:desc, medida:unidadCC(it.unidad),
+      cantidad:String(it.cantidad==null?'':it.cantidad).trim(),
+      precios:nuevos.map(p=> p._j>=0 ? String(((prev.precios||[])[p._j])||'') : ''),
+      marcas:usados.map((i,n)=> serv ? '' : (norm((it.marcas||[])[i]) || String(((prev.marcas||[])[nuevos[n]._j])||''))),
+      precioHist:prev.precioHist||'', marcaHist:prev.marcaHist||'',
+    };
+  }) : null;
+
+  // aplicar
+  if(nuevos.length){ nuevos.forEach(p=>delete p._j); ccPostores=nuevos; }
+  if(nuevosItems) ccItems=nuevosItems;
+  ccItems.forEach(it=>{ while(it.precios.length<ccPostores.length) it.precios.push(''); it.precios.length=ccPostores.length;
+                        while(it.marcas.length<ccPostores.length) it.marcas.push(''); it.marcas.length=ccPostores.length; });
+  const g=ccPostores.findIndex(p=>norm(p.nombre)===nomGanador);
+  ccGanador = g>=0 ? g : 0;
+  document.getElementById('cc-objeto').value = serv ? 'servicio' : 'bien';
+  if(adq) denEl.value=adq;
+  // el documento de solicitud es la referencia del memo; el área, la del jefe a quien va el memo
+  const docEl=document.getElementById('cc-doc'), ref=(document.getElementById('m-ref').value||'').trim();
+  if(ref && (limpiar || !docEl.value.trim())) docEl.value=ref;
+  const areaEl=document.getElementById('cc-area');
+  if(limpiar || !areaEl.value.trim()){
+    const dn=normTexto(document.getElementById('m-dest-nombre').value||'');
+    const d=dn && destinatarios.find(x=>normTexto(x.nombre)===dn);
+    if(d && d.area) areaEl.value=d.area; else if(limpiar) areaEl.value='';
+  }
+  aplicarObjetoCC(); renderCCItems(); renderCC(); syncPunto1();
+  scheduleSave();
+  return {ok:true, msg:'✓ Se jalaron '+ccItems.length+' ítem(s) y '+ccPostores.length+' postor(es) de la Validación. Completa los precios'
+    +(serv?'':' (las marcas ya vienen)')+', los contactos y las fechas.'
+    +(sobran?' ⚠ El comparativo admite hasta 4 postores: quedaron fuera '+sobran+'.':'')};
+}
+function jalarCCyAvisar(){
+  const r=jalarCCDesdeValidacion();
+  const m=document.getElementById('msg-cc-jalar');
+  if(m){ m.className=r.ok?'msg-ok':'msg-error'; m.textContent=(r.ok?'':'⚠ ')+r.msg; }
+  return r.ok;
+}
+document.getElementById('cc-jalar-val').addEventListener('click', jalarCCyAvisar);
+document.getElementById('btn-emitir-cc').addEventListener('click', ()=>{
+  const ok=jalarCCyAvisar(); irA('cc'); window.scrollTo(0,0);
+  const m=document.getElementById('msg-cc-jalar'); if(m) aviso(m.textContent, ok?'':'error');
+});
+
 function mostrarErrorCC(t){ const m=document.getElementById('msg-cc'); m.className='msg-error'; m.textContent='⚠ '+t; }
 document.getElementById('form-cc').addEventListener('submit', (e)=>{
   e.preventDefault();
@@ -2762,6 +2930,7 @@ document.getElementById('form-memo').addEventListener('submit',(e)=>{
       const zip = new window.PizZip(TEMPLATE_MEMO_B64, {base64:true});
       const doc = new DT(zip, {paragraphLoop:true, linebreaks:true});
       doc.render(datos);
+      aplicarNombreAnioDocx(doc.getZip());
       const blob = doc.getZip().generate({type:'blob',
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       descargarBlob(blob, 'MEMO_VALIDACION_'+abreviarObjeto(datos.titulo)+'.docx', msg, 'memo');
@@ -2985,6 +3154,7 @@ document.getElementById('form-nota').addEventListener('submit',(e)=>{
       const zip = new window.PizZip(TEMPLATE_NOTA_B64, {base64:true});
       const doc = new DT(zip, {paragraphLoop:true, linebreaks:true});
       doc.render(datos);
+      aplicarNombreAnioDocx(doc.getZip());
       const blob = doc.getZip().generate({type:'blob',
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       const objNota = (document.getElementById('cc-denom').value||'').trim() || filas[0].descripcion || 'NOTA';
@@ -3311,6 +3481,7 @@ document.getElementById('form-carta').addEventListener('submit',(e)=>{
       const zip = new window.PizZip(TEMPLATE_CARTA_B64, {base64:true});
       const doc = new DT(zip, {paragraphLoop:true, linebreaks:true});
       doc.render(datos);
+      aplicarNombreAnioDocx(doc.getZip());
       const blob = doc.getZip().generate({type:'blob',
         mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
       descargarBlob(blob, 'CARTA_'+abreviarObjeto(datos.denominacion)+'.docx', msg, 'carta');
@@ -5295,6 +5466,41 @@ document.addEventListener('keydown',(e)=>{
     if(f.requestSubmit) f.requestSubmit(); else { const b=f.querySelector('[type=submit]'); if(b) b.click(); }
   }
 });
+
+// ---- Datos del expediente que se escriben una sola vez ----
+// La referencia es la misma en el memo, el comparativo, la nota y la carta: al
+// escribirla en uno, pasa a los demás que estén vacíos o que tenían el mismo
+// texto. Si en alguno se puso otra cosa a propósito, ese no se toca.
+[['m-ref','cc-doc','n-ref','ca-ref']].forEach(grupo=>{
+  grupo.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    let antes=el.value;
+    el.addEventListener('focus', ()=>{ antes=el.value; });
+    el.addEventListener('input', ()=>{
+      const viejo=antes.trim(), nuevo=el.value;
+      grupo.forEach(oid=>{
+        if(oid===id) return;
+        const o=document.getElementById(oid); if(!o) return;
+        const ov=o.value.trim();
+        if(ov==='' || ov===viejo){ o.value=nuevo; o.classList.remove('campo-error'); if(oid==='n-ref') notaRefAuto=nuevo.trim(); }
+      });
+      antes=nuevo;
+    });
+  });
+});
+// Bien o servicio: es uno solo por expediente. Elegirlo en la validación lo
+// cambia en el comparativo y al revés.
+(function(){
+  const sel=document.getElementById('cc-objeto');
+  document.querySelectorAll('input[name=tipo]').forEach(r=> r.addEventListener('change', ()=>{
+    if(r.checked && sel.value!==tipo){ sel.value=tipo; aplicarObjetoCC(); }
+  }));
+  sel.addEventListener('change', ()=>{
+    if(tipo===sel.value) return;
+    const r=document.querySelector('input[name=tipo][value="'+sel.value+'"]');
+    if(r){ r.checked=true; r.dispatchEvent(new Event('change')); }
+  });
+})();
 
 // Año actual por defecto en Memo y Nota (deja de estar fijo en un año)
 (function(){ const y=String(new Date().getFullYear());
