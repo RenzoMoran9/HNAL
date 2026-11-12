@@ -113,8 +113,6 @@ main{max-width:940px;width:100%;margin:0 auto;padding:22px 30px 40px;}
   .app.colapsada .si-ok::before{content:'';}
   .app.colapsada .side-atajos{font-size:0;padding:8px 0;}
   .app.colapsada .side-atajos::before{content:'⌨';font-size:1rem;}
-  .app.colapsada #btnAnio::before{content:'📅';}
-  .app.colapsada .side-links{flex-direction:column;}
 }
 .side-backdrop{display:none;}
 
@@ -164,8 +162,35 @@ button:focus-visible,.lp-tile:focus-visible,.fb-step:focus-visible{outline:3px s
 .cc-gan input{width:16px;height:16px;accent-color:var(--azul);}
 .cc-postor.ganador .cc-gan{background:var(--azul);border-color:var(--azul);color:#fff;}
 .cc-postor.ganador .cc-gan input{accent-color:#fff;}
-.cc-cot{border:1px solid var(--borde-2);border-radius:8px;padding:10px;background:#fff;margin-bottom:8px;}
-.cc-cot-t{font-weight:700;color:var(--azul);font-size:.82rem;margin-bottom:6px;}
+.cc-mas{border-top:1px solid var(--borde-2);padding-top:8px;}
+.cc-mas summary{cursor:pointer;font-size:.86rem;font-weight:600;color:var(--azul);padding:4px 0 6px;list-style:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.cc-mas summary::-webkit-details-marker{display:none;}
+.cc-mas summary::before{content:'▸';display:inline-block;transition:transform .15s;}
+.cc-mas[open] summary::before{transform:rotate(90deg);}
+.cc-mas[open] summary{margin-bottom:8px;}
+.cc-mas-res{font-weight:500;color:var(--muted);font-size:.8rem;}
+.cc-mas-n{display:inline-block;font-weight:700;font-size:.72rem;border-radius:999px;padding:1px 8px;background:#fdf6e3;color:#8a6d1e;border:1px solid #f1e3b5;}
+.cc-mas-n.full{background:#e8f6f0;color:#0a5c46;border-color:#b9e2d2;}
+.cc-tabla-wrap{overflow-x:auto;border:1px solid var(--borde);border-radius:10px;}
+.cc-tabla{border-collapse:collapse;width:100%;font-size:.86rem;}
+.cc-tabla th,.cc-tabla td{padding:8px 10px;border-bottom:1px solid var(--borde-2);vertical-align:top;text-align:left;}
+.cc-tabla thead th{background:#f6f8fc;}
+.cc-tabla .ct-item{position:sticky;left:0;z-index:1;background:#fff;min-width:190px;max-width:280px;border-right:1px solid var(--borde-2);}
+.cc-tabla thead .ct-item,.cc-tabla tfoot .ct-item{background:#f6f8fc;font-weight:700;}
+.ct-cant{font-size:.76rem;color:var(--muted);margin-top:2px;}
+.ct-nom{font-weight:700;color:var(--azul);font-size:.84rem;line-height:1.3;}
+.ct-gan{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;font-weight:600;margin-top:5px;cursor:pointer;color:var(--muted);}
+.ct-gan input{accent-color:var(--azul);}
+.cc-tabla th.gan .ct-gan{color:var(--azul);}
+.cc-tabla .ct-cel{min-width:130px;}
+.cc-tabla .ct-cel input{width:100%;padding:7px 9px;border:1px solid #d6dbe7;border-radius:7px;font:inherit;font-size:.88rem;color:var(--texto);background:#fff;}
+.cc-tabla .ct-marca{margin-top:6px;font-size:.8rem !important;}
+.cc-tabla .gan{background:#eef1f6;}
+.cc-tabla thead th.gan{background:var(--azul-suave);}
+.cc-tabla tfoot td{font-weight:700;border-bottom:0;}
+.cc-tabla .ct-tot.menor{color:#0a5c46;}
+@media (max-width:640px){.cc-tabla .ct-item{min-width:118px;max-width:150px;font-size:.8rem;}.cc-tabla .ct-cel{min-width:112px;}}
+.cc-tabla .ct-tot.menor::after{content:' · menor';font-weight:600;font-size:.74rem;}
 .cc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
 @media (max-width:640px){.cc-grid{grid-template-columns:1fr;}}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -271,6 +296,19 @@ button:focus-visible,.lp-tile:focus-visible,.fb-step:focus-visible{outline:3px s
 .fb-step.done{color:var(--verde);border-color:#b9e2d2;background:#f2faf7;}
 .fb-step.done .n{background:var(--verde);color:#fff;}
 .fb-arrow{color:var(--muted-2);font-weight:700;}
+.fb-fecha{font-size:.7rem;font-weight:600;opacity:.75;margin-left:2px;}
+.fb-step.done.current{border-color:var(--verde);box-shadow:0 0 0 3px rgba(10,92,70,.12);}
+@media (max-width:640px){.flowbar{gap:5px;}.fb-step{padding:5px 9px;font-size:.76rem;gap:5px;}.fb-arrow{display:none;}.fb-fecha{display:none;}}
+.aj-grupo{border-top:1px solid var(--borde-2);padding-top:14px;margin-top:14px;}
+.aj-grupo:first-of-type{border-top:0;padding-top:0;margin-top:0;}
+.aj-t{font-weight:700;color:var(--azul);font-size:.9rem;margin-bottom:10px;}
+.fijo-res{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed var(--borde);border-radius:10px;
+  padding:10px 14px;margin-bottom:16px;background:#fafbfe;font-size:.86rem;color:var(--texto);}
+.fijo-res .fr-t{flex:1;min-width:200px;line-height:1.45;}
+.fijo-res .fr-l{font-weight:700;color:var(--azul);margin-right:4px;}
+.fijo-res .fr-v.vacio{color:var(--muted);font-style:italic;}
+.fijo-res .fr-propio{font-size:.74rem;font-weight:700;color:#8a6d1e;background:#fdf6e3;border:1px solid #f1e3b5;border-radius:999px;padding:2px 8px;margin-left:6px;}
+.fijo-oculto{display:none !important;}
 @media (max-width:820px){.flowbar{padding:10px 16px 0;}}
 
 /* Barra de borrador */
@@ -559,11 +597,12 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
         <button type="button" class="side-item" data-tab="trabajos"><span class="si-ico">💼</span> Mis trabajos</button>
         <button type="button" class="side-item" data-tab="buscar"><span class="si-ico">🔎</span> Buscar / Histórico</button>
         <button type="button" class="side-item" data-tab="directorio"><span class="si-ico">📇</span> Directorio</button>
+        <button type="button" class="side-item" data-tab="ajustes"><span class="si-ico">⚙️</span> Ajustes</button>
       </div>
     </nav>
     <div class="side-foot">
       <button type="button" class="side-home" id="btnInicio">‹ Volver al inicio</button>
-      <div class="side-links"><button type="button" class="side-atajos" id="btnAtajos" title="Atajos de teclado (tecla ?)">⌨ Atajos</button><button type="button" class="side-atajos" id="btnAnio" title="Nombre oficial del año, para el encabezado de los documentos">📅 Año</button></div>
+      <div class="side-links"><button type="button" class="side-atajos" id="btnAtajos" title="Atajos de teclado (tecla ?)">⌨ Atajos de teclado</button></div>
       <div class="side-copy">Todo se guarda en esta computadora</div>
     </div>
   </aside>
@@ -667,7 +706,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
 
     <div class="card">
       <h2>2. Ítems a cotizar</h2>
-      <p class="hint" style="margin:-8px 0 12px">Define qué se cotiza (descripción, medida y cantidad). El <b>precio y la marca</b> de cada ítem se ingresan dentro de cada postor.</p>
+      <p class="hint" style="margin:-8px 0 12px">Define qué se cotiza (descripción, medida y cantidad). El <b>precio y la marca</b> van en la tabla de precios, más abajo.</p>
       <button type="button" class="btn btn-sec" id="cc-jalar-val" style="margin-bottom:12px">⬇ Jalar ítems y postores de la Validación</button>
       <div id="cc-items"></div>
       <button type="button" class="btn btn-sec" id="cc-agregar-item">＋ Agregar ítem</button>
@@ -676,29 +715,15 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
 
     <div class="card">
       <h2>3. Postores (cotizaciones)</h2>
-      <p class="hint" style="margin:-8px 0 12px">Ingresa cada postor con su <b>precio y marca por ítem</b> (todo junto). Marca el <b>ganador</b> ✅ — se sombrea en gris y su precio es el Valor Estimado.</p>
+      <p class="hint" style="margin:-8px 0 12px">El nombre de cada empresa y, al desplegar, su RUC, contacto y condiciones. Los <b>precios</b> van en la tabla de abajo.</p>
       <div id="cc-postores"></div>
       <button type="button" class="btn btn-sec" id="cc-agregar">＋ Agregar postor</button>
     </div>
 
     <div class="card">
-      <h2>4. Conclusiones y firma</h2>
-      <div id="cc-concl-m1">
-        <div class="field"><label>Punto 1) <span class="hint">— si lo dejas vacío se completa solo con los nombres de los postores</span></label>
-          <textarea id="cc-p1" rows="3" placeholder="1)SE REALIZO LA INDAGACIÓN DE MERCADO… TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: (se completa solo)"></textarea></div>
-        <div class="field"><label>Punto 2)</label>
-          <textarea id="cc-p2" rows="2" placeholder="2)CON MEMORANDUM N°…"></textarea></div>
-        <div class="field"><label>Punto 3) <span class="hint">(opcional)</span></label>
-          <input type="text" id="cc-p3" placeholder="Ej: PRIMERA COMPRA DEL AÑO"></div>
-        <div class="grid3">
-          <div class="field"><label>Nombre del especialista (firma)</label><input type="text" id="cc-esp" placeholder="Nombre de quien firma"></div>
-          <div class="field"><label>Cargo</label><input type="text" class="no-mayus" id="cc-cargo" value="Especialista en Contrataciones Públicas"></div>
-          <div class="field"><label>Fecha</label><input type="date" id="cc-fecha"></div>
-        </div>
-      </div>
-      <div id="cc-concl-m2" style="display:none">
-        <p class="hint" style="margin:0;line-height:1.5">El <b>Modelo 2</b> genera el pie del cuadro automáticamente y <b>todo en MAYÚSCULAS</b>: el <b>guión 2</b> jala el <i>Documento de solicitud</i> ingresado arriba, y el <b>guión 3</b> jala la <i>Denominación</i> (“ADQUISICIÓN DE…”). Este modelo <b>no lleva firma de especialista</b>.</p>
-      </div>
+      <h2>4. Precios por ítem</h2>
+      <p class="hint" style="margin:-8px 0 12px">Precio unitario en soles de cada postor<span id="cc-precios-marca"> y, debajo, su marca</span>. Marca el <b>ganador</b> en su columna: se sombrea en gris y su precio es el Valor Estimado.</p>
+      <div class="cc-tabla-wrap" id="cc-precios"></div>
     </div>
 
     <div class="card">
@@ -714,7 +739,27 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
           <div class="field"><label>Fecha de consentimiento de la buena pro</label><input type="date" id="cc-hist-fecha"></div>
           <div class="field"><label>Nombre o razón social del adjudicatario</label><input type="text" id="cc-hist-adj" list="dl-proveedores" placeholder="Ej: QS CONSUMO SAC"></div>
         </div>
-        <p class="hint" style="margin:2px 0 10px">El <b>precio histórico de cada ítem</b> se escribe abajo, en la tarjeta del ítem.</p>
+        <p class="hint" style="margin:2px 0 10px">El <b>precio histórico de cada ítem</b> se escribe en la tarjeta de cada ítem (sección 2, arriba).</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>5. Conclusiones y firma</h2>
+      <div id="cc-concl-m1">
+        <div class="field"><label>Punto 1) <span class="hint">— si lo dejas vacío se completa solo con los nombres de los postores</span></label>
+          <textarea id="cc-p1" rows="3" placeholder="1)SE REALIZO LA INDAGACIÓN DE MERCADO… TENIENDO COMO RESULTADO LAS SIGUIENTES COTIZACIONES: (se completa solo)"></textarea></div>
+        <div class="field"><label>Punto 2)</label>
+          <textarea id="cc-p2" rows="2" placeholder="2)CON MEMORANDUM N°…"></textarea></div>
+        <div class="field"><label>Punto 3) <span class="hint">(opcional)</span></label>
+          <input type="text" id="cc-p3" placeholder="Ej: PRIMERA COMPRA DEL AÑO"></div>
+        <div class="grid2" data-fijo="Firma">
+          <div class="field"><label>Nombre del especialista (firma)</label><input type="text" id="cc-esp" placeholder="Nombre de quien firma"></div>
+          <div class="field"><label>Cargo</label><input type="text" class="no-mayus" id="cc-cargo" value="Especialista en Contrataciones Públicas"></div>
+        </div>
+        <div class="field" style="max-width:260px"><label>Fecha</label><input type="date" id="cc-fecha"></div>
+      </div>
+      <div id="cc-concl-m2" style="display:none">
+        <p class="hint" style="margin:0;line-height:1.5">El <b>Modelo 2</b> genera el pie del cuadro automáticamente y <b>todo en MAYÚSCULAS</b>: el <b>guión 2</b> jala el <i>Documento de solicitud</i> ingresado arriba, y el <b>guión 3</b> jala la <i>Denominación</i> (“ADQUISICIÓN DE…”). Este modelo <b>no lleva firma de especialista</b>.</p>
       </div>
     </div>
 
@@ -750,7 +795,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
         <input type="text" class="no-mayus" id="m-dest-cargo" placeholder="Ej: Jefe de la Oficina de Servicios Generales y Mantenimiento" style="margin-top:8px">
         <div class="saludo-row"><label for="m-saludo">Saludo</label><select id="m-saludo"><option value="auto">Según el cargo</option><option value="lo">para saludarlo (hombre)</option><option value="la">para saludarla (mujer)</option></select><span class="saludo-hint" id="m-saludo-hint"></span></div>
       </div>
-      <div class="field"><label>Remitente — nombre / cargo</label>
+      <div class="field" data-fijo="Remitente"><label>Remitente — nombre / cargo</label>
         <input type="text" class="no-mayus" id="m-rem-nombre" value="Ing. FRANK RONALD TIPTE RUIZ">
         <input type="text" class="no-mayus" id="m-rem-cargo" value="Jefe de la Oficina de Logística." style="margin-top:8px">
       </div>
@@ -787,7 +832,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
         <div class="field"><label>EXP. LOG.</label><input type="text" id="m-explog" placeholder="Ej: 2174"></div>
         <div class="field"><label>Folios</label><input type="text" id="m-folios" placeholder="Ej: 149"></div>
       </div>
-      <div class="grid2">
+      <div class="grid2" data-fijo="Elaborado por">
         <div class="field"><label>Elaborado por</label><input type="text" id="m-elaborado" placeholder="Ej: Frank Tipte Ruiz"></div>
         <div class="field"><label>Iniciales <span class="hint">(las del que edita)</span></label><input type="text" id="m-iniciales" placeholder="Ej: RM"></div>
       </div>
@@ -825,7 +870,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
         <input type="text" class="no-mayus" id="n-dest-cargo" value="Director de la Oficina Ejecutiva de Planeamiento Estratégico" placeholder="Ej: Director de la Oficina Ejecutiva de Planeamiento Estratégico" style="margin-top:8px">
         <div class="saludo-row"><label for="n-saludo">Saludo</label><select id="n-saludo"><option value="auto">Según el cargo</option><option value="lo">para saludarlo (hombre)</option><option value="la">para saludarla (mujer)</option></select><span class="saludo-hint" id="n-saludo-hint"></span></div>
       </div>
-      <div class="field"><label>Remitente — nombre / cargo</label>
+      <div class="field" data-fijo="Remitente"><label>Remitente — nombre / cargo</label>
         <input type="text" class="no-mayus" id="n-rem-nombre" value="Ing. FRANK RONALD TIPTE RUIZ">
         <input type="text" class="no-mayus" id="n-rem-cargo" value="Jefe de la Oficina de Logística" style="margin-top:8px">
       </div>
@@ -853,7 +898,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
         <div class="field"><label>EXP. LOG.</label><input type="text" id="n-explog" placeholder="Ej: 6337"></div>
         <div class="field"><label>Folios</label><input type="text" id="n-folios" placeholder="Ej: 149"></div>
       </div>
-      <div class="grid2">
+      <div class="grid2" data-fijo="Elaborado por">
         <div class="field"><label>Elaborado por</label><input type="text" id="n-elaborado" placeholder="Ej: Frank Tipte Ruiz"></div>
         <div class="field"><label>Iniciales <span class="hint">(las del que edita)</span></label><input type="text" id="n-iniciales" placeholder="Ej: RM"></div>
       </div>
@@ -922,7 +967,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
 
     <div class="card">
       <h2>4. Pie de la carta</h2>
-      <div class="field" style="max-width:420px"><label>Elaborado por</label><input type="text" id="ca-elaborado" placeholder="Ej: EDGARDO MORA"></div>
+      <div class="field" style="max-width:420px" data-fijo="Elaborado por"><label>Elaborado por</label><input type="text" id="ca-elaborado" placeholder="Ej: EDGARDO MORA"></div>
     </div>
 
     <div class="barra-final">
@@ -995,6 +1040,40 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
     <div class="card">
       <h2>Expedientes</h2>
       <div id="bus-trab"></div>
+    </div>
+  </div>
+
+  <!-- ==================== AJUSTES ==================== -->
+  <div id="panel-ajustes" class="panel oculto">
+    <div class="card">
+      <h2>Datos que casi no cambian</h2>
+      <p class="hint" style="margin:-6px 0 16px;line-height:1.5">Se ponen solos en cada documento y ya no ocupan espacio en los formularios. Si en un documento hace falta otro (por ejemplo, un encargado), ahí mismo eliges <b>«Cambiar solo aquí»</b>.</p>
+      <div class="aj-grupo">
+        <div class="aj-t">Remitente <span class="hint">— Memo y Nota Informativa</span></div>
+        <div class="grid2">
+          <div class="field"><label>Nombre</label><input type="text" class="no-mayus" data-aj="remNombre" placeholder="Ej: Ing. FRANK RONALD TIPTE RUIZ"></div>
+          <div class="field"><label>Cargo</label><input type="text" class="no-mayus" data-aj="remCargo" placeholder="Ej: Jefe de la Oficina de Logística"></div>
+        </div>
+      </div>
+      <div class="aj-grupo">
+        <div class="aj-t">Quien elabora <span class="hint">— pie del Memo, la Nota y la Carta</span></div>
+        <div class="grid2">
+          <div class="field"><label>Elaborado por</label><input type="text" data-aj="elaborado" placeholder="Ej: FRANK TIPTE RUIZ"></div>
+          <div class="field"><label>Iniciales <span class="hint">(las del que edita)</span></label><input type="text" data-aj="iniciales" placeholder="Ej: RM"></div>
+        </div>
+      </div>
+      <div class="aj-grupo">
+        <div class="aj-t">Firma del Cuadro Comparativo <span class="hint">— Modelo 1</span></div>
+        <div class="grid2">
+          <div class="field"><label>Especialista</label><input type="text" data-aj="especialista" placeholder="Nombre de quien firma"></div>
+          <div class="field"><label>Cargo</label><input type="text" class="no-mayus" data-aj="cargoEsp" placeholder="Ej: Especialista en Contrataciones Públicas"></div>
+        </div>
+      </div>
+      <div class="aj-grupo">
+        <div class="aj-t">Nombre del año <span class="hint" id="aj-anio-y"></span> <span class="hint">— encabezado de todos los documentos</span></div>
+        <div class="field" style="margin:0"><input type="text" class="no-mayus" data-aj="nombreAnio" placeholder="Ej: Año de la Esperanza y el Fortalecimiento de la Democracia"></div>
+      </div>
+      <div id="msg-aj" class="msg-ok" style="min-height:1.2em;margin-top:12px"></div>
     </div>
   </div>
 
@@ -1088,25 +1167,6 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
     <div class="pv-foot">
       <button type="button" class="btn btn-sec" id="pv-cancel">← Volver a editar</button>
       <button type="button" class="btn btn-azul" id="pv-ok">⬇ Confirmar y descargar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: nombre oficial del año -->
-<div class="pv-overlay" id="anioModal">
-  <div class="pv-card" style="width:min(560px,96vw)">
-    <div class="pv-head">
-      <h3>Nombre del año</h3>
-      <button type="button" id="an-x" aria-label="Cerrar">✕</button>
-    </div>
-    <div class="pv-body">
-      <p class="hint" style="margin:0 0 14px;line-height:1.5">Sale en el encabezado de <b>todos</b> los documentos: Validación, Memo, Nota y Carta. Cuando empiece un año nuevo, cámbialo aquí una sola vez.</p>
-      <div class="field" style="margin:0"><label>Nombre del año <span class="hint" id="an-y"></span></label>
-        <input type="text" class="no-mayus" id="an-texto" placeholder="Ej: Año de la Esperanza y el Fortalecimiento de la Democracia"></div>
-    </div>
-    <div class="pv-foot">
-      <button type="button" class="btn btn-sec" id="an-cancel">Cancelar</button>
-      <button type="button" class="btn btn-azul" id="an-ok">Guardar</button>
     </div>
   </div>
 </div>
@@ -1359,7 +1419,7 @@ function nombreAnio(){
   return NOMBRES_ANIO[y]||'';
 }
 function avisoSinNombreAnio(){
-  aviso('Falta el nombre del año '+anioActual()+': ponlo en «📅 Nombre del año» (barra lateral). Este documento salió con el de la plantilla.', 'error');
+  aviso('Falta el nombre del año '+anioActual()+': ponlo en ⚙️ Ajustes. Este documento salió con el de la plantilla.', 'error');
 }
 const xmlEsc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 // Word: cambia el párrafo “Año de …” de los encabezados por el nombre configurado
@@ -1380,23 +1440,6 @@ function aplicarNombreAnioDocx(zip){
     zip.file(n, x);
   });
 }
-(function(){
-  const m=document.getElementById('anioModal'), inp=document.getElementById('an-texto');
-  const cerrar=()=> m.classList.remove('open');
-  document.getElementById('btnAnio').addEventListener('click', ()=>{
-    document.getElementById('an-y').textContent='— '+anioActual();
-    inp.value=nombreAnio(); m.classList.add('open'); setTimeout(()=>inp.focus(),50);
-  });
-  document.getElementById('an-x').addEventListener('click', cerrar);
-  document.getElementById('an-cancel').addEventListener('click', cerrar);
-  m.addEventListener('click', e=>{ if(e.target===m) cerrar(); });
-  document.getElementById('an-ok').addEventListener('click', ()=>{
-    const t=inp.value.trim().replace(/^[“"]+|[”"]+$/g,'').trim();
-    try{ localStorage.setItem('hnal_nombre_anio', JSON.stringify({y:anioActual(), t})); }catch(e){}
-    cerrar(); aviso(t ? '✓ Nombre del año guardado.' : 'Se usará el nombre que trae la app para '+anioActual()+'.');
-  });
-})();
-
 // ====================== CATÁLOGO SIGA ======================
 // Sale de los "REPORTE DE OC" que se bajan del SIGA (web/make_siga.py). No es el
 // catálogo nacional: son los ítems que la entidad realmente compró, con su
@@ -1853,12 +1896,23 @@ const META_TAB = {
   carta:{title:'Carta al proveedor',  sub:'Pide a la empresa ganadora que adelante el producto o servicio por urgencia.',    flow:'Urgencias'},
   trabajos: {title:'Mis trabajos',      sub:'Guarda y vuelve a abrir tus trabajos cuando quieras.',                    flow:'Archivo'},
   buscar:   {title:'Buscar / Histórico', sub:'Busca en tus expedientes y consulta precios de compras anteriores.',      flow:'Archivo'},
+  ajustes:  {title:'Ajustes',           sub:'Datos que se repiten en todos los documentos: se escriben una sola vez.',     flow:'Archivo'},
   directorio:{title:'Directorio',       sub:'Jefes, áreas y proveedores con los que ya trabajaste.',                     flow:'Archivo'},
 };
 // ---- Barra de pasos del flujo (① → ②) ----
 let tabActual='val';
-const FLUJOS={ val:['val','memo'], memo:['val','memo'], cc:['cc','nota'], nota:['cc','nota'] };
-const PASO_NOMBRE={ val:'Cuadro de Validación', memo:'Memo de Validación', cc:'Cuadro Comparativo', nota:'Nota Informativa' };
+const PASOS_EXP=['val','memo','cc','nota'];
+const FLUJOS={ val:PASOS_EXP, memo:PASOS_EXP, cc:PASOS_EXP, nota:PASOS_EXP };
+const PASO_NOMBRE={ val:'Validación', memo:'Memo', cc:'Comparativo', nota:'Nota Informativa' };
+// Documentos ya generados de ESTE expediente (se guarda con el trabajo): así, al
+// retomarlo días después, se ve en qué paso quedó.
+let generados={};
+let fijosPropios={};   // id -> true: en este expediente ese dato fijo se cambió a mano
+function marcarGenerado(tipo){
+  if(['val','memo','cc','nota','carta'].indexOf(tipo)<0) return;
+  generados[tipo]=Date.now(); scheduleSave(); renderFlowbar();
+}
+function fechaCorta(ts){ const d=new Date(ts), z=n=>('0'+n).slice(-2); return z(d.getDate())+'/'+z(d.getMonth()+1); }
 // "✓" = tiene lo minimo para generar el documento
 function pasoCompleto(t){
   const v=id=>{ const el=document.getElementById(id); return el?String(el.value||'').trim():''; };
@@ -1869,12 +1923,13 @@ function pasoCompleto(t){
   if(t==='carta') return !!v('ca-empresa') && !!v('ca-denom') && !!v('ca-ref') && cartaFilas.some(f=>(f.descripcion||'').trim());
   return false;
 }
-// ✓ en la barra lateral: qué documentos ya tienen lo mínimo para generarse
+// ✓ en la barra lateral: qué documentos de este expediente ya se generaron
 function marcarListosSidebar(){
   document.querySelectorAll('.side-item[data-tab]').forEach(b=>{
     if(!b.querySelector('.si-ok')) return;
-    let ok=false; try{ ok=pasoCompleto(b.dataset.tab); }catch(e){}
-    b.classList.toggle('listo', ok);
+    const g=generados[b.dataset.tab];
+    b.classList.toggle('listo', !!g);
+    b.title = g ? 'Generado el '+fechaCorta(g) : '';
   });
 }
 function renderFlowbar(){
@@ -1884,18 +1939,21 @@ function renderFlowbar(){
   if(!pasos){ bar.style.display='none'; return; }
   bar.style.display='';
   bar.innerHTML=pasos.map((t,i)=>{
-    const done=pasoCompleto(t), cur=(t===tabActual);
-    const cls='fb-step'+(cur?' current':'')+(done&&!cur?' done':'');
+    const gen=generados[t], cur=(t===tabActual);
+    let listo=false; try{ listo=pasoCompleto(t); }catch(e){}
+    const cls='fb-step'+(cur?' current':'')+(gen?' done':'');
+    const tit=gen ? 'Generado el '+fechaCorta(gen) : (listo ? 'Tiene lo necesario: falta generarlo' : 'Aún sin llenar');
     return (i?'<span class="fb-arrow">→</span>':'')
-      +'<button type="button" class="'+cls+'" data-tab="'+t+'" title="'+(done?'Listo para generar':'Aún incompleto')+'">'
-      +'<span class="n">'+(done?'✓':(i+1))+'</span>'+PASO_NOMBRE[t]+'</button>';
+      +'<button type="button" class="'+cls+'" data-tab="'+t+'" title="'+tit+'">'
+      +'<span class="n">'+(gen?'✓':(i+1))+'</span>'+PASO_NOMBRE[t]
+      +(gen?'<span class="fb-fecha">'+fechaCorta(gen)+'</span>':'')+'</button>';
   }).join('');
 }
 document.getElementById('flowbar').addEventListener('click',(e)=>{
   const b=e.target.closest('.fb-step'); if(b) irA(b.dataset.tab);
 });
 
-const TABS_VALIDAS=['val','cc','memo','nota','carta','trabajos','buscar','directorio'];
+const TABS_VALIDAS=['val','cc','memo','nota','carta','trabajos','buscar','directorio','ajustes'];
 function irA(t){
   if(TABS_VALIDAS.indexOf(t)<0) t='val';   // nunca dejar la pantalla en blanco
   tabActual=t;
@@ -1908,6 +1966,8 @@ function irA(t){
   document.getElementById('panel-trabajos').classList.toggle('oculto', t!=='trabajos');
   document.getElementById('panel-buscar').classList.toggle('oculto', t!=='buscar');
   document.getElementById('panel-directorio').classList.toggle('oculto', t!=='directorio');
+  document.getElementById('panel-ajustes').classList.toggle('oculto', t!=='ajustes');
+  if(t==='ajustes' && typeof pintarAjustes==='function') pintarAjustes();
   if(t==='carta' && typeof renderCartaPostores==='function') renderCartaPostores();
   if(t==='carta' && typeof fechaHoyCarta==='function') fechaHoyCarta();
   if((t==='memo'||t==='nota') && typeof pintarSaludo==='function') pintarSaludo(t==='memo'?'m':'n');
@@ -2369,24 +2429,19 @@ function renderCC(){
   const servicio=esServicioCC();
   ccPostores.forEach((p,i)=>{
     const card=document.createElement('div'); card.className='cc-postor';
-    const cots=ccItems.map((it,k)=>`
-      <div class="cc-cot" data-k="${k}">
-        <div class="cc-cot-t">${escH(nombreItemCC(k))}</div>
-        <div class="${servicio?'':'grid2'}">
-          <div class="field" style="margin:0"><label>Precio unit. (S/)</label><input type="number" step="any" min="0" class="ci-precio" data-k="${k}"></div>
-          ${servicio?'':`<div class="field" style="margin:0"><label>Marca</label><input type="text" class="ci-marca" data-k="${k}"></div>`}
-        </div>
-      </div>`).join('');
     if(i===ccGanador) card.classList.add('ganador');
+    const abierto = ccAbiertos.has(p) || !String(p.nombre||'').trim();
     card.innerHTML=`
       <div class="cc-head">
         <div class="t">Postor ${i+1} <span class="cc-tot" title="Suma de precio unitario × cantidad de todos los ítems"></span></div>
         <div class="cc-head-acc">
-          <label class="cc-gan"><input type="radio" name="cc-ganador" ${i===ccGanador?'checked':''}> Ganador ✅</label>
+          ${i===ccGanador?'<span class="cc-gan">✅ Ganador</span>':''}
           <button type="button" class="btn-quitar cc-quitar" title="Quitar postor">✕</button>
         </div>
       </div>
-      <div class="field" style="margin:0 0 12px"><label>Nombre de la empresa</label><input type="text" class="c-nombre" placeholder="Ej: LABMEDIC SAFE SAC"></div>
+      <div class="field" style="margin:0 0 10px"><label>Nombre de la empresa</label><input type="text" class="c-nombre" placeholder="Ej: LABMEDIC SAFE SAC"></div>
+      <details class="cc-mas"${abierto?' open':''}>
+      <summary><span class="cc-mas-t">RUC, contacto y condiciones</span> <span class="cc-mas-res"></span></summary>
       <div class="cc-grid">
         <div class="field" style="margin:0"><label>RUC</label>
           <div class="ruc-row"><input type="text" class="c-ruc" placeholder="11 dígitos" inputmode="numeric"></div>
@@ -2409,15 +2464,20 @@ function renderCC(){
         <div class="field" style="margin:0"><label>¿Se tomó en cuenta para el V. referencial?</label>
           <select class="c-vr"><option value="">(en blanco)</option><option value="SI">SI</option><option value="NO">NO</option></select></div>
       </div>
-      <div class="marcas-title">${servicio?'Precio por ítem:':'Precio y marca por ítem:'}</div>
-      <div class="cc-cots">${cots}</div>`;
+      </details>`;
     const set=(sel,key)=>{ const el=card.querySelector(sel); el.value=p[key]; el.addEventListener('input',()=>p[key]=el.value); };
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
     set('.c-email','email'); set('.c-garantia','garantia');
     wireRuc(card.querySelector('.c-ruc'), card.querySelector('.c-ruc-msg'));
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-frec','fecha_recepcion');
     set('.c-dedica','se_dedica'); set('.c-verifica','verifica'); set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
-    card.querySelector('.c-nombre').addEventListener('input', syncPunto1);
+    card.querySelector('.c-nombre').addEventListener('input', ()=>{ syncPunto1(); pintarNombresTabla(); });
+    const det=card.querySelector('.cc-mas');
+    det.addEventListener('toggle', ()=>{ if(det.open) ccAbiertos.add(p); else ccAbiertos.delete(p); });
+    const pintarRes=()=> card.querySelector('.cc-mas-res').innerHTML=resumenPostorCC(p);
+    card.querySelector('.cc-grid').addEventListener('input', pintarRes);
+    card.querySelector('.cc-grid').addEventListener('change', pintarRes);
+    pintarRes();
     // Directorio de proveedores: sugerencias + autocompletar RUC/contacto/telefono/email
     const nomInp=card.querySelector('.c-nombre');
     nomInp.setAttribute('list','dl-proveedores');
@@ -2427,13 +2487,6 @@ function renderCC(){
         if(prov[k] && !String(p[k]||'').trim()){ p[k]=prov[k]; const el=card.querySelector(sel); el.value=prov[k]; el.dispatchEvent(new Event('input',{bubbles:true})); }
       });
     });
-    card.querySelector('input[name=cc-ganador]').addEventListener('change',()=>{
-      ccGanador=i;
-      document.querySelectorAll('#cc-postores .cc-postor').forEach((c,j)=> c.classList.toggle('ganador', j===i));
-    });
-    // precio + marca de cada ítem, guardados en ccItems[k] para este postor (i)
-    card.querySelectorAll('.ci-precio').forEach(inp=>{ const k=+inp.dataset.k; inp.value=(ccItems[k].precios[i]||''); inp.addEventListener('input',()=>ccItems[k].precios[i]=inp.value); });
-    card.querySelectorAll('.ci-marca').forEach(inp=>{ const k=+inp.dataset.k; inp.value=(ccItems[k].marcas[i]||''); inp.addEventListener('input',()=>ccItems[k].marcas[i]=inp.value); });
     card.querySelector('.cc-quitar').addEventListener('click',()=>{
       if(ccPostores.length<=1) return;
       ccPostores.splice(i,1);
@@ -2446,7 +2499,47 @@ function renderCC(){
     });
     cont.appendChild(card);
   });
+  renderTablaPrecios();
+}
+// Postores plegados: se recuerda cuáles abrió el usuario (los nuevos salen abiertos)
+const ccAbiertos=new WeakSet();
+function resumenPostorCC(p){
+  const ok=k=>String(p[k]||'').trim()!=='';
+  const campos=['ruc','contacto','telefono','email','garantia','plazo_entrega','fecha_solicitud','fecha_recepcion'];
+  const n=campos.filter(ok).length;
+  const partes=[];
+  if(ok('ruc')) partes.push('RUC '+escH(p.ruc));
+  if(ok('plazo_entrega')) partes.push(escH(fmtPlazo(p.plazo_entrega)));
+  if(ok('cumple_rtm')) partes.push('RTM: '+escH(p.cumple_rtm));
+  return '<span class="cc-mas-n'+(n===campos.length?' full':'')+'">'+n+'/'+campos.length+'</span>'+(partes.length?' · '+partes.join(' · '):'');
+}
+// ---- Tabla de precios: ítems en filas, postores en columnas ----
+function renderTablaPrecios(){
+  const box=document.getElementById('cc-precios'); if(!box) return;
+  const serv=esServicioCC();
+  const lm=document.getElementById('cc-precios-marca'); if(lm) lm.style.display=serv?'none':'';
+  const g=i=> i===ccGanador ? ' gan' : '';
+  const th=ccPostores.map((p,i)=>`<th class="ct-post${g(i)}">
+      <div class="ct-nom" data-i="${i}"></div>
+      <label class="ct-gan"><input type="radio" name="cc-ganador" value="${i}"${i===ccGanador?' checked':''}> Ganador</label></th>`).join('');
+  const filas=ccItems.map((it,k)=>'<tr><td class="ct-item"><b>'+(k+1)+'.</b> '+escH((it.descripcion||'').trim()||'(sin descripción)')
+      +'<div class="ct-cant">'+escH(String(it.cantidad||'').trim()||'—')+' '+escH(it.medida||'')+'</div></td>'
+      +ccPostores.map((p,i)=>'<td class="ct-cel'+g(i)+'"><input type="number" step="any" min="0" class="ct-precio" data-k="'+k+'" data-i="'+i+'" placeholder="S/ 0.00" value="'+escH((it.precios||[])[i]||'')+'">'
+        +(serv?'':'<input type="text" class="ct-marca" data-k="'+k+'" data-i="'+i+'" placeholder="Marca" value="'+escH((it.marcas||[])[i]||'')+'">')+'</td>').join('')
+      +'</tr>').join('');
+  const pie='<tr><td class="ct-item">Total</td>'+ccPostores.map((p,i)=>'<td class="ct-tot'+g(i)+'" data-i="'+i+'"></td>').join('')+'</tr>';
+  box.innerHTML='<table class="cc-tabla"><thead><tr><th class="ct-item">Ítem</th>'+th+'</tr></thead><tbody>'+filas+'</tbody><tfoot>'+pie+'</tfoot></table>';
+  box.querySelectorAll('.ct-precio').forEach(inp=> inp.addEventListener('input', ()=>{ ccItems[+inp.dataset.k].precios[+inp.dataset.i]=inp.value; pintarTotalesCC(); }));
+  box.querySelectorAll('.ct-marca').forEach(inp=> inp.addEventListener('input', ()=>{ ccItems[+inp.dataset.k].marcas[+inp.dataset.i]=inp.value; }));
+  box.querySelectorAll('input[name=cc-ganador]').forEach(r=> r.addEventListener('change', ()=>{ ccGanador=+r.value; renderCC(); scheduleSave(); }));
+  pintarNombresTabla();
   pintarTotalesCC();
+}
+function pintarNombresTabla(){
+  document.querySelectorAll('#cc-precios .ct-nom').forEach(el=>{
+    const i=+el.dataset.i, n=String((ccPostores[i]||{}).nombre||'').trim();
+    el.textContent=(i+1)+'. '+(n||'Postor '+(i+1));
+  });
 }
 // Total de cada cotización (precio × cantidad de todos los ítems), para comparar
 // de un vistazo. Solo informa: el ganador lo sigue eligiendo el usuario.
@@ -2464,9 +2557,15 @@ function pintarTotalesCC(){
     el.textContent = tot[i]!=null ? 'Total '+montoSoles(tot[i]) : '';
     el.classList.toggle('menor', min!=null && tot[i]===min);
   });
+  document.querySelectorAll('#cc-precios .ct-tot').forEach(el=>{
+    const i=+el.dataset.i;
+    el.textContent = tot[i]!=null ? montoSoles(tot[i]) : '—';
+    el.classList.toggle('menor', min!=null && tot[i]===min);
+  });
 }
 document.getElementById('form-cc').addEventListener('input', (e)=>{
-  if(e.target.matches('.ci-precio, .cii-cant')) pintarTotalesCC();
+  // la descripción, la cantidad o la medida del ítem cambian también la tabla de precios
+  if(e.target.matches('.cii-cant, .cii-medida, .cii-desc')) renderTablaPrecios();
 });
 document.getElementById('cc-agregar').addEventListener('click',()=>{
   ccPostores.push(nuevoPostorCC()); ccItems.forEach(it=>{ it.precios.push(''); it.marcas.push(''); }); renderCC(); syncPunto1();
@@ -2543,7 +2642,7 @@ function pistaHistorial(input, cont){
       + (r.veces>1?' · '+r.veces+' registros':'');
   }, 350);
 }
-function actualizarLabelsItemsEnPostores(){ document.querySelectorAll('#cc-postores .cc-cot').forEach(el=>{ const t=el.querySelector('.cc-cot-t'); if(t) t.textContent=nombreItemCC(+el.dataset.k); }); }
+function actualizarLabelsItemsEnPostores(){ renderTablaPrecios(); }
 document.getElementById('cc-agregar-item').addEventListener('click',()=>{ ccItems.push(nuevoItemCC()); renderCCItems(); renderCC(); });
 document.getElementById('cc-hist').addEventListener('change', ()=>{ aplicarHistCC(); scheduleSave(); });
 aplicarHistCC();
@@ -3688,6 +3787,7 @@ async function guardarEnCarpeta(tipo, blob, nombre){
 }
 
 async function descargarBlob(blob, nombre, msgEl, tipo){
+  if(tipo) marcarGenerado(tipo);
   if(tipo && dirHandles[tipo]){
     try{
       if(await guardarEnCarpeta(tipo, blob, nombre)){
@@ -3992,7 +4092,7 @@ function snapshot(){
   // en las casillas lo que importa es si están marcadas, no su .value
   document.querySelectorAll('#app input[id], #app select[id], #app textarea[id]').forEach(el=>{
     inputs[el.id] = (el.type==='checkbox') ? (el.checked?'1':'') : el.value; });
-  return { v:4, ts:Date.now(), tipo, postores, items, ccPostores, ccGanador, ccItems, memoFilas, notaFilas, cartaFilas, inputs };
+  return { v:4, ts:Date.now(), tipo, postores, items, ccPostores, ccGanador, ccItems, memoFilas, notaFilas, cartaFilas, inputs, generados, fijosPropios };
 }
 function guardarYa(){ if(!saveReady) return; try{
   const snap=snapshot();
@@ -4014,6 +4114,8 @@ function marcarGuardado(){ const el=document.getElementById('tbSave'); if(!el) r
 function scheduleSave(){ if(!saveReady) return; clearTimeout(saveTimer); saveTimer=setTimeout(guardarYa, 500); }
 function restore(d){
   try{
+    generados=(d.generados && typeof d.generados==='object') ? d.generados : {};
+    fijosPropios=(d.fijosPropios && typeof d.fijosPropios==='object') ? d.fijosPropios : {};
     if(d.tipo){ tipo=d.tipo; const r=document.querySelector('input[name=tipo][value="'+tipo+'"]'); if(r){ r.checked=true; r.dispatchEvent(new Event('change')); } }
     if(Array.isArray(d.postores)&&d.postores.length) postores=d.postores.map(p=>({nombre:p.nombre||''}));
     if(Array.isArray(d.items)&&d.items.length) items=d.items.map(it=>({codigo:it.codigo||'',denom:it.denom||'',unidad:it.unidad||'UND',cantidad:it.cantidad||'',marcas:(it.marcas||[]).slice()}));
@@ -4029,6 +4131,7 @@ function restore(d){
     if(d.inputs){ Object.keys(d.inputs).forEach(id=>{ const el=document.getElementById(id); if(!el) return;
       if(el.type==='checkbox') el.checked = !!d.inputs[id]; else el.value=d.inputs[id]; }); }
     if(typeof aplicarHistCC==='function') aplicarHistCC();
+    if(typeof aplicarAjustes==='function') aplicarAjustes();
     if(typeof normalizarCargosEnFormulario==='function') normalizarCargosEnFormulario();
     if(typeof aplicarModeloCC==='function') aplicarModeloCC();
     if(typeof aplicarObjetoCC==='function') aplicarObjetoCC();
@@ -4536,6 +4639,8 @@ async function exportarTodo(){
     borrador: borrador,
     precarga: localStorage.getItem('hnal_dest_precarga')||null,
     titulos: titulosAprendidos||{},
+    ajustes: leerAjustes(),
+    nombreAnio: localStorage.getItem('hnal_nombre_anio')||null,
     siga: sigaHay()? SIGA : null,
   };
   const f=new Date(), z=n=>('0'+n).slice(-2);
@@ -4564,6 +4669,8 @@ async function importarTodo(file){
     else localStorage.removeItem('hnal_borrador');
     if(obj.precarga) localStorage.setItem('hnal_dest_precarga', obj.precarga);
     if(obj.titulos){ titulosAprendidos=obj.titulos; localStorage.setItem('hnal_titulos', JSON.stringify(obj.titulos)); }
+    if(obj.ajustes) guardarAjustes(obj.ajustes);
+    if(obj.nombreAnio) localStorage.setItem('hnal_nombre_anio', obj.nombreAnio);
   }catch(e){}
   return {t,d,pr,h};
 }
@@ -4840,6 +4947,96 @@ document.addEventListener('keydown',(e)=>{
     if(f.requestSubmit) f.requestSubmit(); else { const b=f.querySelector('[type=submit]'); if(b) b.click(); }
   }
 });
+
+// ====================== AJUSTES ======================
+// Datos que casi no cambian (remitente, quien elabora, firma del comparativo y
+// nombre del año). Son de la computadora, no del expediente: se guardan aparte.
+// En cada documento salen como un resumen; «Cambiar solo aquí» deja editar ese
+// documento sin tocar los Ajustes (y eso sí se guarda con el expediente).
+const AJ_CAMPOS={
+  remNombre:['m-rem-nombre','n-rem-nombre'],
+  remCargo:['m-rem-cargo','n-rem-cargo'],
+  elaborado:['m-elaborado','n-elaborado','ca-elaborado'],
+  iniciales:['m-iniciales','n-iniciales'],
+  especialista:['cc-esp'],
+  cargoEsp:['cc-cargo'],
+};
+function leerAjustes(){ try{ return JSON.parse(localStorage.getItem('hnal_ajustes')||'null'); }catch(e){ return null; } }
+function guardarAjustes(o){ try{ localStorage.setItem('hnal_ajustes', JSON.stringify(o)); }catch(e){} }
+// el memo lleva el cargo del remitente con punto final (como el documento real)
+function valorAjuste(id, v){ return (id==='m-rem-cargo' && v && !/\.$/.test(v)) ? v+'.' : v; }
+function aplicarAjustes(){
+  const aj=leerAjustes();
+  if(aj) Object.keys(AJ_CAMPOS).forEach(k=>{
+    const v=String(aj[k]||'').trim(); if(!v) return;
+    AJ_CAMPOS[k].forEach(id=>{ if(fijosPropios[id]) return; const el=document.getElementById(id); if(el) el.value=valorAjuste(id,v); });
+  });
+  pintarFijos();
+}
+// Primera vez: los Ajustes salen de lo que ya estaba escrito en los documentos
+function ajustesIniciales(){
+  const v=id=>((document.getElementById(id)||{}).value||'').trim();
+  return { remNombre:v('m-rem-nombre')||v('n-rem-nombre'), remCargo:(v('n-rem-cargo')||v('m-rem-cargo')).replace(/\.$/,''),
+           elaborado:v('m-elaborado')||v('n-elaborado')||v('ca-elaborado'), iniciales:v('m-iniciales')||v('n-iniciales'),
+           especialista:v('cc-esp'), cargoEsp:v('cc-cargo') };
+}
+function pintarAjustes(){
+  const aj=leerAjustes()||ajustesIniciales();
+  document.querySelectorAll('#panel-ajustes [data-aj]').forEach(el=>{
+    el.value = el.dataset.aj==='nombreAnio' ? nombreAnio() : (aj[el.dataset.aj]||'');
+  });
+  const y=document.getElementById('aj-anio-y'); if(y) y.textContent='('+anioActual()+')';
+  const m=document.getElementById('msg-aj'); if(m) m.textContent='';
+}
+(function(){
+  let t=null;
+  document.querySelectorAll('#panel-ajustes [data-aj]').forEach(el=> el.addEventListener('input', ()=>{
+    clearTimeout(t); t=setTimeout(()=>{
+      const aj=leerAjustes()||ajustesIniciales();
+      document.querySelectorAll('#panel-ajustes [data-aj]').forEach(x=>{
+        const v=x.value.trim();
+        if(x.dataset.aj==='nombreAnio'){
+          try{ localStorage.setItem('hnal_nombre_anio', JSON.stringify({y:anioActual(), t:v.replace(/^[“"]+|[”"]+$/g,'').trim()})); }catch(e){}
+        } else aj[x.dataset.aj]=v;
+      });
+      guardarAjustes(aj); aplicarAjustes();
+      const m=document.getElementById('msg-aj'); if(m) m.textContent='✓ Guardado. Ya se usa en los documentos.';
+    }, 350);
+  }));
+})();
+// Resumen en cada formulario en lugar de los campos
+function pintarFijos(){
+  document.querySelectorAll('[data-fijo]').forEach(box=>{
+    let res=box.previousElementSibling;
+    if(!res || !res.classList.contains('fijo-res')){
+      res=document.createElement('div'); res.className='fijo-res';
+      box.parentNode.insertBefore(res, box);
+      box.classList.add('fijo-oculto');
+      res.addEventListener('click', e=>{
+        const b=e.target.closest('button'); if(!b) return;
+        if(b.dataset.acc==='aqui'){ box.classList.remove('fijo-oculto'); res.classList.add('fijo-oculto');
+          const f=box.querySelector('input'); if(f) f.focus(); }
+        if(b.dataset.acc==='ajustes') irA('ajustes');
+        if(b.dataset.acc==='reset'){
+          box.querySelectorAll('input[id]').forEach(i=> delete fijosPropios[i.id]);
+          aplicarAjustes(); scheduleSave();
+        }
+      });
+      // lo que se escriba aquí vale solo para este expediente
+      box.querySelectorAll('input[id]').forEach(i=> i.addEventListener('input', ()=>{ fijosPropios[i.id]=true; pintarFijos(); }));
+    }
+    const ins=[...box.querySelectorAll('input[id]')];
+    const vals=ins.map(i=>i.value.trim()).filter(Boolean);
+    const propio=ins.some(i=>fijosPropios[i.id]);
+    res.innerHTML='<div class="fr-t"><span class="fr-l">'+escH(box.dataset.fijo)+':</span>'
+      +(vals.length ? '<span class="fr-v">'+escH(vals.join(' — '))+'</span>' : '<span class="fr-v vacio">sin llenar</span>')
+      +(propio ? '<span class="fr-propio">solo en este documento</span>' : '')+'</div>'
+      +'<button type="button" class="btn-mini" data-acc="aqui">Cambiar solo aquí</button>'
+      +(propio ? '<button type="button" class="btn-mini" data-acc="reset">↺ Usar Ajustes</button>'
+               : '<button type="button" class="btn-mini" data-acc="ajustes">⚙️ Ajustes</button>');
+  });
+}
+aplicarAjustes();
 
 // ---- Datos del expediente que se escriben una sola vez ----
 // La referencia es la misma en el memo, el comparativo, la nota y la carta: al
