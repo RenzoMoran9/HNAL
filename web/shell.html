@@ -676,7 +676,7 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
 
     <div class="card">
       <h2>3. Postores (cotizaciones)</h2>
-      <p class="hint" style="margin:-8px 0 12px">Ingresa cada postor con su <b>precio y marca por ítem</b> (todo junto). Marca el <b>ganador</b> ✅ — se sombrea en gris y su precio es el Valor Estimado. (Hasta 4 postores.)</p>
+      <p class="hint" style="margin:-8px 0 12px">Ingresa cada postor con su <b>precio y marca por ítem</b> (todo junto). Marca el <b>ganador</b> ✅ — se sombrea en gris y su precio es el Valor Estimado.</p>
       <div id="cc-postores"></div>
       <button type="button" class="btn btn-sec" id="cc-agregar">＋ Agregar postor</button>
     </div>
@@ -2054,6 +2054,43 @@ function fmtPlazo(v){ const t=String(v||'').trim(); if(!t) return ''; return /[a
 function ccDec(v){ const t=String(v==null?'':v).trim(); const m=t.match(/[.,](\d+)$/); return m?m[1].length:0; }
 function ccMontoFmt(dec){ const z='0'.repeat(Math.max(2,dec)); return '_-"S/"\\ * #,##0.'+z+'_-;\\-"S/"\\ * #,##0.'+z+'_-;_-"S/"\\ * "-"??_-;_-@_-'; }
 
+// Ancho del cuadro (en unidades de columna de Excel) según postores y Fuente 2.
+// Excel no imprime por debajo del 10 %: pasado este ancho ya no entra en una A4
+// apaisada, así que el cuadro sale en A3 para seguir siendo UNA sola hoja.
+const CC_ANCHO_A4 = 1250;
+function ccNecesitaA3(nPostores, hist){
+  return 221 + 130.7*Math.max(4,nPostores) + (hist?130.7:0) + 179.3 > CC_ANCHO_A4;
+}
+// Más de 4 postores: inserta bloques de 3 columnas (PU / PT / MARCA) después del
+// 4.º, copiando su formato, y corre todo lo de la derecha (Fuente 2, metodología,
+// valor unitario y estimado). Las combinaciones se reubican igual.
+function ensancharCC(ws, D){
+  const M=s=>{ const m=String(s).match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/); if(!m) return null;
+    const n=L=>L.split('').reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0);
+    return {c1:n(m[1]),r1:+m[2],c2:n(m[3]),r2:+m[4]}; };
+  const merges=((ws.model&&ws.model.merges)||[]).slice().map(M).filter(Boolean);
+  merges.forEach(m=>{ try{ ws.unMergeCells(m.r1,m.c1,m.r2,m.c2); }catch(e){} });
+  const LAST=Math.max(ws.columnCount||0, 26), maxR=Math.max(ws.rowCount||0, 60);
+  const copiar=(src,dst)=>{ dst.value=src.value; dst.style=JSON.parse(JSON.stringify(src.style||{})); };
+  for(let r=1;r<=maxR;r++){
+    const row=ws.getRow(r);
+    for(let c=LAST;c>=18;c--) copiar(row.getCell(c), row.getCell(c+D));
+    for(let c=18;c<18+D;c++) copiar(row.getCell(15+((c-18)%3)), row.getCell(c));
+  }
+  for(let c=LAST;c>=18;c--){ const s=ws.getColumn(c), d=ws.getColumn(c+D); d.width=s.width; d.hidden=s.hidden; }
+  for(let c=18;c<18+D;c++){ const s=ws.getColumn(15+((c-18)%3)), d=ws.getColumn(c); d.width=s.width; d.hidden=s.hidden; }
+  const nuevas=[];
+  merges.forEach(m=>{
+    if(m.c1>=18) nuevas.push({r1:m.r1,c1:m.c1+D,r2:m.r2,c2:m.c2+D});          // a la derecha: se corre
+    else if(m.c2>=18 || (m.c2===17 && m.c1<=14)) nuevas.push(Object.assign({},m,{c2:m.c2+D}));   // atraviesa: se estira
+    else {
+      nuevas.push(m);
+      if(m.c1>=15) for(let k=3;k<=D;k+=3) nuevas.push({r1:m.r1,c1:m.c1+k,r2:m.r2,c2:m.c2+k});   // bloque del 4.º postor: se repite
+    }
+  });
+  nuevas.forEach(m=>{ try{ ws.mergeCells(m.r1,m.c1,m.r2,m.c2); }catch(e){} });
+}
+
 async function generarCuadroComparativo(datos){
   const wb=new ExcelJS.Workbook();
   await wb.xlsx.load(b64ToArrayBuffer(TEMPLATE_CC_B64));
@@ -2061,13 +2098,17 @@ async function generarCuadroComparativo(datos){
   const postores=(datos.postores||[]).filter(p=>(p.nombre||'').trim()!=='');
   const N=postores.length;
   if(N<1) throw new Error('Agrega al menos un postor con nombre.');
-  if(N>4) throw new Error('El cuadro comparativo admite hasta 4 postores.');
+  // La plantilla trae 4 bloques de postor; si hay más, el cuadro se ensancha
+  const NB=Math.max(4,N), D=3*(NB-4);
+  if(D>0) ensancharCC(ws, D);
+  const cF2=18+D, cMet=21+D, cVU=22+D, cVE=23+D;   // Fuente 2 y valores, corridos si hay más postores
+  const LVU=colLetter(cVU), LVE=colLetter(cVE);
   const items=(datos.items||[]).filter(it=>(it.descripcion||'').trim()!=='' || (it.precios||[]).some(x=>String(x).trim()!==''));
   if(items.length<1) throw new Error('Agrega al menos un item.');
   const esServicio = String(datos.objeto||'bien')==='servicio';
   const hist = !!(datos.historico);   // FUENTE 2: precios históricos de la entidad
   const nI=items.length, OFF=nI-1;
-  const ITEM=20, FOOT_TOP=21, FOOT_BOT=45, WMAX=25;
+  const ITEM=20, FOOT_TOP=21, FOOT_BOT=45, WMAX=25+D;
   const setv=(r,c,v)=>{ ws.getRow(r).getCell(c).value=v; };
   const setFill=(r,c,argb)=>{ const cell=ws.getRow(r).getCell(c); cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:argb}}; };
   const baseCol=i=>6+3*i;
@@ -2078,14 +2119,14 @@ async function generarCuadroComparativo(datos){
   setv(4,1,'AREA USUARIA: '+String(datos.area_usuaria||'').trim());
   setv(5,1,'TIPO DE PROCESO DE SELECCIÓN:'+(String(datos.tipo_proceso||'CONTRATO MENOR').trim().toUpperCase()));
   // Denominación de la contratación: etiqueta + valor JUNTOS en una sola celda (A7:U7)
-  (function(){
+  (function(){ const LU=colLetter(21+D);
     const den=String(datos.denominacion||'').trim().toUpperCase();
-    ['A7:B7','D7:U7','A7:U7'].forEach(rng=>{ try{ ws.unMergeCells(rng); }catch(e){} });
+    ['A7:B7','D7:'+LU+'7','A7:'+LU+'7'].forEach(rng=>{ try{ ws.unMergeCells(rng); }catch(e){} });
     ws.getRow(7).getCell(4).value=null;   // limpiar el "ADQ. DE " que iba suelto en D7
     const a7=ws.getRow(7).getCell(1);
     a7.value='DENOMINACIÓN DE LA CONTRATACIÓN: '+(esServicio?'SERVICIO DE ':'ADQ. DE ')+sinPrefijoObjeto(den);
     a7.alignment=Object.assign({},a7.alignment,{horizontal:'left',vertical:'middle',wrapText:true});
-    try{ ws.mergeCells('A7:U7'); }catch(e){}
+    try{ ws.mergeCells('A7:'+LU+'7'); }catch(e){}
   })();
 
   // Prototipo de la fila de item (fila 20) y del pie (21..45)
@@ -2121,7 +2162,7 @@ async function generarCuadroComparativo(datos){
     // Precio TOTAL y Valor estimado: salen normal (2 decimales).
     let dec=2; for(let i=0;i<N;i++) dec=Math.max(dec, ccDec((it.precios||[])[i]));
     const fmtUnit=ccMontoFmt(dec), fmtTot=ccMontoFmt(2);
-    for(let i=0;i<4;i++){ const b=baseCol(i);
+    for(let i=0;i<NB;i++){ const b=baseCol(i);
       if(i<N){
         setv(r,b,ccNum((it.precios||[])[i])); setv(r,b+1,{formula:'E'+r+'*'+colLetter(b)+r});
         setv(r,b+2, esServicio?null:String((it.marcas||[])[i]||'').trim());   // servicios no llevan marca
@@ -2131,19 +2172,19 @@ async function generarCuadroComparativo(datos){
     // FUENTE 2 (precios históricos de la entidad): solo si el usuario la activó
     if(hist){
       const pu=ccNum(it.precioHist);
-      setv(r,18,pu);
-      setv(r,19, pu==null?null:{formula:'E'+r+'*'+colLetter(18)+r});
-      setv(r,20, esServicio?null:String(it.marcaHist||'').trim()||null);
-      ws.getRow(r).getCell(18).numFmt=fmtUnit; ws.getRow(r).getCell(19).numFmt=fmtTot;
-    } else { setv(r,18,null); setv(r,19,null); setv(r,20,null); }
+      setv(r,cF2,pu);
+      setv(r,cF2+1, pu==null?null:{formula:'E'+r+'*'+colLetter(cF2)+r});
+      setv(r,cF2+2, esServicio?null:String(it.marcaHist||'').trim()||null);
+      ws.getRow(r).getCell(cF2).numFmt=fmtUnit; ws.getRow(r).getCell(cF2+1).numFmt=fmtTot;
+    } else { setv(r,cF2,null); setv(r,cF2+1,null); setv(r,cF2+2,null); }
     // metodologia con el numero del postor ganador
-    setv(r,21,'SE TOMO COMO V.ESTIMADO  LA COTIZACIÓN('+('0'+(g+1)).slice(-2)+') DE LA FUENTE 1:COTIZACIONES ACTUALIZADAS');
-    setv(r,22,{formula:colLetter(gb)+r}); setv(r,23,{formula:'V'+r+'*E'+r}); // valor unit/estimado del item
-    ws.getRow(r).getCell(22).numFmt=fmtUnit; ws.getRow(r).getCell(23).numFmt=fmtTot;
+    setv(r,cMet,'SE TOMO COMO V.ESTIMADO  LA COTIZACIÓN('+('0'+(g+1)).slice(-2)+') DE LA FUENTE 1:COTIZACIONES ACTUALIZADAS');
+    setv(r,cVU,{formula:colLetter(gb)+r}); setv(r,cVE,{formula:LVU+r+'*E'+r}); // valor unit/estimado del item
+    ws.getRow(r).getCell(cVU).numFmt=fmtUnit; ws.getRow(r).getCell(cVE).numFmt=fmtTot;
   });
 
   // Encabezado de postores (11-19) + detalle (pie desplazado)
-  for(let i=0;i<4;i++){
+  for(let i=0;i<NB;i++){
     const b=baseCol(i), cols=[b,b+1,b+2];
     if(i<N){
       const p=postores[i];
@@ -2178,40 +2219,42 @@ async function generarCuadroComparativo(datos){
     }
   }
   if(esServicio) setv(F(27),5,'PLAZO DE EJECUCIÓN');   // en servicios no hay "entrega"
-  ws.getColumn(22).width=40;   // VALOR UNITARIO también ancho
+  ws.getColumn(cVU).width=40;   // VALOR UNITARIO también ancho
   ws.getRow(F(36)).height=163.5;   // "SE TOMO EN CUENTA PARA... VALOR REFERENCIAL": alto para que se vea completo
 
   // Fila TOTAL (era 21) — total normal (2 decimales)
   const gFmt=ccMontoFmt(2);
   const totalRow=F(21);
-  for(let i=0;i<4;i++){ const b=baseCol(i);
+  for(let i=0;i<NB;i++){ const b=baseCol(i);
     if(i<N){ setv(totalRow,b,{formula:'SUM('+colLetter(b+1)+ITEM+':'+colLetter(b+1)+(ITEM+OFF)+')'}); ws.getRow(totalRow).getCell(b).numFmt=gFmt; }
     else setv(totalRow,b,null);
   }
-  setv(totalRow,18,null);
-  setv(totalRow,23,{formula:'SUM(W'+ITEM+':W'+(ITEM+OFF)+')'}); ws.getRow(totalRow).getCell(23).numFmt=gFmt;
+  setv(totalRow,cF2,null);
+  setv(totalRow,cVE,{formula:'SUM('+LVE+ITEM+':'+LVE+(ITEM+OFF)+')'}); ws.getRow(totalRow).getCell(cVE).numFmt=gFmt;
 
   // Sombreado: SOLO el ganador. Limpiar el relleno base de la plantilla
   // (columna de ítem, postores no usados, filas de total) antes de sombrear.
   const sinRelleno=(r,c)=>{ const cell=ws.getRow(r).getCell(c); cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.fill={type:'pattern',pattern:'none'}; };
   items.forEach((it,k)=>{ const r=ITEM+k;
-    for(let c=1;c<=20;c++) sinRelleno(r,c);
+    for(let c=1;c<=cF2+2;c++) sinRelleno(r,c);
     [gb,gb+1,gb+2].forEach(c=>setFill(r,c,GRIS));
   });
-  for(let c=1;c<=20;c++) sinRelleno(totalRow,c);
+  for(let c=1;c<=cF2+2;c++) sinRelleno(totalRow,c);
   [gb,gb+1,gb+2].forEach(c=>setFill(totalRow,c,GRIS));
 
   // Cabecera de FUENTE 2: se llena solo si se activó; si no, se deja en blanco
   if(hist){
     const h=datos.historico;
-    if(String(h.entidad||'').trim()) setv(13,19,String(h.entidad).trim().toUpperCase());
-    setv(15,19,String(h.proceso||'').trim()||null);
+    if(String(h.entidad||'').trim()) setv(13,cF2+1,String(h.entidad).trim().toUpperCase());
+    setv(15,cF2+1,String(h.proceso||'').trim()||null);
     const fh=ccFecha(h.fecha);
-    setv(16,19,fh); if(fh) ws.getRow(16).getCell(19).numFmt='dd/mm/yyyy';
-    setv(18,19,String(h.adjudicatario||'').trim().toUpperCase()||null);
+    setv(16,cF2+1,fh); if(fh) ws.getRow(16).getCell(cF2+1).numFmt='dd/mm/yyyy';
+    setv(18,cF2+1,String(h.adjudicatario||'').trim().toUpperCase()||null);
   } else {
-    [[15,19],[16,19],[18,19]].forEach(a=> setv(a[0],a[1],null));
+    [[15,cF2+1],[16,cF2+1],[18,cF2+1]].forEach(a=> setv(a[0],a[1],null));
   }
+  // la plantilla trae ocultas las columnas de la Fuente 2: se muestran solo si se usa
+  [52,44,34.7109375].forEach((w,k)=>{ const col=ws.getColumn(cF2+k); col.hidden=!hist; if(hist) col.width=w; });
 
   // Reconstruir merges del pie (desplazados)
   footMerges.forEach(a=>{ try{ ws.mergeCells(a[0]+(a[1]+OFF)+':'+a[2]+(a[3]+OFF)); }catch(e){} });
@@ -2242,9 +2285,9 @@ async function generarCuadroComparativo(datos){
 
   // Quitar sombreado melon (theme9) salvo el gris del ganador
   const quitarRelleno=(cell)=>{ cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.fill={type:'pattern',pattern:'none'}; };
-  for(let r=1;r<=FOOT_BOT+OFF;r++) for(let c=1;c<=40;c++){ const cell=ws.getRow(r).getCell(c); const fg=cell.fill&&cell.fill.fgColor; if(fg&&fg.theme===9) quitarRelleno(cell); }
+  for(let r=1;r<=FOOT_BOT+OFF;r++) for(let c=1;c<=40+D;c++){ const cell=ws.getRow(r).getCell(c); const fg=cell.fill&&cell.fill.fgColor; if(fg&&fg.theme===9) quitarRelleno(cell); }
   // Cabecera limpia: quitar marcos apilados filas 2-9
-  for(let r=2;r<=9;r++) for(let c=1;c<=30;c++){ const cell=ws.getRow(r).getCell(c); cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.border={}; }
+  for(let r=2;r<=9;r++) for(let c=1;c<=30+D;c++){ const cell=ws.getRow(r).getCell(c); cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.border={}; }
 
   // FECHA + firma del especialista (fila 31 desplazada) — solo Modelo 1
   if(!modelo2){
@@ -2265,7 +2308,7 @@ async function generarCuadroComparativo(datos){
   if(modelo2){
     const maxR=FOOT_BOT+OFF;
     for(let r=1;r<=maxR;r++){ const row=ws.getRow(r);
-      for(let c=1;c<=24;c++){ const cell=row.getCell(c);
+      for(let c=1;c<=24+D;c++){ const cell=row.getCell(c);
         if(cell.font){ cell.style=JSON.parse(JSON.stringify(cell.style||{})); cell.font=Object.assign({},cell.font,{name:'Arial'}); }
       }
     }
@@ -2285,22 +2328,22 @@ async function generarCuadroComparativo(datos){
   // suelto en X1 y celdas con formato): si queda, se imprime una hoja en blanco.
   for(let r=1; r<=FOOT_BOT+OFF; r++){
     const row=ws.getRow(r);
-    for(let c=24; c<=40; c++){ const cell=row.getCell(c); cell.value=null; cell.style={}; }
+    for(let c=24+D; c<=40+D; c++){ const cell=row.getCell(c); cell.value=null; cell.style={}; }
   }
   for(let r=FOOT_BOT+OFF+1; r<=ws.rowCount; r++){
     const row=ws.getRow(r); row.height=undefined;
-    for(let c=1; c<=40; c++){ const cell=row.getCell(c); cell.value=null; cell.style={}; }
+    for(let c=1; c<=40+D; c++){ const cell=row.getCell(c); cell.value=null; cell.style={}; }
   }
   // la plantilla define ancho para TODAS las columnas hasta la 16384; ocultar las
   // que sobran evita que el ajuste de impresion las tome en cuenta
-  for(let c=24; c<=60; c++){ const col=ws.getColumn(c); col.hidden=true; col.width=0; }
+  for(let c=24+D; c<=60+D; c++){ const col=ws.getColumn(c); col.hidden=true; col.width=0; }
   // Impresión lista: área exacta y todo ajustado a UNA hoja
   ws.pageSetup = Object.assign({}, ws.pageSetup, {
-    orientation:'landscape', paperSize:9,
+    orientation:'landscape', paperSize: ccNecesitaA3(N, hist) ? 8 : 9,   // 9 = A4, 8 = A3
     fitToPage:true, fitToWidth:1, fitToHeight:1,
     horizontalCentered:true,
     margins:{left:0.3,right:0.3,top:0.4,bottom:0.4,header:0.2,footer:0.2},
-    printArea:'A1:W'+(FOOT_BOT+OFF),
+    printArea:'A1:'+LVE+(FOOT_BOT+OFF),
   });
   delete ws.pageSetup.scale;   // que mande el ajuste a una hoja, no una escala fija
   return await wb.xlsx.writeBuffer();
@@ -2403,7 +2446,6 @@ function renderCC(){
     });
     cont.appendChild(card);
   });
-  document.getElementById('cc-agregar').style.display = ccPostores.length>=4 ? 'none':'';
   pintarTotalesCC();
 }
 // Total de cada cotización (precio × cantidad de todos los ítems), para comparar
@@ -2427,7 +2469,7 @@ document.getElementById('form-cc').addEventListener('input', (e)=>{
   if(e.target.matches('.ci-precio, .cii-cant')) pintarTotalesCC();
 });
 document.getElementById('cc-agregar').addEventListener('click',()=>{
-  if(ccPostores.length<4){ ccPostores.push(nuevoPostorCC()); ccItems.forEach(it=>{ it.precios.push(''); it.marcas.push(''); }); renderCC(); syncPunto1(); }
+  ccPostores.push(nuevoPostorCC()); ccItems.forEach(it=>{ it.precios.push(''); it.marcas.push(''); }); renderCC(); syncPunto1();
 });
 
 // ---- Ítems del CC (solo descripción / medida / cantidad; el precio va con cada postor) ----
@@ -2539,8 +2581,6 @@ function jalarCCDesdeValidacion(){
   let usados=postores.map((p,i)=>i).filter(i=>norm(postores[i].nombre));
   const its=items.filter(it=>norm(it.denom)||norm(it.codigo)||String(it.cantidad||'').trim());
   if(!adq && !its.length && !usados.length) return {ok:false, msg:'El Cuadro de Validación está vacío. Llénalo primero.'};
-  const sobran=usados.length>4 ? usados.length-4 : 0;
-  usados=usados.slice(0,4);   // el comparativo admite hasta 4 postores
   const serv=(tipo==='servicio');
 
   // ¿el comparativo tenía otro expediente? entonces no se arrastran sus precios
@@ -2600,8 +2640,7 @@ function jalarCCDesdeValidacion(){
   aplicarObjetoCC(); renderCCItems(); renderCC(); syncPunto1();
   scheduleSave();
   return {ok:true, msg:'✓ Se jalaron '+ccItems.length+' ítem(s) y '+ccPostores.length+' postor(es) de la Validación. Completa los precios'
-    +(serv?'':' (las marcas ya vienen)')+', los contactos y las fechas.'
-    +(sobran?' ⚠ El comparativo admite hasta 4 postores: quedaron fuera '+sobran+'.':'')};
+    +(serv?'':' (las marcas ya vienen)')+', los contactos y las fechas.'};
 }
 function jalarCCyAvisar(){
   const r=jalarCCDesdeValidacion();
@@ -2647,11 +2686,13 @@ document.getElementById('form-cc').addEventListener('submit', (e)=>{
   };
   const gName=(postoresUsed[ganadorRemap]||{}).nombre||'—';
   const rucMalCC = postoresUsed.some(p=>String(p.ruc||'').trim() && !rucValido(p.ruc));
-  const avisoCC = rucMalCC ? '<p class="pv-note" style="color:#c0392b">⚠ Hay RUC no válidos (11 dígitos y verificador). Revisa los postores marcados en rojo antes de descargar.</p>' : '';
+  const avisoCC = (rucMalCC ? '<p class="pv-note" style="color:#c0392b">⚠ Hay RUC no válidos (11 dígitos y verificador). Revisa los postores marcados en rojo antes de descargar.</p>' : '')
+    + (ccNecesitaA3(postoresUsed.length, !!datos.historico) ? '<p class="pv-note" style="color:#8a6d1e">📄 Con '+postoresUsed.length+' postores'+(datos.historico?' y la Fuente 2':'')+' el cuadro no entra en una A4: sale en <b>hoja A3</b>, en una sola hoja.</p>' : '');
   const resumen = avisoCC + pvDL([
     ['Adquisición', val('cc-denom')],
     ['Área usuaria', val('cc-area')],
     ['N° de ítems', String(itemsData.length)],
+    ['Postores', String(postoresUsed.length)],
     ['Ganador (Valor Estimado)', gName],
   ]) + '<div class="pv-sub">Ítems</div>' + pvTabla(
     ['#','Descripción','Medida','Cant','P. ganador'],
@@ -4257,9 +4298,11 @@ function leerComparativoXlsx(ws){
   if(!den) den=celTxt(ws,7,4);
   const esServ=/^SERVICIO DE/i.test(den);
   den=den.replace(/^(ADQ\.?\s*DE|SERVICIO DE)\s*/i,'').trim();
-  // postores: fila 13, columnas 6, 9, 12, 15
+  // postores: fila 13, columnas 6, 9, 12, 15… (bloques de 3 hasta la FUENTE 2)
+  let nb=4; while(nb<40 && !/FUENTE\s*2/i.test(celTxt(ws,11,6+3*nb))) nb++;
+  if(nb>=40) nb=4;
   const post=[];
-  for(let i=0;i<4;i++){ const b=6+3*i; const n=celTxt(ws,13,b); if(!n) continue;
+  for(let i=0;i<nb;i++){ const b=6+3*i; const n=celTxt(ws,13,b); if(!n) continue;
     post.push({idx:i, b:b, nombre:n, ruc:celTxt(ws,15,b+1), contacto:celTxt(ws,16,b+1),
                telefono:celTxt(ws,17,b+1), email:celTxt(ws,18,b+1)}); }
   if(!post.length) throw new Error('No se encontraron postores en el archivo.');
@@ -4282,7 +4325,7 @@ function leerComparativoXlsx(ws){
   });
   const veces=celTxt(ws,F(31),post[0].b);
   // ganador: el que la metodología señala, ej "...COTIZACIÓN(02)..."
-  let gan=0; const met=celTxt(ws,20,21); const m=met.match(/COTIZACI[ÓO]N\s*\((\d+)\)/i);
+  let gan=0; const met=celTxt(ws,20,21+3*(nb-4)); const m=met.match(/COTIZACI[ÓO]N\s*\((\d+)\)/i);
   if(m){ const num=parseInt(m[1],10); if(num>=1 && num<=post.length) gan=num-1; }
   return {documento:doc, area:area, tipo_proceso:tipoProc, denominacion:den,
           objeto:esServ?'servicio':'bien', veces:String(veces||''), postores:post, items:its, ganador:gan};
