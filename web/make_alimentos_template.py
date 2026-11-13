@@ -12,6 +12,7 @@ rellena en el navegador (generarActaAlimentos en web/shell.html).
 Ejecutar si cambia el acta de ejemplo, y luego:  python web/build_html.py
 """
 
+import re
 import zipfile
 from pathlib import Path
 
@@ -46,6 +47,10 @@ def main():
             ws.unmerge_cells(str(rng))
     if ws.max_row > ULTIMA_FILA:
         ws.delete_rows(ULTIMA_FILA + 1, ws.max_row - ULTIMA_FILA)
+    # delete_rows no quita las alturas: sin esto la hoja "llega" hasta la fila 3572
+    for r in [r for r in ws.row_dimensions if r > ULTIMA_FILA]:
+        del ws.row_dimensions[r]
+    ws.print_title_rows = None            # eran filas de otro expediente
     for row in ws.iter_rows(min_row=1, max_row=ULTIMA_FILA):
         for c in row:
             if c.column < PRIMERA_COL or c.column > ULTIMA_COL:
@@ -87,6 +92,10 @@ def arreglar_logo():
                 data = src.read(item.filename)
             elif item.filename == "xl/worksheets/_rels/sheet1.xml.rels":
                 data = data.replace(b'Target="/xl/drawings/', b'Target="../drawings/')
+            elif item.filename == "xl/worksheets/sheet1.xml":
+                # openpyxl siempre pone <outlinePr>; ExcelJS lo reescribe después de
+                # <pageSetUpPr> y Excel abre el acta como archivo dañado
+                data = re.sub(rb"<outlinePr[^>]*/>", b"", data)
             zout.writestr(item, data)
     tmp.replace(SALIDA)
 

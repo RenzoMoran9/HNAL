@@ -1456,6 +1456,9 @@ async function generarActaAlimentos(datos){
   const wb=new ExcelJS.Workbook();
   await wb.xlsx.load(b64ToArrayBuffer(TEMPLATE_ALIM_B64));
   const ws=wb.worksheets[0];
+  // ExcelJS escribe <outlinePr> después de <pageSetUpPr> y Excel lo toma como
+  // archivo dañado («encontramos un problema con el contenido»): no se usa, se quita
+  if(ws.properties) delete ws.properties.outlineProperties;
   const postores=(datos.postores||[]).filter(p=>(p.nombre||'').trim()!=='');
   const nP=postores.length;
   if(nP<1) throw new Error('Agrega al menos un postor con nombre.');
@@ -1556,6 +1559,7 @@ async function generarActaAlimentos(datos){
     printArea:'J1:'+colLetter(LAST)+F(FOOT_BOT),
   });
   delete ws.pageSetup.scale;
+  delete ws.pageSetup.printTitlesRow; delete ws.pageSetup.printTitlesColumn;   // títulos del acta de ejemplo
   ws.views=[{showGridLines:false, topLeftCell:'J1', zoomScale:50, zoomScaleNormal:50, workbookViewId:0}];
   return await wb.xlsx.writeBuffer();
 }
@@ -2556,7 +2560,10 @@ function esServicioCC(){ return ((document.getElementById('cc-objeto')||{}).valu
 function renderCC(){
   const cont=document.getElementById('cc-postores'); cont.innerHTML='';
   const servicio=esServicioCC();
+  // garantía y plazo pueden ir «según» el documento técnico: EETT en bienes, TDR en servicios
+  const segun=servicio?'SEGÚN TDR':'SEGÚN EETT';
   ccPostores.forEach((p,i)=>{
+    ['garantia','plazo_entrega'].forEach(k=>{ if(/^SEG[UÚ]N\s+(EETT|TDR)$/i.test(String(p[k]||'').trim())) p[k]=segun; });
     const card=document.createElement('div'); card.className='cc-postor';
     if(i===ccGanador) card.classList.add('ganador');
     const abierto = ccAbiertos.has(p) || !String(p.nombre||'').trim();
@@ -2580,8 +2587,10 @@ function renderCC(){
         <div class="field" style="margin:0"><label>Contacto</label><input type="text" class="c-contacto"></div>
         <div class="field" style="margin:0"><label>Teléfono</label><input type="text" class="c-telefono"></div>
         <div class="field" style="margin:0"><label>E-mail</label><input type="text" class="c-email"></div>
-        <div class="field" style="margin:0"><label>Garantía / vigencia</label><input type="text" class="c-garantia" placeholder="Ej: 12 MESES"></div>
-        <div class="field" style="margin:0"><label>${servicio?'Plazo de ejecución':'Plazo de entrega'} <span class="hint">— solo el número; sale "DIAS CALENDARIO"</span></label><input type="text" class="c-plazo" inputmode="numeric" placeholder="Ej: 21"></div>
+        <div class="field" style="margin:0"><label>Garantía / vigencia</label>
+          <div class="ruc-row"><input type="text" class="c-garantia" placeholder="Ej: 12 MESES"><button type="button" class="btn-mini c-segun" data-para=".c-garantia" title="Escribe «${segun}» en este campo">${segun}</button></div></div>
+        <div class="field" style="margin:0"><label>${servicio?'Plazo de ejecución':'Plazo de entrega'} <span class="hint">— solo el número; sale "DIAS CALENDARIO"</span></label>
+          <div class="ruc-row"><input type="text" class="c-plazo" placeholder="Ej: 21"><button type="button" class="btn-mini c-segun" data-para=".c-plazo" title="Escribe «${segun}» en este campo">${segun}</button></div></div>
         <div class="field" style="margin:0"><label>Fecha de solicitud</label><input type="date" class="c-fsol"></div>
         <div class="field" style="margin:0"><label>Fecha de recepción</label><input type="date" class="c-frec"></div>
         <div class="field" style="margin:0"><label>¿Proveedor se dedica al objeto?</label>
@@ -2598,6 +2607,8 @@ function renderCC(){
     set('.c-nombre','nombre'); set('.c-ruc','ruc'); set('.c-contacto','contacto'); set('.c-telefono','telefono');
     set('.c-email','email'); set('.c-garantia','garantia');
     wireRuc(card.querySelector('.c-ruc'), card.querySelector('.c-ruc-msg'));
+    card.querySelectorAll('.c-segun').forEach(b=>b.addEventListener('click',()=>{
+      const el=card.querySelector(b.dataset.para); el.value=segun; el.dispatchEvent(new Event('input',{bubbles:true})); }));
     set('.c-plazo','plazo_entrega'); set('.c-fsol','fecha_solicitud'); set('.c-frec','fecha_recepcion');
     set('.c-dedica','se_dedica'); set('.c-verifica','verifica'); set('.c-rtm','cumple_rtm'); set('.c-vr','se_tomo');
     card.querySelector('.c-nombre').addEventListener('input', ()=>{ syncPunto1(); pintarNombresTabla(); });
