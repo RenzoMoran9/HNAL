@@ -5318,37 +5318,51 @@ function cargarPdfjs(){
   return pdfjsListo;
 }
 function lienzoABlob(c){ return new Promise(r=>c.toBlob(r,'image/jpeg',.85)); }
-// PDF → texto (si lo trae) + imágenes de las páginas. Un escaneado no trae texto:
-// ahí cada página va partida en dos mitades para que la letra chica siga legible.
-async function leerPdfCotizacion(buf, maxImg){
+// PDF: se lee completo, por tandas de páginas (Claude recibe pocas imágenes por
+// consulta). Una página escaneada no trae texto: va partida en dos mitades para
+// que la letra chica siga legible.
+const PDF_MAX_PAGS=60;
+async function abrirPdfCotizacion(buf){
   const lib=await cargarPdfjs();
   const pdf=await lib.getDocument({data:new Uint8Array(buf)}).promise;
-  const total=pdf.numPages; let texto='';
-  for(let n=1;n<=Math.min(total,15);n++){
-    const tc=await (await pdf.getPage(n)).getTextContent();
-    let linea='', y=null;
+  const total=pdf.numPages, n=Math.min(total, PDF_MAX_PAGS), pags=[];
+  for(let k=1;k<=n;k++){
+    const tc=await (await pdf.getPage(k)).getTextContent();
+    let texto='', linea='', y=null;
     tc.items.forEach(it=>{ const yy=it.transform?Math.round(it.transform[5]):null;
       if(y!==null && yy!==null && Math.abs(yy-y)>2){ texto+=linea.trimEnd()+'\n'; linea=''; }
       linea+=it.str+' '; y=yy; });
-    texto+=linea.trimEnd()+'\n\n';
+    texto+=linea.trimEnd();
+    pags.push({n:k, texto: texto.replace(/\s/g,'').length>60 ? texto : ''});
   }
-  const conTexto=texto.replace(/\s/g,'').length>200;
-  const pags=Math.max(1, Math.min(total, conTexto ? maxImg : Math.floor(maxImg/2)));
-  const imagenes=[];
-  for(let n=1;n<=pags && maxImg>0;n++){
-    const pg=await pdf.getPage(n);
-    const v0=pg.getViewport({scale:1}), vp=pg.getViewport({scale:Math.min(3, 1700/v0.width)});
-    const c=document.createElement('canvas'); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
-    await pg.render({canvasContext:c.getContext('2d'), viewport:vp}).promise;
-    if(conTexto || maxImg<2){ imagenes.push(await lienzoABlob(c)); continue; }
-    const h=Math.round(c.height*.54);
-    for(const y0 of [0, c.height-h]){
-      const m=document.createElement('canvas'); m.width=c.width; m.height=h;
-      m.getContext('2d').drawImage(c,0,y0,c.width,h,0,0,c.width,h);
-      imagenes.push(await lienzoABlob(m));
-    }
+  return {pdf, total, pags};
+}
+// reparte las páginas en tandas que quepan en una consulta
+function tandasPdf(pags, maxImg){
+  const tandas=[]; let act=[], costo=0;
+  const tope = maxImg>0 ? maxImg : 8;
+  pags.forEach(pg=>{
+    if(maxImg<=0 && !pg.texto) return;                 // sin imágenes no se puede leer un escaneado
+    const c = maxImg<=0 ? 1 : (pg.texto || maxImg<2 ? 1 : 2);
+    if(act.length && costo+c>tope){ tandas.push(act); act=[]; costo=0; }
+    act.push(pg); costo+=c;
+  });
+  if(act.length) tandas.push(act);
+  return tandas;
+}
+async function imagenesPaginaPdf(pdf, pg, maxImg){
+  const page=await pdf.getPage(pg.n);
+  const v0=page.getViewport({scale:1}), vp=page.getViewport({scale:Math.min(3, 1700/v0.width)});
+  const c=document.createElement('canvas'); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
+  await page.render({canvasContext:c.getContext('2d'), viewport:vp}).promise;
+  if(pg.texto || maxImg<2) return [await lienzoABlob(c)];
+  const h=Math.round(c.height*.54), out=[];
+  for(const y0 of [0, c.height-h]){
+    const m=document.createElement('canvas'); m.width=c.width; m.height=h;
+    m.getContext('2d').drawImage(c,0,y0,c.width,h,0,0,c.width,h);
+    out.push(await lienzoABlob(m));
   }
-  return {texto:conTexto?texto:'', imagenes, total, leidas:conTexto?Math.min(total,15):pags};
+  return out;
 }
 async function leerXlsxCotizacion(buf){
   const wb=new ExcelJS.Workbook(); await wb.xlsx.load(buf); let t='';
@@ -5362,12 +5376,13 @@ function leerDocxCotizacion(buf){
   return xml.replace(/<\/w:tc>/g,' | ').replace(/<\/w:p>/g,'\n').replace(/<w:tab\/>/g,'\t').replace(/<[^>]+>/g,'')
     .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
 }
-function promptCotizacion(nombreArchivo, texto, hayImagenes){
+function promptCotizacion(nombreArchivo, texto, hayImagenes, parte){
   const serv=esServicioCC();
   const its=ccItems.map((it,k)=>({k, d:(it.descripcion||'').trim(), m:it.medida||'', c:it.cantidad||''})).filter(x=>x.d);
   return 'Eres un asistente de un área de logística del Estado peruano. Te paso la cotización que envió UN proveedor '
     +'(archivo «'+nombreArchivo+'»'+(hayImagenes?'; las imágenes adjuntas son sus páginas, en orden':'')+'). '
-    +'Extrae sus datos para un cuadro comparativo de precios de '+(serv?'un SERVICIO':'BIENES')+'.\n\n'
+    +'Extrae sus datos para un cuadro comparativo de precios de '+(serv?'un SERVICIO':'BIENES')+'.\n'
+    +(parte ? 'Esto es solo una parte del documento: las páginas '+parte.de+' a '+parte.a+' de '+parte.total+'. Si aquí no aparecen los datos del proveedor o no hay líneas cotizadas, déjalos vacíos ("items":[]); no repitas ítems de otras páginas.\n' : '')+'\n'
     +'Responde SOLO con un objeto JSON con esta forma exacta:\n'
     +'{"postor":{"nombre":"razón social del proveedor que cotiza","ruc":"11 dígitos","contacto":"persona de contacto","telefono":"","email":"",'
     +'"garantia":"p. ej. 12 MESES","plazo_dias":21,"fecha":"AAAA-MM-DD"},'
@@ -5396,14 +5411,16 @@ function numCotizacion(v){
 }
 // Vuelca al cuadro lo que leyó Claude. Lo del proveedor solo llena campos vacíos;
 // los precios y las marcas del documento sí reemplazan lo que hubiera.
-function aplicarCotizacionCC(d){
+function aplicarCotizacionCC(d, op){
+  op=op||{};
   const txt=x=>String(x==null?'':x).trim(), may=x=>txt(x).toUpperCase();
   const po=(d&&d.postor)||{}, lineas=Array.isArray(d&&d.items)?d.items:[];
   const nombre=may(po.nombre), ruc=txt(po.ruc).replace(/\D/g,'');
-  if(!nombre && !lineas.length) throw {code:'sin_datos'};
+  if(!nombre && !lineas.length && !op.postor) throw {code:'sin_datos'};
   const serv=esServicioCC(), avisos=[];
   // 1) el postor: el mismo (por RUC o nombre), el primero vacío, o uno nuevo
-  let i=ccPostores.findIndex(p=>(ruc && txt(p.ruc)===ruc) || (nombre && may(p.nombre)===nombre));
+  let i=op.postor ? ccPostores.indexOf(op.postor) : -1;
+  if(i<0) i=ccPostores.findIndex(p=>(ruc && txt(p.ruc)===ruc) || (nombre && may(p.nombre)===nombre));
   if(i<0) i=ccPostores.findIndex(p=>!txt(p.nombre));
   if(i<0){ ccPostores.push(nuevoPostorCC()); ccItems.forEach(it=>{ it.precios.push(''); it.marcas.push(''); }); i=ccPostores.length-1; }
   const p=ccPostores[i];
@@ -5425,7 +5442,7 @@ function aplicarCotizacionCC(d){
       if(!txt(l&&l.descripcion)) return;
       it=nuevoItemCC(); it.descripcion=may(l.descripcion); it.medida=unidadCC(l.medida);
       const c=numCotizacion(l.cantidad); it.cantidad = c==null?'':String(c);
-      ccItems.push(it); if(!vacio) nuevos++;
+      ccItems.push(it); if(!vacio && !op.crear) nuevos++;
     }
     const pu=numCotizacion(l.precio_unitario);
     if(pu!=null && pu>=0){ it.precios[i]=String(Math.round(pu*10000)/10000); puestos++; }
@@ -5440,7 +5457,7 @@ function aplicarCotizacionCC(d){
   if(txt(d.notas)) avisos.push(txt(d.notas));
   ccAbiertos.add(p);
   renderCCItems(); renderCC(); syncPunto1(); scheduleSave();
-  return {nombre:p.nombre||('Postor '+(i+1)), puestos, avisos};
+  return {nombre:p.nombre||('Postor '+(i+1)), puestos, avisos, postor:p, creo:vacio && lineas.length>0};
 }
 (async function(){
   const sample=await capClaude('sample'); if(!sample) return;
@@ -5462,10 +5479,29 @@ function aplicarCotizacionCC(d){
     let texto='', imagenes=[], extra='';
     if(ext==='pdf' || f.type==='application/pdf'){
       li.textContent=f.name+' — abriendo el PDF…';
-      const r=await leerPdfCotizacion(await f.arrayBuffer(), maxImg);
-      texto=r.texto; imagenes=r.imagenes;
-      if(!texto && !imagenes.length) throw {code:'images_unavailable'};
-      if(r.leidas<r.total) extra='solo se leyeron las primeras '+r.leidas+' de '+r.total+' páginas';
+      const doc=await abrirPdfCotizacion(await f.arrayBuffer());
+      const tandas=tandasPdf(doc.pags, maxImg);
+      if(!tandas.length) throw {code:'images_unavailable'};
+      const tot={nombre:'', puestos:0, avisos:[], postor:null, creo:false}; let datos=false;
+      for(let t=0;t<tandas.length;t++){
+        const pgs=tandas[t], de=pgs[0].n, a=pgs[pgs.length-1].n;
+        li.textContent=f.name+' — Claude está leyendo las páginas '+de+(a>de?' a '+a:'')+' de '+doc.total+'…';
+        const imgs=[]; if(maxImg>0) for(const pg of pgs) imgs.push(...await imagenesPaginaPdf(doc.pdf, pg, maxImg));
+        const txtT=pgs.filter(x=>x.texto).map(x=>'--- Página '+x.n+' ---\n'+x.texto).join('\n\n');
+        const o={signal:ctl.signal}; if(imgs.length) o.images=imgs;
+        const d=await sample.json(promptCotizacion(f.name, txtT, imgs.length>0, tandas.length>1?{de,a,total:doc.total}:null), o);
+        if(ctl.signal.aborted) throw {code:'cancelled'};
+        let r; try{ r=aplicarCotizacionCC(d, {postor:tot.postor, crear:tot.creo}); }
+        catch(e){ if(e && e.code==='sin_datos') continue; throw e; }
+        datos=true; tot.postor=r.postor; tot.creo=tot.creo||r.creo; tot.nombre=r.nombre; tot.puestos+=r.puestos;
+        r.avisos.forEach(x=>{ if(!/quedaron sin precio/.test(x) && !tot.avisos.includes(x)) tot.avisos.push(x); });
+      }
+      if(!datos) throw {code:'sin_datos'};
+      const i=ccPostores.indexOf(tot.postor);
+      const faltan=ccItems.filter(it=>String(it.descripcion||'').trim() && !String(it.precios[i]||'').trim()).length;
+      if(faltan && tot.puestos) tot.avisos.push(faltan+' ítem(s) quedaron sin precio');
+      if(doc.total>doc.pags.length) tot.avisos.push('solo se leyeron las primeras '+doc.pags.length+' de '+doc.total+' páginas');
+      return tot;
     } else if(ext==='xlsx'){ texto=await leerXlsxCotizacion(await f.arrayBuffer()); }
     else if(ext==='docx'){ texto=leerDocxCotizacion(await f.arrayBuffer()); }
     else if(/^image\//.test(f.type)){ if(!maxImg) throw {code:'images_unavailable'}; imagenes=[f]; }
