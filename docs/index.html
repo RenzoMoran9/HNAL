@@ -689,10 +689,12 @@ kbd{background:#fff;border:1px solid var(--borde);border-bottom-width:2px;border
   <form id="form-cc" novalidate>
     <div class="card" id="cc-ia" style="display:none">
       <h2>Leer cotizaciones <span class="hint">— Claude llena el cuadro por ti</span></h2>
-      <p class="hint" style="margin:-8px 0 12px;line-height:1.5">Sube la cotización de cada proveedor (PDF, escaneado, foto, Excel o Word; puedes elegir varias a la vez). Claude la lee y llena el <b>postor</b>, los <b>ítems</b>, los <b>precios</b> y las <b>marcas</b>. Revisa los precios antes de generar el Excel.</p>
+      <p class="hint" style="margin:-8px 0 12px;line-height:1.5">Sube la cotización de cada proveedor, o el expediente completo con todas (PDF, escaneado, foto, Excel o Word; puedes elegir varios archivos). Claude la lee y llena el <b>postor</b>, los <b>ítems</b>, los <b>precios</b> y las <b>marcas</b>. Revisa los precios antes de generar el Excel.</p>
       <input type="file" id="cc-ia-file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.docx,application/pdf,image/png,image/jpeg,image/webp" style="display:none">
       <button type="button" class="btn btn-sec" id="cc-ia-btn">📎 Subir cotizaciones</button>
       <button type="button" class="btn-mini danger" id="cc-ia-stop" style="display:none">Detener</button>
+      <div class="field" style="margin:14px 0 0;max-width:420px"><label for="cc-ia-pags">Páginas del PDF <span class="hint">— opcional; si es un expediente largo, indica dónde están las cotizaciones</span></label>
+        <input type="text" id="cc-ia-pags" class="no-mayus" placeholder="Ej: 12-18, 40-45" inputmode="numeric"></div>
       <ul class="cc-ia-lista" id="cc-ia-lista" aria-live="polite"></ul>
     </div>
     <div class="card">
@@ -5990,7 +5992,7 @@ function lienzoABlob(c){ return new Promise(r=>c.toBlob(r,'image/jpeg',.85)); }
 // PDF: se lee completo, por tandas de páginas (Claude recibe pocas imágenes por
 // consulta). Una página escaneada no trae texto: va partida en dos mitades para
 // que la letra chica siga legible.
-const PDF_MAX_PAGS=60;
+const PDF_MAX_PAGS=500;
 async function abrirPdfCotizacion(buf){
   const lib=await cargarPdfjs();
   const pdf=await lib.getDocument({data:new Uint8Array(buf)}).promise;
@@ -6013,7 +6015,8 @@ function tandasPdf(pags, maxImg){
   pags.forEach(pg=>{
     if(maxImg<=0 && !pg.texto) return;                 // sin imágenes no se puede leer un escaneado
     const c = maxImg<=0 ? 1 : (pg.texto || maxImg<2 ? 1 : 2);
-    if(act.length && costo+c>tope){ tandas.push(act); act=[]; costo=0; }
+    // páginas salteadas no van juntas: suelen ser de proveedores distintos
+    if(act.length && (costo+c>tope || pg.n!==act[act.length-1].n+1)){ tandas.push(act); act=[]; costo=0; }
     act.push(pg); costo+=c;
   });
   if(act.length) tandas.push(act);
@@ -6051,7 +6054,7 @@ function promptCotizacion(nombreArchivo, texto, hayImagenes, parte){
   return 'Eres un asistente de un área de logística del Estado peruano. Te paso la cotización que envió UN proveedor '
     +'(archivo «'+nombreArchivo+'»'+(hayImagenes?'; las imágenes adjuntas son sus páginas, en orden':'')+'). '
     +'Extrae sus datos para un cuadro comparativo de precios de '+(serv?'un SERVICIO':'BIENES')+'.\n'
-    +(parte ? 'Esto es solo una parte del documento: las páginas '+parte.de+' a '+parte.a+' de '+parte.total+'. Si aquí no aparecen los datos del proveedor o no hay líneas cotizadas, déjalos vacíos ("items":[]); no repitas ítems de otras páginas.\n' : '')+'\n'
+    +(parte ? 'Esto es solo una parte de un documento de '+parte.total+' páginas: la(s) página(s) '+parte.nums+'. El documento puede traer cotizaciones de varios proveedores: si en estas páginas hay cotizaciones de MÁS DE UN proveedor, responde con un arreglo JSON con un objeto por proveedor (cada uno con la forma indicada); escribe cada razón social siempre igual. Si aquí no aparece quién cotiza (es continuación de la hoja anterior), deja "nombre" y "ruc" vacíos. Si no hay líneas cotizadas con precio (carátula, términos de referencia, anexos), devuelve ("items":[]); no repitas ítems de otras páginas.\n' : '')+'\n'
     +'Responde SOLO con un objeto JSON con esta forma exacta:\n'
     +'{"postor":{"nombre":"razón social del proveedor que cotiza","ruc":"11 dígitos","contacto":"persona de contacto","telefono":"","email":"",'
     +'"garantia":"p. ej. 12 MESES","plazo_dias":21,"fecha":"AAAA-MM-DD"},'
@@ -6088,8 +6091,9 @@ function aplicarCotizacionCC(d, op){
   if(!nombre && !lineas.length && !op.postor) throw {code:'sin_datos'};
   const serv=esServicioCC(), avisos=[];
   // 1) el postor: el mismo (por RUC o nombre), el primero vacío, o uno nuevo
-  let i=op.postor ? ccPostores.indexOf(op.postor) : -1;
-  if(i<0) i=ccPostores.findIndex(p=>(ruc && txt(p.ruc)===ruc) || (nombre && may(p.nombre)===nombre));
+  const clave=x=>may(x).replace(/[^A-Z0-9]/g,'');
+  let i=ccPostores.findIndex(p=>(ruc.length===11 && txt(p.ruc).replace(/\D/g,'')===ruc) || (nombre && clave(p.nombre)===clave(nombre)));
+  if(i<0 && op.postor && !nombre) i=ccPostores.indexOf(op.postor);
   if(i<0) i=ccPostores.findIndex(p=>!txt(p.nombre));
   if(i<0){ ccPostores.push(nuevoPostorCC()); ccItems.forEach(it=>{ it.precios.push(''); it.marcas.push(''); }); i=ccPostores.length-1; }
   const p=ccPostores[i];
@@ -6142,35 +6146,99 @@ function aplicarCotizacionCC(d, op){
     rate_limited:'Llegaste al límite de uso de Claude por ahora. Inténtalo más tarde.', session_expired:'Tu sesión venció: vuelve a iniciar sesión en Claude.',
     image_rejected:'Claude no aceptó la imagen (muy grande o dañada). Prueba con otro archivo.', images_unavailable:'Aquí no se pueden enviar imágenes: sube el PDF con texto, el Excel o el Word.',
     refused:'Claude no quiso leer este documento.', invalid_json:'Claude no devolvió datos utilizables. Vuelve a subirlo.',
-    prompt_too_large:'El documento es demasiado largo. Sube solo las hojas con los precios.', sin_datos:'No se encontró ni el proveedor ni precios en este documento.' };
+    prompt_too_large:'El documento es demasiado largo. Sube solo las hojas con los precios.', sin_datos:'No se encontró ni el proveedor ni precios en este documento.', sin_hojas:'No encontré hojas de cotización en ese PDF. Indica las páginas a mano y vuelve a subirlo.' };
+  // "12-18, 40" → conjunto de páginas; vacío o inválido → null (todas)
+  function paginasPedidas(t, total){
+    const set=new Set();
+    String(t||'').split(/[,;\s]+/).forEach(x=>{ const m=/^(\d+)(?:\s*[-–a]\s*(\d+))?$/.exec(x.trim()); if(!m) return;
+      let a=+m[1], b=m[2]?+m[2]:a; if(b<a) [a,b]=[b,a];
+      for(let n=Math.max(1,a); n<=Math.min(total,b); n++) set.add(n); });
+    return set.size?set:null;
+  }
+  function resumirPaginas(nums){
+    const out=[]; let a=null, b=null;
+    nums.forEach(n=>{ if(b!==null && n===b+1){ b=n; return; } if(a!==null) out.push(a===b?''+a:a+'-'+b); a=b=n; });
+    if(a!==null) out.push(a===b?''+a:a+'-'+b);
+    return out.join(', ');
+  }
+  // Ubica las hojas de cotización de un expediente: las que traen texto, por sus
+  // palabras; las escaneadas, con una mirada rápida de Claude a la hoja entera.
+  async function hojasConPrecios(doc, pags, f, li){
+    const RE=/cotizaci|proforma|propuesta\s+econ|oferta|precio|p\.?\s*unit|valor\s+unit|s\/\s?\.?\s?\d|\bigv\b|i\.g\.v|\btotal\b/i;
+    const sirve=new Set(pags.filter(x=>x.texto && RE.test(x.texto)).map(x=>x.n));
+    const esc=pags.filter(x=>!x.texto);
+    if(esc.length && maxImg>0){
+      for(let k=0;k<esc.length;k+=maxImg){
+        if(ctl.signal.aborted) throw {code:'cancelled'};
+        const grupo=esc.slice(k,k+maxImg);
+        li.textContent=f.name+' — buscando las hojas con precios (página '+grupo[0].n+' de '+doc.total+')…';
+        const imgs=[]; for(const pg of grupo) imgs.push(...await imagenesPaginaPdf(doc.pdf, {n:pg.n, texto:'x'}, maxImg));
+        try{
+          const r=await sample.json('Estas '+grupo.length+' imágenes son páginas escaneadas de un expediente de compras del Estado peruano, en este orden: páginas '
+            +grupo.map(x=>x.n).join(', ')+'. Dime cuáles son parte de la COTIZACIÓN o proforma de un proveedor (con su razón social, o con ítems y precios). '
+            +'No cuentan: carátulas, pedidos, términos de referencia, especificaciones técnicas, correos, declaraciones juradas, fichas RUC, ni cuadros comparativos ya hechos por la entidad. '
+            +'Responde SOLO con un arreglo JSON de números de página, p. ej. [12,13]; si ninguna, [].', {signal:ctl.signal, images:imgs, modelTier:'quick'});
+          (Array.isArray(r)?r:[]).forEach(n=>{ n=parseInt(n,10); if(grupo.some(x=>x.n===n)) sirve.add(n); });
+        }catch(e){
+          if(e && (e.code==='invalid_json' || e.code==='empty_completion')){ grupo.forEach(x=>sirve.add(x.n)); continue; }   // ante la duda, se leen
+          throw e;
+        }
+      }
+    }
+    return pags.filter(x=>sirve.has(x.n));
+  }
   async function leerUno(f, li){
     const ext=(f.name.split('.').pop()||'').toLowerCase();
     let texto='', imagenes=[], extra='';
     if(ext==='pdf' || f.type==='application/pdf'){
       li.textContent=f.name+' — abriendo el PDF…';
       const doc=await abrirPdfCotizacion(await f.arrayBuffer());
-      const tandas=tandasPdf(doc.pags, maxImg);
-      if(!tandas.length) throw {code:'images_unavailable'};
-      const tot={nombre:'', puestos:0, avisos:[], postor:null, creo:false}; let datos=false;
-      for(let t=0;t<tandas.length;t++){
-        const pgs=tandas[t], de=pgs[0].n, a=pgs[pgs.length-1].n;
-        li.textContent=f.name+' — Claude está leyendo las páginas '+de+(a>de?' a '+a:'')+' de '+doc.total+'…';
-        const imgs=[]; if(maxImg>0) for(const pg of pgs) imgs.push(...await imagenesPaginaPdf(doc.pdf, pg, maxImg));
-        const txtT=pgs.filter(x=>x.texto).map(x=>'--- Página '+x.n+' ---\n'+x.texto).join('\n\n');
-        const o={signal:ctl.signal}; if(imgs.length) o.images=imgs;
-        const d=await sample.json(promptCotizacion(f.name, txtT, imgs.length>0, tandas.length>1?{de,a,total:doc.total}:null), o);
-        if(ctl.signal.aborted) throw {code:'cancelled'};
-        let r; try{ r=aplicarCotizacionCC(d, {postor:tot.postor, crear:tot.creo}); }
-        catch(e){ if(e && e.code==='sin_datos') continue; throw e; }
-        datos=true; tot.postor=r.postor; tot.creo=tot.creo||r.creo; tot.nombre=r.nombre; tot.puestos+=r.puestos;
-        r.avisos.forEach(x=>{ if(!/quedaron sin precio/.test(x) && !tot.avisos.includes(x)) tot.avisos.push(x); });
+      const rango=paginasPedidas(document.getElementById('cc-ia-pags').value, doc.total);
+      let pags = rango ? doc.pags.filter(x=>rango.has(x.n)) : doc.pags;
+      const avisos=[];
+      if(!rango && pags.length>12){
+        // expediente largo: primero se ubican las hojas que traen precios
+        const antes=pags.length;
+        pags=await hojasConPrecios(doc, pags, f, li);
+        if(!pags.length) throw {code:'sin_hojas'};
+        avisos.push('de '+antes+' páginas se leyeron las que parecen cotización: '+resumirPaginas(pags.map(x=>x.n)));
       }
-      if(!datos) throw {code:'sin_datos'};
-      const i=ccPostores.indexOf(tot.postor);
-      const faltan=ccItems.filter(it=>String(it.descripcion||'').trim() && !String(it.precios[i]||'').trim()).length;
-      if(faltan && tot.puestos) tot.avisos.push(faltan+' ítem(s) quedaron sin precio');
-      if(doc.total>doc.pags.length) tot.avisos.push('solo se leyeron las primeras '+doc.pags.length+' de '+doc.total+' páginas');
-      return tot;
+      const tandas=tandasPdf(pags, maxImg);
+      if(!tandas.length) throw {code: pags.length?'images_unavailable':'sin_hojas'};
+      const porPostor=new Map(); let actual=null, creo=false, cortado='';
+      for(let t=0;t<tandas.length;t++){
+        const pgs=tandas[t], nums=pgs.map(x=>x.n);
+        li.textContent=f.name+' — Claude está leyendo la(s) página(s) '+resumirPaginas(nums)+' ('+(t+1)+' de '+tandas.length+')…';
+        let d;
+        try{
+          const imgs=[]; if(maxImg>0) for(const pg of pgs) imgs.push(...await imagenesPaginaPdf(doc.pdf, pg, maxImg));
+          const txtT=pgs.filter(x=>x.texto).map(x=>'--- Página '+x.n+' ---\n'+x.texto.slice(0,8000)).join('\n\n');
+          const o={signal:ctl.signal}; if(imgs.length) o.images=imgs;
+          d=await sample.json(promptCotizacion(f.name, txtT, imgs.length>0, (tandas.length>1||rango||doc.total>pags.length)?{nums:resumirPaginas(nums),total:doc.total}:null), o);
+        }catch(e){
+          // lo ya leído queda en el cuadro; se avisa hasta dónde llegó
+          if(porPostor.size && e && (e.code==='rate_limited' || e.code==='cancelled' || e.code==='upstream_error')){
+            cortado=(e.code==='cancelled'?'se detuvo':e.code==='rate_limited'?'se llegó al límite de uso de Claude':'Claude dejó de responder')
+              +' antes de la página '+nums[0]+'; para seguir, sube el PDF otra vez indicando las páginas '+nums[0]+'-'+pags[pags.length-1].n;
+            break;
+          }
+          if(e && e.code==='invalid_json') continue;
+          throw e;
+        }
+        if(ctl.signal.aborted) throw {code:'cancelled'};
+        for(const d1 of (Array.isArray(d)?d:[d])){
+        let r; try{ r=aplicarCotizacionCC(d1, {postor:actual, crear:creo}); }
+        catch(e){ if(e && e.code==='sin_datos') continue; throw e; }
+        actual=r.postor; creo=creo||r.creo;
+        const acc=porPostor.get(r.postor)||{puestos:0}; acc.puestos+=r.puestos; porPostor.set(r.postor, acc);
+        r.avisos.forEach(x=>{ if(!/quedaron sin precio/.test(x)){ const y=(porPostor.size>1||tandas.length>1?'pág. '+resumirPaginas(nums)+': ':'')+x; if(!avisos.includes(y)) avisos.push(y); } });
+        }
+      }
+      if(!porPostor.size) throw {code:'sin_datos'};
+      if(cortado) avisos.push(cortado);
+      if(doc.total>doc.pags.length) avisos.push('solo se revisaron las primeras '+doc.pags.length+' de '+doc.total+' páginas');
+      const partes=[...porPostor].map(([po,a])=>(po.nombre||'Postor '+(ccPostores.indexOf(po)+1))+' ('+a.puestos+' precio(s))');
+      return {nombre:partes.join(', '), puestos:null, avisos};
     } else if(ext==='xlsx'){ texto=await leerXlsxCotizacion(await f.arrayBuffer()); }
     else if(ext==='docx'){ texto=leerDocxCotizacion(await f.arrayBuffer()); }
     else if(/^image\//.test(f.type)){ if(!maxImg) throw {code:'images_unavailable'}; imagenes=[f]; }
@@ -6193,7 +6261,7 @@ function aplicarCotizacionCC(d, op){
       try{
         const r=await leerUno(f, li);
         li.className='ok';
-        li.innerHTML='✓ <b>'+escH(r.nombre)+'</b> — '+r.puestos+' precio(s) puestos <span class="hint">('+escH(f.name)+')</span>'
+        li.innerHTML='✓ <b>'+escH(r.nombre)+'</b>'+(r.puestos==null?'':' — '+r.puestos+' precio(s) puestos')+' <span class="hint">('+escH(f.name)+')</span>'
           +(r.avisos.length?'<br>⚠ Revisa: '+escH(r.avisos.join('; '))+'.':'');
       }catch(e){
         const c=e&&e.code;
