@@ -33,6 +33,12 @@ mantenerla neutral.
   también puede cargar reportes nuevos desde la pantalla *Buscar*: la app los
   lee en el navegador y los guarda ahí (IndexedDB, store `siga`), y esa copia
   manda mientras sea igual o más nueva que la que trae la app.
+- La app también se publica como **artefacto de Claude** (el mismo `docs/index.html`,
+  con las capacidades `sample` con imágenes y `downloads`). Solo ahí aparece
+  *Leer cotizaciones* en el comparativo: Claude lee el PDF/foto/Excel/Word del
+  proveedor y llena postor, ítems, precios y marcas. Dentro del artefacto no hay
+  `confirm()`/`prompt()` ni descargas directas: usar `confirmar()`,
+  `pedirTexto()` y `descargarBlob()`.
 - Commit y push a la rama `claude/excel-validation-model-ogwy3i`.
 
 ## Estructura
